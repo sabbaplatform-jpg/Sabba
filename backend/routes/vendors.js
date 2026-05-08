@@ -1,0 +1,166 @@
+// routes/vendors.js - vendor management for HR admins + vendor self-management
+const router = require('express').Router();
+const db = require('../lib/db');
+const { auth, requireRole } = require('../middleware/auth');
+
+// GET /api/vendors — HR sees all vendors
+router.get('/', auth, requireRole('hr'), async (req, res) => {
+  try {
+    const result = await db.query(`
+      SELECT v.*, u.email, u.full_name,
+             COUNT(p.id) as package_count,
+             COUNT(b.id) as total_bookings
+      FROM vendors v
+      JOIN users u ON v.user_id = u.id
+      LEFT JOIN packages p ON v.id = p.vendor_id
+      LEFT JOIN bookings b ON p.id = b.package_id
+      GROUP BY v.id, u.email, u.full_name
+      ORDER BY v.created_at DESC
+    `);
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PATCH /api/vendors/:id/verify — HR verifies a vendor
+router.patch('/:id/verify', auth, requireRole('hr'), async (req, res) => {
+  try {
+    const { verified } = req.body;
+    const result = await db.query(`
+      UPDATE vendors SET verified=$1, verified_by=$2, verified_at=NOW()
+      WHERE id=$3 RETURNING *
+    `, [verified, req.user.id, req.params.id]);
+    if (!result.rows.length) return res.status(404).json({ error: 'Vendor not found' });
+
+    // Notify vendor
+    const vendor = result.rows[0];
+    await db.query(`
+      INSERT INTO notifications (user_id, title, message, type)
+      VALUES ($1, $2, $3, $4)
+    `, [vendor.user_id,
+        verified ? 'You are now verified!' : 'Verification removed',
+        verified ? 'Congratulations! Your vendor account has been verified by Sabba admin.' : 'Your verification status has been updated.',
+        verified ? 'success' : 'warning']);
+
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/vendors/profile — vendor gets own profile
+router.get('/profile', auth, requireRole('vendor'), async (req, res) => {
+  try {
+    const result = await db.query(`
+      SELECT v.*, u.email, u.full_name
+      FROM vendors v JOIN users u ON v.user_id = u.id
+      WHERE v.user_id = $1
+    `, [req.user.id]);
+    if (!result.rows.length) return res.status(404).json({ error: 'Vendor profile not found' });
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PATCH /api/vendors/profile — vendor updates own profile
+router.patch('/profile', auth, requireRole('vendor'), async (req, res) => {
+  try {
+    const { company_name, about, website, avatar_url, banner_url } = req.body;
+    const result = await db.query(`
+      UPDATE vendors SET
+        company_name=COALESCE($1,company_name),
+        about=COALESCE($2,about),
+        website=COALESCE($3,website),
+        avatar_url=COALESCE($4,avatar_url),
+        banner_url=COALESCE($5,banner_url)
+      WHERE user_id=$6 RETURNING *
+    `, [company_name, about, website, avatar_url, banner_url, req.user.id]);
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/vendors/packages/:id/media — add media to a package
+router.post('/packages/:id/media', auth, requireRole('vendor'), async (req, res) => {
+  try {
+    const { url, media_type, display_order } = req.body;
+    const result = await db.query(`
+      INSERT INTO package_media (package_id, url, media_type, display_order)
+      VALUES ($1,$2,$3,$4) RETURNING *
+    `, [req.params.id, url, media_type, display_order || 0]);
+    res.status(201).json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE /api/vendors/packages/media/:id — remove media
+router.delete('/packages/media/:id', auth, requireRole('vendor'), async (req, res) => {
+  try {
+    await db.query('DELETE FROM package_media WHERE id=$1', [req.params.id]);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PATCH /api/vendors/bookings/:id/notes — vendor sends notes to employee
+router.patch('/bookings/:id/notes', auth, requireRole('vendor'), async (req, res) => {
+  try {
+    const { vendor_notes } = req.body;
+    const result = await db.query(`
+      UPDATE bookings SET vendor_notes=$1
+      WHERE id=$2 RETURNING *
+    `, [vendor_notes, req.params.id]);
+
+    // Notify employee
+    if (result.rows.length) {
+      await db.query(`
+        INSERT INTO notifications (user_id, title, message, type, link)
+        VALUES ($1, 'Booking details from vendor', $2, 'info', '/my-booking')
+      `, [result.rows[0].employee_id, `Your vendor has sent you important details about your upcoming adventure.`]);
+    }
+
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/vendors/earnings — vendor earnings analytics
+router.get('/earnings', auth, requireRole('vendor'), async (req, res) => {
+  try {
+    const vendor = await db.query('SELECT id FROM vendors WHERE user_id=$1', [req.user.id]);
+    if (!vendor.rows.length) return res.status(404).json({ error: 'Vendor not found' });
+
+    const monthly = await db.query(`
+      SELECT DATE_TRUNC('month', b.created_at) as month,
+             COUNT(*) as bookings,
+             SUM(b.total_amount) as revenue
+      FROM bookings b
+      JOIN packages p ON b.package_id = p.id
+      WHERE p.vendor_id = $1 AND b.status IN ('confirmed','approved')
+      GROUP BY DATE_TRUNC('month', b.created_at)
+      ORDER BY month DESC LIMIT 6
+    `, [vendor.rows[0].id]);
+
+    const totals = await db.query(`
+      SELECT COUNT(*) as total_bookings,
+             SUM(CASE WHEN b.status='confirmed' THEN b.total_amount ELSE 0 END) as confirmed_revenue,
+             AVG(pr.rating) as avg_rating
+      FROM bookings b
+      JOIN packages p ON b.package_id = p.id
+      LEFT JOIN package_ratings pr ON p.id = pr.package_id
+      WHERE p.vendor_id = $1
+    `, [vendor.rows[0].id]);
+
+    res.json({ monthly: monthly.rows, totals: totals.rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+module.exports = router;

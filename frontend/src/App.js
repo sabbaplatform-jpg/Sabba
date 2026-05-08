@@ -1,15 +1,23 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import Nav from './components/Nav';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Marketplace from './pages/Marketplace';
 import PackageDetail from './pages/PackageDetail';
-import HRDashboard from './pages/HRDashboard';
-import { EmployeeHome, MyBooking } from './pages/Employee';
-import { VendorDashboard, VendorPackages } from './pages/Vendor';
 import { Spinner } from './components/UI';
-import { font } from './lib/styles';
+import { font, globalStyles } from './lib/styles';
+
+// HR pages
+import HRDashboard from './pages/hr/HRDashboard';
+import HREmployees from './pages/hr/HREmployees';
+import { HRAdventures, HRMarketplace, HRAnalytics, HRIntegrations } from './pages/hr/HRPages';
+
+// Employee pages
+import { EmployeeHome, MyBooking, EmployeeProfile } from './pages/employee/EmployeePages';
+
+// Vendor pages
+import { VendorDashboard, VendorPackages, VendorBookings, VendorEarnings, VendorProfile } from './pages/vendor/VendorPages';
 
 function RequireAuth({ children, role }) {
   const { user, loading } = useAuth();
@@ -31,22 +39,36 @@ function AppRoutes() {
   const { user } = useAuth();
   return (
     <div style={{ fontFamily: font.body }}>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Serif+Display:ital@0;1&display=swap');
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { background: #f9f8f6; }
-      `}</style>
+      <style>{globalStyles}</style>
       {user && <Nav/>}
       <Routes>
         <Route path="/login"    element={<Login/>}/>
         <Route path="/register" element={<Register/>}/>
-        <Route path="/hr"       element={<RequireAuth role="hr"><HRDashboard/></RequireAuth>}/>
-        <Route path="/home"     element={<RequireAuth role="employee"><EmployeeHome/></RequireAuth>}/>
-        <Route path="/my-booking" element={<RequireAuth role="employee"><MyBooking/></RequireAuth>}/>
-        <Route path="/vendor"          element={<RequireAuth role="vendor"><VendorDashboard/></RequireAuth>}/>
-        <Route path="/vendor/packages" element={<RequireAuth role="vendor"><VendorPackages/></RequireAuth>}/>
+
+        {/* HR */}
+        <Route path="/hr"                element={<RequireAuth role="hr"><HRDashboard/></RequireAuth>}/>
+        <Route path="/hr/employees"      element={<RequireAuth role="hr"><HREmployees/></RequireAuth>}/>
+        <Route path="/hr/adventures"     element={<RequireAuth role="hr"><HRAdventures/></RequireAuth>}/>
+        <Route path="/hr/marketplace"    element={<RequireAuth role="hr"><HRMarketplace/></RequireAuth>}/>
+        <Route path="/hr/analytics"      element={<RequireAuth role="hr"><HRAnalytics/></RequireAuth>}/>
+        <Route path="/hr/integrations"   element={<RequireAuth role="hr"><HRIntegrations/></RequireAuth>}/>
+
+        {/* Employee */}
+        <Route path="/home"        element={<RequireAuth role="employee"><EmployeeHome/></RequireAuth>}/>
+        <Route path="/my-booking"  element={<RequireAuth role="employee"><MyBooking/></RequireAuth>}/>
+        <Route path="/profile"     element={<RequireAuth role="employee"><EmployeeProfile/></RequireAuth>}/>
+
+        {/* Vendor */}
+        <Route path="/vendor"           element={<RequireAuth role="vendor"><VendorDashboard/></RequireAuth>}/>
+        <Route path="/vendor/packages"  element={<RequireAuth role="vendor"><VendorPackages/></RequireAuth>}/>
+        <Route path="/vendor/bookings"  element={<RequireAuth role="vendor"><VendorBookings/></RequireAuth>}/>
+        <Route path="/vendor/earnings"  element={<RequireAuth role="vendor"><VendorEarnings/></RequireAuth>}/>
+        <Route path="/vendor/profile"   element={<RequireAuth role="vendor"><VendorProfile/></RequireAuth>}/>
+
+        {/* Shared */}
         <Route path="/marketplace"  element={<RequireAuth><Marketplace/></RequireAuth>}/>
         <Route path="/package/:id"  element={<RequireAuth><PackageDetail/></RequireAuth>}/>
+
         <Route path="/" element={<RoleRedirect/>}/>
         <Route path="*" element={<Navigate to="/" replace/>}/>
       </Routes>
