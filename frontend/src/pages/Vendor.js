@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import api from '../lib/api';
 import { useAuth } from '../context/AuthContext';
-import { Badge, Spinner, EmptyState, Button, Input, Select } from '../components/UI';
+import { Badge, Spinner, EmptyState, Button, Input, Select, Avatar } from '../components/UI';
 import { colors, font } from '../lib/styles';
 
 const CATEGORIES = ['travel','volunteering','courses','jobs_abroad','accommodation','airlines'];
@@ -20,17 +20,20 @@ export function VendorDashboard() {
   }, []);
 
   const earnings = bookings.filter(b => b.status === 'confirmed').reduce((sum, b) => sum + Number(b.total_amount), 0);
+  const maxEarnings = 20000;
+
   const stats = [
     { label: 'Active Packages',   value: packages.filter(p => p.status === 'live').length, sub: `${packages.length} total` },
-    { label: 'Total Bookings',    value: bookings.length,                                   sub: `${bookings.filter(b=>b.status==='confirmed').length} confirmed` },
-    { label: 'Confirmed Revenue', value: `£${earnings.toLocaleString()}`,                   sub: 'from confirmed bookings' },
-    { label: 'Pending Bookings',  value: bookings.filter(b=>b.status==='pending').length,   sub: 'awaiting HR approval' },
+    { label: 'Total Bookings',    value: bookings.length, sub: `${bookings.filter(b=>b.status==='confirmed').length} confirmed` },
+    { label: 'Confirmed Revenue', value: `£${earnings.toLocaleString()}`, sub: 'from confirmed bookings' },
+    { label: 'Pending',           value: bookings.filter(b=>b.status==='pending').length, sub: 'awaiting HR approval' },
   ];
 
   if (loading) return <Spinner/>;
 
   return (
     <div style={{ fontFamily: font.body, background: colors.bg, minHeight: '100vh', padding: '36px 40px', maxWidth: 1280, margin: '0 auto' }}>
+      <style>{`.stat-card{transition:box-shadow 0.15s,transform 0.15s}.stat-card:hover{box-shadow:0 6px 24px rgba(0,0,0,0.08)!important;transform:translateY(-2px)}.row-hover:hover{background:#fdf7f3!important}`}</style>
       <div style={{ marginBottom: 28 }}>
         <p style={{ fontSize: 11, fontWeight: 600, color: colors.faint, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 4 }}>Vendor Portal</p>
         <h1 style={{ fontFamily: font.display, fontSize: 28, color: colors.dark, fontWeight: 400 }}>Good morning, {user?.full_name?.split(' ')[0]} 👋</h1>
@@ -38,38 +41,81 @@ export function VendorDashboard() {
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16, marginBottom: 28 }}>
         {stats.map((s, i) => (
-          <div key={i} style={{ background: '#fff', border: `1px solid ${colors.border}`, borderRadius: 12, padding: '22px 22px 18px', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
+          <div key={i} className="stat-card" style={{ background: '#fff', border: `1px solid ${colors.border}`, borderRadius: 12, padding: '22px 22px 18px', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
             <p style={{ fontSize: 11, fontWeight: 600, color: colors.faint, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 8 }}>{s.label}</p>
             <p style={{ fontFamily: font.display, fontSize: 32, color: colors.dark, lineHeight: 1 }}>{s.value}</p>
             <p style={{ fontSize: 12, color: colors.muted, marginTop: 8 }}>{s.sub}</p>
           </div>
         ))}
       </div>
-      <div style={{ background: '#fff', border: `1px solid ${colors.border}`, borderRadius: 12, overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
-        <div style={{ padding: '20px 24px 16px', borderBottom: `1px solid ${colors.border}` }}>
-          <h2 style={{ fontSize: 15, fontWeight: 600, color: colors.dark }}>Recent Bookings</h2>
-          <p style={{ fontSize: 12, color: colors.faint, marginTop: 2 }}>Employees from employer portals</p>
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1.8fr 1.2fr 1.4fr 0.8fr 0.8fr 1fr',
-          padding: '10px 24px', background: colors.bgCard, borderBottom: `1px solid ${colors.border}` }}>
-          {['Employee','Employer','Package','Departure','Payroll','Status'].map(h => (
-            <span key={h} style={{ fontSize: 11, fontWeight: 600, color: colors.faint, letterSpacing: '0.06em', textTransform: 'uppercase' }}>{h}</span>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 20 }}>
+        <div style={{ background: '#fff', border: `1px solid ${colors.border}`, borderRadius: 12, overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
+          <div style={{ padding: '20px 24px 16px', borderBottom: `1px solid ${colors.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <h2 style={{ fontSize: 15, fontWeight: 600, color: colors.dark }}>Recent Bookings</h2>
+              <p style={{ fontSize: 12, color: colors.faint, marginTop: 2 }}>Employees via employer portals</p>
+            </div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1.8fr 1.2fr 1.4fr 0.8fr 0.8fr 1fr', padding: '10px 24px', background: colors.bgCard, borderBottom: `1px solid ${colors.border}` }}>
+            {['Employee','Employer','Package','Departure','Payroll','Status'].map(h => (
+              <span key={h} style={{ fontSize: 11, fontWeight: 600, color: colors.faint, letterSpacing: '0.06em', textTransform: 'uppercase' }}>{h}</span>
+            ))}
+          </div>
+          {bookings.length === 0 ? (
+            <EmptyState emoji="📬" title="No bookings yet" subtitle="Once employees book your packages they'll appear here"/>
+          ) : bookings.slice(0,8).map((b, i) => (
+            <div key={b.id} className="row-hover" style={{ display: 'grid', gridTemplateColumns: '1.8fr 1.2fr 1.4fr 0.8fr 0.8fr 1fr', padding: '13px 24px', alignItems: 'center', borderBottom: i < Math.min(bookings.length,8)-1 ? `1px solid ${colors.border}` : 'none', transition: 'background 0.12s' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <Avatar initials={b.employee_name?.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase()}/>
+                <span style={{ fontSize: 13.5, fontWeight: 500, color: colors.dark }}>{b.employee_name}</span>
+              </div>
+              <span style={{ fontSize: 13, color: colors.mid }}>{b.company_name}</span>
+              <span style={{ fontSize: 13, color: colors.mid }}>{b.emoji} {b.package_title}</span>
+              <span style={{ fontSize: 13, color: colors.mid }}>{b.departure_date ? new Date(b.departure_date).toLocaleDateString('en-GB',{day:'numeric',month:'short'}) : '—'}</span>
+              <span style={{ fontSize: 12, color: colors.muted }}>{b.payroll_months}mo</span>
+              <Badge status={b.status}/>
+            </div>
           ))}
         </div>
-        {bookings.length === 0 ? (
-          <EmptyState emoji="📬" title="No bookings yet" subtitle="Once employees book your packages they will appear here"/>
-        ) : bookings.slice(0,8).map((b, i) => (
-          <div key={b.id} style={{ display: 'grid', gridTemplateColumns: '1.8fr 1.2fr 1.4fr 0.8fr 0.8fr 1fr',
-            padding: '13px 24px', alignItems: 'center',
-            borderBottom: i < Math.min(bookings.length,8) - 1 ? `1px solid ${colors.border}` : 'none' }}>
-            <span style={{ fontSize: 13.5, fontWeight: 500, color: colors.dark }}>{b.employee_name}</span>
-            <span style={{ fontSize: 13, color: colors.mid }}>{b.company_name}</span>
-            <span style={{ fontSize: 13, color: colors.mid }}>{b.emoji} {b.package_title}</span>
-            <span style={{ fontSize: 13, color: colors.mid }}>{b.departure_date ? new Date(b.departure_date).toLocaleDateString('en-GB',{day:'numeric',month:'short'}) : '—'}</span>
-            <span style={{ fontSize: 12, color: colors.muted }}>{b.payroll_months}mo</span>
-            <Badge status={b.status}/>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+          {/* Vendor profile */}
+          <div style={{ background: '#fff', border: `1px solid ${colors.border}`, borderRadius: 12, padding: 22, boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+              <div style={{ width: 44, height: 44, borderRadius: 10, background: 'linear-gradient(135deg, #e06c2a, #f5a66d)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>🌍</div>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <p style={{ fontSize: 14, fontWeight: 600, color: colors.dark }}>{user?.full_name}</p>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: colors.green, background: colors.greenLight, borderRadius: 4, padding: '2px 6px' }}>✓ VENDOR</span>
+                </div>
+                <p style={{ fontSize: 12, color: colors.faint }}>Sabba Marketplace Partner</p>
+              </div>
+            </div>
+            {[{ label: 'Active Listings', value: packages.filter(p=>p.status==='live').length }, { label: 'Total Bookings', value: bookings.length }, { label: 'Platform Status', value: 'Active' }].map((row, i) => (
+              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: i < 2 ? 10 : 0, marginBottom: i < 2 ? 10 : 0, borderBottom: i < 2 ? `1px solid ${colors.border}` : 'none' }}>
+                <span style={{ fontSize: 12, color: colors.faint }}>{row.label}</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: row.label === 'Platform Status' ? colors.green : colors.dark }}>{row.value}</span>
+              </div>
+            ))}
           </div>
-        ))}
+
+          {/* Activity */}
+          <div style={{ background: '#fff', border: `1px solid ${colors.border}`, borderRadius: 12, padding: 22, boxShadow: '0 1px 4px rgba(0,0,0,0.04)', flex: 1 }}>
+            <h2 style={{ fontSize: 15, fontWeight: 600, color: colors.dark, marginBottom: 4 }}>Recent Activity</h2>
+            <p style={{ fontSize: 12, color: colors.faint, marginBottom: 16 }}>Latest on your account</p>
+            {bookings.slice(0,4).map((b, i) => (
+              <div key={i} style={{ display: 'flex', gap: 10, paddingBottom: i < 3 ? 13 : 0, marginBottom: i < 3 ? 13 : 0, borderBottom: i < 3 ? `1px solid ${colors.border}` : 'none' }}>
+                <div style={{ width: 7, height: 7, borderRadius: '50%', background: colors.orange, flexShrink: 0, marginTop: 5 }}/>
+                <div>
+                  <p style={{ fontSize: 12.5, color: colors.dark, lineHeight: 1.4 }}>{b.employee_name} booked {b.package_title}</p>
+                  <p style={{ fontSize: 11, color: colors.faint, marginTop: 2 }}>via {b.company_name}</p>
+                </div>
+              </div>
+            ))}
+            {bookings.length === 0 && <p style={{ fontSize: 13, color: colors.muted }}>No activity yet</p>}
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -104,25 +150,21 @@ export function VendorPackages() {
         <div>
           <p style={{ fontSize: 11, fontWeight: 600, color: colors.faint, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 4 }}>Vendor Portal</p>
           <h1 style={{ fontFamily: font.display, fontSize: 28, color: colors.dark, fontWeight: 400 }}>My Packages</h1>
+          <p style={{ color: colors.muted, fontSize: 13.5, marginTop: 4 }}>Manage your listings on the Sabba marketplace</p>
         </div>
         <Button onClick={() => { setEditPkg(null); setShowForm(true); }}>+ Add Package</Button>
       </div>
-      {showForm && (
-        <PackageForm initial={editPkg}
-          onClose={() => { setShowForm(false); setEditPkg(null); }}
-          onSaved={() => { setShowForm(false); setEditPkg(null); fetchPackages(); }}/>
-      )}
+      {showForm && <PackageForm initial={editPkg} onClose={() => { setShowForm(false); setEditPkg(null); }} onSaved={() => { setShowForm(false); setEditPkg(null); fetchPackages(); }}/>}
       {loading ? <Spinner/> : packages.length === 0 ? (
         <EmptyState emoji="📦" title="No packages yet" subtitle="Add your first package to appear on the Sabba marketplace"/>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {packages.map(pkg => (
-            <div key={pkg.id} style={{ background: '#fff', border: `1px solid ${colors.border}`,
-              borderRadius: 12, padding: '18px 24px', display: 'flex', alignItems: 'center', gap: 16, boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
+            <div key={pkg.id} style={{ background: '#fff', border: `1px solid ${colors.border}`, borderRadius: 12, padding: '18px 24px', display: 'flex', alignItems: 'center', gap: 16, boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
               <span style={{ fontSize: 28, flexShrink: 0 }}>{pkg.emoji || '🌍'}</span>
               <div style={{ flex: 1 }}>
                 <p style={{ fontSize: 14, fontWeight: 600, color: colors.dark, marginBottom: 2 }}>{pkg.title}</p>
-                <p style={{ fontSize: 12, color: colors.muted }}>{pkg.destination} · {pkg.duration} · {pkg.category}</p>
+                <p style={{ fontSize: 12, color: colors.muted }}>{pkg.destination} · {pkg.duration} · {pkg.category?.replace('_',' ')}</p>
               </div>
               <span style={{ fontFamily: font.display, fontSize: 20, color: colors.dark }}>£{Number(pkg.price_gbp).toLocaleString()}</span>
               <Badge status={pkg.status}/>
@@ -159,9 +201,7 @@ function PackageForm({ initial, onClose, onSaved }) {
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 }}>
       <div style={{ background: '#fff', borderRadius: 16, padding: 32, width: '100%', maxWidth: 520, boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
-        <h2 style={{ fontFamily: font.display, fontSize: 22, color: colors.dark, marginBottom: 24, fontWeight: 400 }}>
-          {initial ? 'Edit Package' : 'Add New Package'}
-        </h2>
+        <h2 style={{ fontFamily: font.display, fontSize: 22, color: colors.dark, marginBottom: 24, fontWeight: 400 }}>{initial ? 'Edit Package' : 'Add New Package'}</h2>
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <Input label="Package title" required value={form.title} onChange={set('title')} placeholder="Japan Explorer — 3 Weeks"/>
           <Input label="Description" value={form.description} onChange={set('description')} placeholder="A brief description for employees"/>
@@ -173,12 +213,7 @@ function PackageForm({ initial, onClose, onSaved }) {
               <label style={{ fontSize: 12, fontWeight: 600, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Emoji</label>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
                 {EMOJIS.map(em => (
-                  <span key={em} onClick={() => setForm(f => ({...f, emoji: em}))}
-                    style={{ fontSize: 18, cursor: 'pointer', padding: 3, borderRadius: 4,
-                      background: form.emoji === em ? colors.orangeLight : 'transparent',
-                      border: form.emoji === em ? `1px solid ${colors.orange}` : '1px solid transparent' }}>
-                    {em}
-                  </span>
+                  <span key={em} onClick={() => setForm(f => ({...f, emoji: em}))} style={{ fontSize: 18, cursor: 'pointer', padding: 3, borderRadius: 4, background: form.emoji === em ? colors.orangeLight : 'transparent', border: form.emoji === em ? `1px solid ${colors.orange}` : '1px solid transparent' }}>{em}</span>
                 ))}
               </div>
             </div>
