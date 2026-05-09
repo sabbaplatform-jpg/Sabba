@@ -7,12 +7,12 @@ export const colors = {
   mid:         '#3d3a36',
   muted:       '#7a7570',
   faint:       '#a8a39d',
-  border:      'rgba(0,0,0,0.08)',
+  border:      'rgba(0,0,0,0.07)',
   borderStrong:'rgba(0,0,0,0.12)',
-  bg:          '#ffffff',         // White background
-  bgSoft:      '#f9f8f6',         // Soft white for cards/sections
-  bgCard:      '#ffffff',
-  bgCardHover: '#fdfcfb',
+  bg:          '#f5f3ef',         // Soft warm grey page background
+  bgSection:   '#f5f3ef',         // Section backgrounds (stats, tables)
+  bgCard:      '#ffffff',         // Card surfaces — white
+  bgCardHover: '#fffefD',
   white:       '#ffffff',
   green:       '#1a7a4a',
   greenLight:  'rgba(26,122,74,0.08)',
@@ -55,7 +55,7 @@ export const statusStyle = (status) => {
 export const globalStyles = `
   @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&family=DM+Serif+Display:ital@0;1&display=swap');
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: #ffffff; font-family: 'DM Sans', 'Helvetica Neue', sans-serif; -webkit-font-smoothing: antialiased; color: #111010; }
+  body { background: #f5f3ef; font-family: 'DM Sans', 'Helvetica Neue', sans-serif; -webkit-font-smoothing: antialiased; color: #111010; }
 
   /* Page transition */
   .page-fade { animation: pageFade 0.2s ease; }
@@ -65,18 +65,27 @@ export const globalStyles = `
   .loader-bar { width: 100%; height: 3px; background: linear-gradient(90deg, #e06c2a, #f5a66d, #e06c2a); background-size: 200% 100%; animation: loaderAnim 1.2s linear infinite; position: fixed; top: 0; left: 0; z-index: 9999; }
   @keyframes loaderAnim { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 
-  /* Cards */
-  .card { background: #ffffff; border: 1px solid rgba(0,0,0,0.08); border-radius: 16px; box-shadow: 0 1px 8px rgba(0,0,0,0.06); transition: box-shadow 0.2s ease, transform 0.2s ease; }
-  .card:hover { box-shadow: 0 6px 24px rgba(0,0,0,0.10); }
-  .card-lift:hover { transform: translateY(-3px); box-shadow: 0 8px 32px rgba(0,0,0,0.12); }
+  /* White cards floating above grey background */
+  .card { background: #ffffff; border: 1px solid rgba(0,0,0,0.07); border-radius: 16px; box-shadow: 0 2px 12px rgba(0,0,0,0.07), 0 1px 3px rgba(0,0,0,0.05); transition: box-shadow 0.2s ease, transform 0.2s ease; }
+  .card:hover { box-shadow: 0 8px 32px rgba(0,0,0,0.11), 0 2px 8px rgba(0,0,0,0.06); }
+  .card-lift:hover { transform: translateY(-3px); box-shadow: 0 12px 40px rgba(0,0,0,0.13); }
 
-  /* Stat card */
-  .stat-card { background: #ffffff; border: 1px solid rgba(0,0,0,0.08); border-radius: 16px; box-shadow: 0 1px 8px rgba(0,0,0,0.05); transition: all 0.2s ease; }
-  .stat-card:hover { box-shadow: 0 8px 24px rgba(0,0,0,0.09); transform: translateY(-2px); }
+  /* Stat cards — white on grey, strong shadow */
+  .stat-card { background: #ffffff; border: 1px solid rgba(0,0,0,0.06); border-radius: 16px; box-shadow: 0 2px 12px rgba(0,0,0,0.07), 0 1px 3px rgba(0,0,0,0.04); transition: all 0.2s ease; }
+  .stat-card:hover { box-shadow: 0 10px 32px rgba(0,0,0,0.11); transform: translateY(-3px); }
+
+  /* Dashboard sections — tinted grey */
+  .section-tint { background: #f5f3ef; border-radius: 16px; }
+
+  /* Table container — white card */
+  .table-card { background: #ffffff; border: 1px solid rgba(0,0,0,0.07); border-radius: 16px; box-shadow: 0 2px 12px rgba(0,0,0,0.07); overflow: hidden; }
+
+  /* Table header row — tinted grey */
+  .table-header { background: #f5f3ef; }
 
   /* Row hover */
   .row-hover { transition: background 0.12s ease; }
-  .row-hover:hover { background: rgba(224,108,42,0.03) !important; }
+  .row-hover:hover { background: #fdf8f5 !important; }
 
   /* Nav links */
   .nav-link { transition: color 0.15s, background 0.15s; }
@@ -87,9 +96,9 @@ export const globalStyles = `
   .btn-primary:hover { background: #c95d1e !important; transform: translateY(-1px); box-shadow: 0 4px 16px rgba(224,108,42,0.3); }
   .btn-secondary:hover { background: rgba(0,0,0,0.05) !important; }
 
-  /* Package cards */
-  .pkg-card { transition: all 0.2s ease; }
-  .pkg-card:hover { transform: translateY(-4px); box-shadow: 0 12px 40px rgba(0,0,0,0.12) !important; border-color: #e06c2a !important; }
+  /* Package cards — white, strong hover shadow */
+  .pkg-card { background: #ffffff; border: 1px solid rgba(0,0,0,0.07); border-radius: 16px; box-shadow: 0 2px 12px rgba(0,0,0,0.07); transition: all 0.22s ease; }
+  .pkg-card:hover { transform: translateY(-5px); box-shadow: 0 16px 48px rgba(0,0,0,0.14) !important; border-color: #e06c2a !important; }
 
   /* Image containers */
   .img-cover { object-fit: cover; width: 100%; height: 100%; }

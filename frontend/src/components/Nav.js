@@ -73,7 +73,7 @@ export default function Nav({ loading }) {
     <>
       {loading && <div className="loader-bar"/>}
       <header style={{
-        background: '#ffffff',
+        background: '#f5f3ef',
         borderBottom: '1px solid rgba(0,0,0,0.08)',
         padding: '0 40px', height: 64,
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -188,19 +188,30 @@ export default function Nav({ loading }) {
 // ── Footer ───────────────────────────────────────────────────
 export function Footer() {
   return (
-    <footer style={{ background: '#ffffff', borderTop: '1px solid rgba(0,0,0,0.07)', padding: '16px 40px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 'auto' }}>
-      <span style={{ fontSize: 13, color: colors.faint, fontWeight: 600 }}>
-        Powered by <span style={{ color: colors.orange, fontFamily: font.display, fontWeight: 700 }}>Sabba</span>
-      </span>
-      <div style={{ display: 'flex', gap: 24 }}>
-        {['Contact', 'FAQ'].map(link => (
-          <a key={link} href={`/${link.toLowerCase()}`} style={{ fontSize: 13, color: colors.muted, textDecoration: 'none', fontWeight: 500, transition: 'color 0.15s' }}
-            onMouseEnter={e => e.currentTarget.style.color = colors.orange}
-            onMouseLeave={e => e.currentTarget.style.color = colors.muted}>
-            {link}
-          </a>
-        ))}
-      </div>
-    </footer>
+    <>
+      {/* Spacer so page content doesn't hide behind fixed footer */}
+      <div style={{ height: 52 }}/>
+      <footer style={{
+        position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 90,
+        background: '#f5f3ef',
+        borderTop: '1px solid rgba(0,0,0,0.07)',
+        padding: '14px 40px',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        boxShadow: '0 -2px 12px rgba(0,0,0,0.05)',
+      }}>
+        <span style={{ fontSize: 13, color: colors.faint, fontWeight: 600 }}>
+          Powered by <span style={{ color: colors.orange, fontFamily: font.display, fontWeight: 700 }}>Sabba</span>
+        </span>
+        <div style={{ display: 'flex', gap: 24 }}>
+          {['Contact', 'FAQ'].map(link => (
+            <a key={link} href={`/${link.toLowerCase()}`} style={{ fontSize: 13, color: colors.muted, textDecoration: 'none', fontWeight: 500, transition: 'color 0.15s' }}
+              onMouseEnter={e => e.currentTarget.style.color = colors.orange}
+              onMouseLeave={e => e.currentTarget.style.color = colors.muted}>
+              {link}
+            </a>
+          ))}
+        </div>
+      </footer>
+    </>
   );
 }
