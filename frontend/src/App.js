@@ -16,7 +16,8 @@ import { HRAdventures, HRMarketplace, HRAnalytics, HRIntegrations } from './page
 
 // Employee pages
 import { EmployeeHome } from './pages/employee/EmployeeHome';
-import { MyBooking, EmployeeProfile } from './pages/employee/EmployeePages';
+import MyBooking from './pages/employee/MyBooking';
+import { EmployeeProfile } from './pages/employee/EmployeePages';
 import { Cart, CheckoutSuccess } from './pages/employee/Cart';
 import Allowance from './pages/employee/Allowance';
 
