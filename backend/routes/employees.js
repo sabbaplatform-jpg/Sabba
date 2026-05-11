@@ -70,4 +70,28 @@ router.patch('/:id/spend-limit', auth, requireRole('hr'), async (req, res) => {
   }
 });
 
+router.post('/:id/reset-password', auth, requireRole('hr'), async (req, res) => {
+  try {
+    const { new_password } = req.body;
+    if (!new_password || new_password.length < 8) {
+      return res.status(400).json({ error: 'Password must be at least 8 characters' });
+    }
+    const emp = await db.query(
+      'SELECT id FROM users WHERE id=$1 AND company_id=$2 AND role=$3',
+      [req.params.id, req.user.company_id, 'employee']
+    );
+    if (!emp.rows.length) return res.status(404).json({ error: 'Employee not found' });
+    const bcrypt = require('bcryptjs');
+    const password_hash = await bcrypt.hash(new_password, 10);
+    await db.query('UPDATE users SET password_hash=$1 WHERE id=$2', [password_hash, req.params.id]);
+    await db.query(
+      'INSERT INTO notifications (user_id, title, message, type) VALUES ($1,$2,$3,$4)',
+      [req.params.id, 'Password updated', 'Your password has been reset by your HR admin.', 'info']
+    );
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;
