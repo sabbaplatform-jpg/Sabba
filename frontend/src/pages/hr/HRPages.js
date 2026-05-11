@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../lib/api';
 import { Badge, Avatar, Spinner, EmptyState, Button, Input, Modal, TableHeader, StatCard } from '../../components/UI';
@@ -212,62 +212,30 @@ export function HRAnalytics() {
 
   const maxCount = Math.max(...byMonth.map(m => m.count), 1);
 
-  const exportXlsx = async () => {
-    const XLSX = await import('https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js').catch(() => null);
-    if (!XLSX) {
-      alert('Export library not available. Please try again.');
-      return;
-    }
-    const rows = [
-      ['Employee', 'Email', 'Package', 'Destination', 'Departure', 'Payroll Months', 'Monthly Amount', 'Total Amount', 'Payment Method', 'Status'],
-      ...bookings.map(b => [
-        b.employee_name, b.employee_email, b.package_title, b.destination,
-        b.departure_date ? new Date(b.departure_date).toLocaleDateString('en-GB') : '',
-        b.payroll_months, Number(b.monthly_amount).toFixed(2),
-        Number(b.total_amount).toFixed(2), b.payment_method || 'payroll', b.status,
-      ]),
-    ];
-    const ws = XLSX.utils.aoa_to_sheet(rows);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Adventures');
-    XLSX.writeFile(wb, `sabba-analytics-${new Date().toISOString().slice(0,10)}.xlsx`);
-  };
-
-  // Fallback xlsx export using CSV if XLSX not available
-  const exportCsv = () => {
-    const headers = ['Employee','Email','Package','Destination','Departure','Payroll Months','Monthly Amount','Total Amount','Payment Method','Status'];
+  const handleExport = () => {
+    const headers = ['Employee','Email','Package','Destination','Departure','Payroll Months','Monthly Amount (£)','Total Amount (£)','Payment Method','Status'];
     const rows = bookings.map(b => [
-      b.employee_name, b.employee_email, b.package_title, b.destination,
+      b.employee_name || '',
+      b.employee_email || '',
+      b.package_title || '',
+      b.destination || '',
       b.departure_date ? new Date(b.departure_date).toLocaleDateString('en-GB') : '',
-      b.payroll_months, Number(b.monthly_amount).toFixed(2),
-      Number(b.total_amount).toFixed(2), b.payment_method || 'payroll', b.status,
+      b.payroll_months || '',
+      Number(b.monthly_amount || 0).toFixed(2),
+      Number(b.total_amount || 0).toFixed(2),
+      b.payment_method || 'payroll',
+      b.status || '',
     ]);
-    const csv = [headers, ...rows].map(r => r.map(c => `"${c}"`).join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
+    const csv = [headers, ...rows].map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
     a.download = `sabba-analytics-${new Date().toISOString().slice(0,10)}.csv`;
+    document.body.appendChild(a);
     a.click();
+    document.body.removeChild(a);
     URL.revokeObjectURL(url);
-  };
-
-  const handleExport = () => {
-    try {
-      // Try dynamic import first, fallback to CSV
-      import('xlsx').then(XLSX => {
-        const rows = [
-          ['Employee','Email','Package','Destination','Departure','Payroll Months','Monthly Amount','Total Amount','Payment Method','Status'],
-          ...bookings.map(b => [b.employee_name, b.employee_email, b.package_title, b.destination, b.departure_date ? new Date(b.departure_date).toLocaleDateString('en-GB') : '', b.payroll_months, Number(b.monthly_amount).toFixed(2), Number(b.total_amount).toFixed(2), b.payment_method || 'payroll', b.status]),
-        ];
-        const ws = XLSX.utils.aoa_to_sheet(rows);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, 'Adventures');
-        XLSX.writeFile(wb, `sabba-analytics-${new Date().toISOString().slice(0,10)}.xlsx`);
-      }).catch(() => exportCsv());
-    } catch {
-      exportCsv();
-    }
   };
 
   const stats = [
@@ -290,7 +258,7 @@ export function HRAnalytics() {
             onMouseEnter={e => e.currentTarget.style.background='#0f6e56'}
             onMouseLeave={e => e.currentTarget.style.background=colors.green}>
             <svg width="16" height="16" fill="none" stroke="#fff" strokeWidth="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            Export .xlsx
+            Export .csv
           </button>
         </div>
       </div>
