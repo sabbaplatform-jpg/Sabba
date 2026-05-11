@@ -87,8 +87,7 @@ export default function Login() {
               <strong style={{ color: colors.dark }}>Demo logins:</strong><br/>
               HR: hr@barclays.com<br/>
               Employee: james@barclays.com<br/>
-              Vendor: hello@remoteyear.com<br/>
-              Password: <strong style={{ color: colors.dark }}>password</strong>
+              Vendor: hello@remoteyear.com
             </div>
           </div>
         </div>
