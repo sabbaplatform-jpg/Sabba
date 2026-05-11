@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import api from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
-import { Badge, Spinner, EmptyState, Button, Input, Select, Avatar, StarRating, Modal, Textarea, SectionHeader, TableHeader, StatCard } from '../../components/UI';
-import { colors, font } from '../../lib/styles';
+import { Badge, Spinner, EmptyState, Button, Input, Select, Avatar, StarRating, Modal, Textarea, StatCard, TableHeader } from '../../components/UI';
+import { colors, font, gradients } from '../../lib/styles';
+import { ImageUpload } from '../../components/ImageUpload';
 
 const CATEGORIES = ['travel','volunteering','courses','jobs_abroad','accommodation','airlines'];
 const EMOJIS = ['🌍','🇯🇵','🇮🇩','🇵🇹','🇰🇪','🇪🇸','🎓','🤝','💼','✈️','🏠','🇨🇷','🇲🇦','🇧🇷','🇮🇳'];
@@ -12,8 +13,8 @@ export function VendorDashboard() {
   const { user } = useAuth();
   const [packages, setPackages] = useState([]);
   const [bookings, setBookings] = useState([]);
-  const [profile, setProfile]   = useState(null);
-  const [loading, setLoading]   = useState(true);
+  const [profile,  setProfile]  = useState(null);
+  const [loading,  setLoading]  = useState(true);
 
   useEffect(() => {
     Promise.all([
@@ -28,88 +29,104 @@ export function VendorDashboard() {
   const earnings = bookings.filter(b => b.status === 'confirmed').reduce((s, b) => s + Number(b.total_amount), 0);
 
   const stats = [
-    { label: 'Active Packages',   value: packages.filter(p => p.status === 'live').length, sub: `${packages.length} total`, icon: '📦' },
-    { label: 'Total Bookings',    value: bookings.length, sub: `${bookings.filter(b=>b.status==='confirmed').length} confirmed`, icon: '📅', up: true },
-    { label: 'Confirmed Revenue', value: `£${earnings.toLocaleString()}`, sub: 'from confirmed bookings', icon: '💷', up: true },
-    { label: 'Avg Rating',        value: profile?.rating > 0 ? `${profile.rating} ★` : '—', sub: `${profile?.total_reviews || 0} reviews`, icon: '⭐' },
+    { label: 'Active Packages',   value: packages.filter(p => p.status === 'live').length, sub: `${packages.length} total`,                                  icon: '📦' },
+    { label: 'Total Bookings',    value: bookings.length,                                   sub: `${bookings.filter(b=>b.status==='confirmed').length} confirmed`, icon: '📅', up: true },
+    { label: 'Confirmed Revenue', value: `£${earnings.toLocaleString()}`,                  sub: 'from confirmed bookings',                                    icon: '💷', up: true },
+    { label: 'Avg Rating',        value: profile?.rating > 0 ? `${profile.rating} ★` : '—', sub: `${profile?.total_reviews || 0} reviews`,                  icon: '⭐' },
   ];
 
   if (loading) return <Spinner/>;
 
   return (
-    <div style={{ fontFamily: font.body, background: colors.bg, minHeight: '100vh', padding: '36px 40px', maxWidth: 1280, margin: '0 auto' }}>
+    <div style={{ fontFamily: font.body, background: '#F7F5F2', minHeight: '100vh', paddingBottom: 80 }}>
       {/* Banner */}
       {profile?.banner_url && (
-        <div style={{ height: 160, borderRadius: 16, overflow: 'hidden', marginBottom: 20, position: 'relative' }}>
+        <div style={{ height: 180, overflow: 'hidden', position: 'relative' }}>
           <img src={profile.banner_url} alt="Banner" style={{ width: '100%', height: '100%', objectFit: 'cover' }}/>
-          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to right, rgba(0,0,0,0.5), transparent)' }}/>
+          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, transparent 40%, rgba(0,0,0,0.5))' }}/>
         </div>
       )}
 
-      <SectionHeader
-        label="Vendor Portal"
-        title={`Good morning, ${user?.full_name?.split(' ')[0]} 👋`}
-        subtitle="Manage your listings and track bookings from Sabba employers."
-      />
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16, marginBottom: 28 }}>
-        {stats.map((s, i) => <StatCard key={i} {...s}/>)}
+      {/* Header */}
+      <div style={{ background: '#fff', borderBottom: '1px solid #eee', padding: '28px 40px 24px' }}>
+        <div style={{ maxWidth: 1280, margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+            {profile?.avatar_url
+              ? <img src={profile.avatar_url} alt="avatar" style={{ width: 52, height: 52, borderRadius: 14, objectFit: 'cover', border: '1px solid #eee' }}/>
+              : <div style={{ width: 52, height: 52, borderRadius: 14, background: `linear-gradient(135deg, ${colors.orange}, #f5a066)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>🌍</div>
+            }
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
+                <p style={{ fontFamily: font.display, fontSize: 28, color: colors.dark, fontWeight: 700, fontStyle: 'italic' }}>
+                  Good morning, {user?.full_name?.split(' ')[0]}
+                </p>
+                {profile?.verified && <span style={{ fontSize: 10, fontWeight: 700, color: colors.green, background: colors.greenLight, borderRadius: 6, padding: '3px 8px' }}>✓ VERIFIED</span>}
+              </div>
+              <p style={{ fontSize: 13.5, color: colors.muted, fontWeight: 500 }}>Manage your listings and track bookings from Sabba employers.</p>
+            </div>
+          </div>
+          <Button onClick={() => window.location.href = '/vendor/packages'}>+ Add Package</Button>
+        </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 20 }}>
-        {/* Recent bookings */}
-        <div className="glass-card" style={{ overflow: 'hidden' }}>
-          <div style={{ padding: '20px 24px 16px', borderBottom: `1px solid ${colors.border}` }}>
-            <h2 style={{ fontSize: 15, fontWeight: 700, color: colors.dark }}>Recent Bookings</h2>
-            <p style={{ fontSize: 12.5, color: colors.muted, marginTop: 2, fontWeight: 500 }}>Employees via employer portals</p>
-          </div>
-          <TableHeader cols={['Employee','Employer','Package','Departure','Status']} template="1.8fr 1.2fr 1.4fr 0.9fr 1fr"/>
-          {bookings.length === 0 ? (
-            <EmptyState emoji="📬" title="No bookings yet" subtitle="Once employees book your packages they'll appear here"/>
-          ) : bookings.slice(0,6).map((b, i) => (
-            <div key={b.id} className="row-hover" style={{ display: 'grid', gridTemplateColumns: '1.8fr 1.2fr 1.4fr 0.9fr 1fr', padding: '13px 24px', alignItems: 'center', borderBottom: i < Math.min(bookings.length,6)-1 ? `1px solid ${colors.border}` : 'none' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <Avatar initials={b.employee_name?.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase()}/>
-                <span style={{ fontSize: 13.5, fontWeight: 600, color: colors.dark }}>{b.employee_name}</span>
-              </div>
-              <span style={{ fontSize: 13, color: colors.mid, fontWeight: 500 }}>{b.company_name}</span>
-              <span style={{ fontSize: 13, color: colors.mid }}>{b.emoji} {b.package_title}</span>
-              <span style={{ fontSize: 13, color: colors.mid }}>{b.departure_date ? new Date(b.departure_date).toLocaleDateString('en-GB',{day:'numeric',month:'short'}) : '—'}</span>
-              <Badge status={b.status}/>
-            </div>
-          ))}
+      <div style={{ maxWidth: 1280, margin: '0 auto', padding: '28px 40px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16, marginBottom: 24 }}>
+          {stats.map((s, i) => <StatCard key={i} {...s}/>)}
         </div>
 
-        {/* Profile sidebar */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <div className="glass-card" style={{ padding: 22 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-              <Avatar initials={profile?.company_name?.slice(0,2).toUpperCase()} src={profile?.avatar_url} size={48}/>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 20 }}>
+          {/* Bookings table */}
+          <div className="table-wrap">
+            <div style={{ padding: '18px 24px 14px', borderBottom: '1px solid #eee', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <p style={{ fontSize: 14, fontWeight: 700, color: colors.dark }}>{profile?.company_name}</p>
-                  {profile?.verified && <span style={{ fontSize: 10, fontWeight: 700, color: colors.green, background: colors.greenLight, borderRadius: 4, padding: '2px 6px' }}>✓</span>}
-                </div>
-                <p style={{ fontSize: 12, color: colors.muted, fontWeight: 500 }}>{profile?.category} · Sabba Partner</p>
+                <p style={{ fontSize: 15, fontWeight: 700, color: colors.dark }}>Recent Bookings</p>
+                <p style={{ fontSize: 12.5, color: colors.muted, marginTop: 2 }}>Employees via employer portals</p>
               </div>
+              <Button small variant="ghost" onClick={() => window.location.href = '/vendor/bookings'}>View all →</Button>
             </div>
-            <StarRating rating={Math.round(profile?.rating || 0)} size={18}/>
-            <p style={{ fontSize: 12, color: colors.muted, marginTop: 4, fontWeight: 500 }}>{profile?.rating > 0 ? `${profile.rating} / 5` : 'No ratings yet'} · {profile?.total_reviews || 0} reviews</p>
-            {profile?.about && <p style={{ fontSize: 13, color: colors.mid, lineHeight: 1.5, marginTop: 12 }}>{profile.about}</p>}
-          </div>
-
-          <div className="glass-card" style={{ padding: 22 }}>
-            <h3 style={{ fontSize: 14, fontWeight: 700, color: colors.dark, marginBottom: 12 }}>Recent Activity</h3>
-            {bookings.slice(0,4).map((b, i) => (
-              <div key={i} style={{ display: 'flex', gap: 10, paddingBottom: i < 3 ? 12 : 0, marginBottom: i < 3 ? 12 : 0, borderBottom: i < 3 ? `1px solid ${colors.border}` : 'none' }}>
-                <div style={{ width: 7, height: 7, borderRadius: '50%', background: colors.orange, flexShrink: 0, marginTop: 5 }}/>
-                <div>
-                  <p style={{ fontSize: 12.5, color: colors.dark, lineHeight: 1.4, fontWeight: 500 }}>{b.employee_name} booked {b.package_title}</p>
-                  <p style={{ fontSize: 11, color: colors.faint, marginTop: 2 }}>via {b.company_name}</p>
+            <TableHeader cols={['Employee','Employer','Package','Departure','Status']} template="1.8fr 1.2fr 1.4fr 0.9fr 1fr"/>
+            {bookings.length === 0 ? (
+              <EmptyState emoji="📬" title="No bookings yet" subtitle="Once employees book your packages they'll appear here"/>
+            ) : bookings.slice(0,6).map((b, i) => (
+              <div key={b.id} className="row-hover" style={{ display: 'grid', gridTemplateColumns: '1.8fr 1.2fr 1.4fr 0.9fr 1fr', padding: '12px 24px', alignItems: 'center', borderBottom: i < Math.min(bookings.length,6)-1 ? '1px solid #f5f5f5' : 'none' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <Avatar initials={b.employee_name?.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase()}/>
+                  <span style={{ fontSize: 13.5, fontWeight: 600, color: colors.dark }}>{b.employee_name}</span>
                 </div>
+                <span style={{ fontSize: 13, color: colors.mid, fontWeight: 500 }}>{b.company_name}</span>
+                <span style={{ fontSize: 13, color: colors.mid }}>{b.emoji} {b.package_title}</span>
+                <span style={{ fontSize: 13, color: colors.mid }}>{b.departure_date ? new Date(b.departure_date).toLocaleDateString('en-GB',{day:'numeric',month:'short'}) : '—'}</span>
+                <Badge status={b.status}/>
               </div>
             ))}
-            {bookings.length === 0 && <p style={{ fontSize: 13, color: colors.muted }}>No activity yet</p>}
+          </div>
+
+          {/* Sidebar */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {/* Profile card */}
+            <div className="card" style={{ padding: 22 }}>
+              <StarRating rating={Math.round(profile?.rating || 0)} size={18}/>
+              <p style={{ fontSize: 12.5, color: colors.muted, marginTop: 6, fontWeight: 500 }}>
+                {profile?.rating > 0 ? `${profile.rating} / 5` : 'No ratings yet'} · {profile?.total_reviews || 0} reviews
+              </p>
+              {profile?.about && <p style={{ fontSize: 13, color: colors.mid, lineHeight: 1.5, marginTop: 12 }}>{profile.about}</p>}
+              <button onClick={() => window.location.href = '/vendor/profile'} style={{ marginTop: 14, fontSize: 12, color: colors.orange, background: 'none', border: 'none', cursor: 'pointer', fontWeight: 700, fontFamily: font.body }}>Edit profile →</button>
+            </div>
+
+            {/* Activity */}
+            <div className="card" style={{ padding: 22, flex: 1 }}>
+              <p style={{ fontSize: 15, fontWeight: 700, color: colors.dark, marginBottom: 14 }}>Recent Activity</p>
+              {bookings.slice(0,4).map((b, i) => (
+                <div key={i} style={{ display: 'flex', gap: 10, paddingBottom: i<3?12:0, marginBottom: i<3?12:0, borderBottom: i<3?'1px solid #f5f5f5':'none' }}>
+                  <div style={{ width: 7, height: 7, borderRadius: '50%', background: colors.orange, flexShrink: 0, marginTop: 5 }}/>
+                  <div>
+                    <p style={{ fontSize: 12.5, color: colors.dark, lineHeight: 1.4, fontWeight: 500 }}>{b.employee_name} booked {b.package_title}</p>
+                    <p style={{ fontSize: 11, color: colors.faint, marginTop: 2 }}>via {b.company_name}</p>
+                  </div>
+                </div>
+              ))}
+              {bookings.length === 0 && <p style={{ fontSize: 13, color: colors.muted }}>No activity yet</p>}
+            </div>
           </div>
         </div>
       </div>
@@ -140,33 +157,70 @@ export function VendorPackages() {
   };
 
   return (
-    <div style={{ fontFamily: font.body, background: colors.bg, minHeight: '100vh', padding: '36px 40px', maxWidth: 1100, margin: '0 auto' }}>
-      <SectionHeader label="Vendor Portal" title="My Packages" subtitle="Manage your listings on the Sabba marketplace."
-        action={<Button onClick={() => { setEditPkg(null); setShowForm(true); }}>+ Add Package</Button>}/>
-      {showForm && <PackageForm initial={editPkg} onClose={() => { setShowForm(false); setEditPkg(null); }} onSaved={() => { setShowForm(false); setEditPkg(null); fetchPackages(); }}/>}
-      {loading ? <Spinner/> : packages.length === 0 ? (
-        <EmptyState emoji="📦" title="No packages yet" subtitle="Add your first package to appear on the Sabba marketplace"/>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {packages.map(pkg => (
-            <div key={pkg.id} className="glass-card" style={{ padding: '18px 24px', display: 'flex', alignItems: 'center', gap: 16 }}>
-              <span style={{ fontSize: 28, flexShrink: 0 }}>{pkg.emoji || '🌍'}</span>
-              <div style={{ flex: 1 }}>
-                <p style={{ fontSize: 14, fontWeight: 700, color: colors.dark, marginBottom: 2 }}>{pkg.title}</p>
-                <p style={{ fontSize: 12.5, color: colors.muted, fontWeight: 500 }}>{pkg.destination} · {pkg.duration} · {pkg.category?.replace('_',' ')}</p>
-              </div>
-              <span style={{ fontFamily: font.display, fontSize: 20, color: colors.dark }}>£{Number(pkg.price_gbp).toLocaleString()}</span>
-              <Badge status={pkg.status}/>
-              <Badge status={pkg.admin_status || 'pending'}/>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button onClick={() => toggleStatus(pkg)} style={{ background: pkg.status === 'live' ? colors.redLight : colors.greenLight, color: pkg.status === 'live' ? colors.red : colors.green, border: 'none', borderRadius: 6, padding: '6px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: font.body }}>{pkg.status === 'live' ? 'Unpublish' : 'Publish'}</button>
-                <button onClick={() => { setEditPkg(pkg); setShowForm(true); }} style={{ background: 'rgba(0,0,0,0.05)', color: colors.mid, border: `1px solid ${colors.border}`, borderRadius: 6, padding: '6px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: font.body }}>Edit</button>
-                <button onClick={() => deletePackage(pkg.id)} style={{ background: colors.redLight, color: colors.red, border: 'none', borderRadius: 6, padding: '6px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: font.body }}>Delete</button>
-              </div>
-            </div>
-          ))}
+    <div style={{ fontFamily: font.body, background: '#F7F5F2', minHeight: '100vh', paddingBottom: 80 }}>
+      <div style={{ background: '#fff', borderBottom: '1px solid #eee', padding: '28px 40px 24px' }}>
+        <div style={{ maxWidth: 1100, margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+          <div>
+            <p style={{ fontSize: 10.5, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>Vendor Portal</p>
+            <h1 style={{ fontFamily: font.display, fontSize: 34, color: colors.dark, fontWeight: 700, fontStyle: 'italic' }}>My Packages</h1>
+            <p style={{ color: colors.muted, fontSize: 14, marginTop: 4, fontWeight: 500 }}>Manage your listings on the Sabba marketplace</p>
+          </div>
+          <Button onClick={() => { setEditPkg(null); setShowForm(true); }}>+ Add Package</Button>
         </div>
-      )}
+      </div>
+
+      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '28px 40px' }}>
+        {showForm && <PackageForm initial={editPkg} onClose={() => { setShowForm(false); setEditPkg(null); }} onSaved={() => { setShowForm(false); setEditPkg(null); fetchPackages(); }}/>}
+
+        {loading ? <Spinner/> : packages.length === 0 ? (
+          <EmptyState emoji="📦" title="No packages yet" subtitle="Add your first package to appear on the Sabba marketplace" action={<Button onClick={() => setShowForm(true)}>Add Package</Button>}/>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(300px,1fr))', gap: 20 }}>
+            {packages.map(pkg => {
+              const gradient = gradients[pkg.category] || gradients.default;
+              return (
+                <div key={pkg.id} className="card" style={{ overflow: 'hidden' }}>
+                  {/* Image */}
+                  <div style={{ height: 160, background: gradient, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {pkg.image_url
+                      ? <img src={pkg.image_url} alt={pkg.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }}/>
+                      : <span style={{ fontSize: 52 }}>{pkg.emoji || '🌍'}</span>
+                    }
+                    <div style={{ position: 'absolute', top: 12, left: 12 }}>
+                      <span style={{ fontSize: 10, fontWeight: 700, color: '#fff', background: 'rgba(0,0,0,0.42)', borderRadius: 6, padding: '4px 8px', backdropFilter: 'blur(8px)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                        {pkg.category?.replace('_',' ')}
+                      </span>
+                    </div>
+                    <div style={{ position: 'absolute', top: 12, right: 12 }}>
+                      <Badge status={pkg.status}/>
+                    </div>
+                    {pkg.admin_status && pkg.admin_status !== 'approved' && (
+                      <div style={{ position: 'absolute', bottom: 12, left: 12 }}>
+                        <Badge status={pkg.admin_status}/>
+                      </div>
+                    )}
+                  </div>
+                  {/* Body */}
+                  <div style={{ padding: '16px 18px 18px' }}>
+                    <p style={{ fontSize: 14.5, fontWeight: 700, color: colors.dark, marginBottom: 3 }}>{pkg.title}</p>
+                    <p style={{ fontSize: 12.5, color: colors.muted, marginBottom: 14, fontWeight: 500 }}>{pkg.destination} · {pkg.duration}</p>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <p style={{ fontFamily: font.display, fontSize: 22, fontWeight: 700, color: colors.dark }}>£{Number(pkg.price_gbp).toLocaleString()}</p>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <button onClick={() => toggleStatus(pkg)} style={{ background: pkg.status === 'live' ? colors.redLight : colors.greenLight, color: pkg.status === 'live' ? colors.red : colors.green, border: 'none', borderRadius: 7, padding: '6px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: font.body }}>
+                          {pkg.status === 'live' ? 'Unpublish' : 'Publish'}
+                        </button>
+                        <button onClick={() => { setEditPkg(pkg); setShowForm(true); }} style={{ background: '#F7F5F2', color: colors.mid, border: '1px solid #eee', borderRadius: 7, padding: '6px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: font.body }}>Edit</button>
+                        <button onClick={() => deletePackage(pkg.id)} style={{ background: colors.redLight, color: colors.red, border: 'none', borderRadius: 7, padding: '6px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: font.body }}>Delete</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -178,6 +232,7 @@ export function VendorBookings() {
   const [notesModal, setNotesModal] = useState(null);
   const [notes, setNotes]       = useState('');
   const [saving, setSaving]     = useState(false);
+  const [search, setSearch]     = useState('');
 
   useEffect(() => {
     api.get('/bookings/vendor').then(r => setBookings(r.data)).finally(() => setLoading(false));
@@ -190,16 +245,30 @@ export function VendorBookings() {
     api.get('/bookings/vendor').then(r => setBookings(r.data));
   };
 
+  const filtered = bookings.filter(b =>
+    !search || b.employee_name?.toLowerCase().includes(search.toLowerCase()) || b.package_title?.toLowerCase().includes(search.toLowerCase()) || b.company_name?.toLowerCase().includes(search.toLowerCase())
+  );
+
   return (
-    <div style={{ fontFamily: font.body, background: colors.bg, minHeight: '100vh', padding: '36px 40px', maxWidth: 1280, margin: '0 auto' }}>
-      <SectionHeader label="Vendor Portal" title="Bookings" subtitle="Manage employee bookings and send adventure details."/>
-      {loading ? <Spinner/> : (
-        <div className="glass-card" style={{ overflow: 'hidden' }}>
+    <div style={{ fontFamily: font.body, background: '#F7F5F2', minHeight: '100vh', paddingBottom: 80 }}>
+      <div style={{ background: '#fff', borderBottom: '1px solid #eee', padding: '28px 40px 24px' }}>
+        <div style={{ maxWidth: 1280, margin: '0 auto' }}>
+          <p style={{ fontSize: 10.5, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>Vendor Portal</p>
+          <h1 style={{ fontFamily: font.display, fontSize: 34, color: colors.dark, fontWeight: 700, fontStyle: 'italic', marginBottom: 16 }}>Bookings</h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#F7F5F2', border: '1px solid #eee', borderRadius: 10, padding: '9px 16px', maxWidth: 380 }}>
+            <svg width="15" height="15" fill="none" stroke={colors.faint} strokeWidth="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search employee, package, employer…" style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: 13.5, color: colors.dark, width: '100%', fontFamily: font.body }}/>
+          </div>
+        </div>
+      </div>
+
+      <div style={{ maxWidth: 1280, margin: '0 auto', padding: '28px 40px' }}>
+        <div className="table-wrap">
           <TableHeader cols={['Employee','Employer','Package','Departure','Payroll','Total','Status','Action']} template="1.8fr 1.2fr 1.4fr 0.9fr 0.7fr 0.9fr 1fr 1.2fr"/>
-          {bookings.length === 0 ? (
+          {loading ? <Spinner/> : filtered.length === 0 ? (
             <EmptyState emoji="📬" title="No bookings yet" subtitle="Bookings from employees will appear here"/>
-          ) : bookings.map((b, i) => (
-            <div key={b.id} className="row-hover" style={{ display: 'grid', gridTemplateColumns: '1.8fr 1.2fr 1.4fr 0.9fr 0.7fr 0.9fr 1fr 1.2fr', padding: '13px 24px', alignItems: 'center', borderBottom: i < bookings.length-1 ? `1px solid ${colors.border}` : 'none' }}>
+          ) : filtered.map((b, i) => (
+            <div key={b.id} className="row-hover" style={{ display: 'grid', gridTemplateColumns: '1.8fr 1.2fr 1.4fr 0.9fr 0.7fr 0.9fr 1fr 1.2fr', padding: '12px 24px', alignItems: 'center', borderBottom: i<filtered.length-1?'1px solid #f5f5f5':'none' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <Avatar initials={b.employee_name?.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase()}/>
                 <span style={{ fontSize: 13.5, fontWeight: 600, color: colors.dark }}>{b.employee_name}</span>
@@ -210,16 +279,16 @@ export function VendorBookings() {
               <span style={{ fontSize: 12, color: colors.muted, fontWeight: 500 }}>{b.payroll_months}mo</span>
               <span style={{ fontSize: 13, fontWeight: 700, color: colors.dark }}>£{Number(b.total_amount).toLocaleString()}</span>
               <Badge status={b.status}/>
-              <button onClick={() => { setNotesModal(b); setNotes(b.vendor_notes || ''); }} style={{ background: colors.orangeLight, color: colors.orange, border: 'none', borderRadius: 6, padding: '6px 10px', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', fontFamily: font.body }}>Send Details</button>
+              <button onClick={() => { setNotesModal(b); setNotes(b.vendor_notes || ''); }} style={{ background: colors.orangeLight, color: colors.orange, border: 'none', borderRadius: 7, padding: '6px 10px', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', fontFamily: font.body }}>Send Details</button>
             </div>
           ))}
         </div>
-      )}
+      </div>
 
       {notesModal && (
         <Modal title={`Send details to ${notesModal.employee_name}`} onClose={() => setNotesModal(null)} width={480}>
-          <p style={{ fontSize: 13.5, color: colors.muted, marginBottom: 16, fontWeight: 500 }}>Send booking details, meeting points, packing lists, or any important information about their adventure.</p>
-          <Textarea label="Message" value={notes} onChange={e => setNotes(e.target.value)} placeholder="e.g. Please arrive at Heathrow Terminal 3 by 6am. Your hotel is confirmed at…"/>
+          <p style={{ fontSize: 13.5, color: colors.muted, marginBottom: 16, fontWeight: 500, lineHeight: 1.6 }}>Send booking details, meeting points, packing lists, or any important information about their adventure.</p>
+          <Textarea label="Message" value={notes} onChange={e => setNotes(e.target.value)} placeholder="e.g. Please arrive at Heathrow Terminal 3 by 6am…"/>
           <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 20 }}>
             <Button variant="secondary" onClick={() => setNotesModal(null)}>Cancel</Button>
             <Button onClick={sendNotes} disabled={saving || !notes}>{saving ? 'Sending…' : 'Send to employee'}</Button>
@@ -232,76 +301,145 @@ export function VendorBookings() {
 
 // ── Vendor Earnings ──────────────────────────────────────────
 export function VendorEarnings() {
-  const [data, setData] = useState(null);
+  const [data, setData]   = useState(null);
+  const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.get('/vendors/earnings').then(r => setData(r.data)).finally(() => setLoading(false));
+    Promise.all([
+      api.get('/vendors/earnings'),
+      api.get('/bookings/vendor'),
+    ]).then(([e, b]) => { setData(e.data); setBookings(b.data); }).finally(() => setLoading(false));
   }, []);
+
+  const exportCsv = () => {
+    const headers = ['Employee','Employer','Package','Destination','Departure','Payroll Months','Monthly Amount (£)','Total Amount (£)','Status'];
+    const rows = bookings.map(b => [
+      b.employee_name || '',
+      b.company_name || '',
+      b.package_title || '',
+      b.destination || '',
+      b.departure_date ? new Date(b.departure_date).toLocaleDateString('en-GB') : '',
+      b.payroll_months || '',
+      Number(b.monthly_amount || 0).toFixed(2),
+      Number(b.total_amount || 0).toFixed(2),
+      b.status || '',
+    ]);
+    const csv = [headers, ...rows].map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `sabba-earnings-${new Date().toISOString().slice(0,10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
 
   if (loading) return <Spinner/>;
 
-  const monthly = data?.monthly || [];
-  const totals  = data?.totals || {};
-  const maxRevenue = Math.max(...monthly.map(m => Number(m.revenue || 0)), 1);
+  const monthly  = data?.monthly || [];
+  const totals   = data?.totals  || {};
+  const maxRev   = Math.max(...monthly.map(m => Number(m.revenue || 0)), 1);
+
+  const stats = [
+    { label: 'Total Bookings',    value: totals.total_bookings || 0, icon: '📅', up: true },
+    { label: 'Confirmed Revenue', value: `£${Number(totals.confirmed_revenue || 0).toLocaleString()}`, icon: '💷', up: true },
+    { label: 'Avg Rating',        value: totals.avg_rating ? `${Number(totals.avg_rating).toFixed(1)} ★` : '—', icon: '⭐' },
+    { label: 'This Month',        value: `£${Number(monthly[0]?.revenue || 0).toLocaleString()}`, icon: '📈', up: true },
+  ];
 
   return (
-    <div style={{ fontFamily: font.body, background: colors.bg, minHeight: '100vh', padding: '36px 40px', maxWidth: 1100, margin: '0 auto' }}>
-      <SectionHeader label="Vendor Portal" title="Earnings" subtitle="Analytics and revenue from your Sabba packages."/>
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16, marginBottom: 28 }}>
-        {[
-          { label: 'Total Bookings', value: totals.total_bookings || 0, icon: '📅', up: true },
-          { label: 'Confirmed Revenue', value: `£${Number(totals.confirmed_revenue || 0).toLocaleString()}`, icon: '💷', up: true },
-          { label: 'Avg Rating', value: totals.avg_rating ? `${Number(totals.avg_rating).toFixed(1)} ★` : '—', icon: '⭐' },
-          { label: 'This Month', value: `£${Number(monthly[0]?.revenue || 0).toLocaleString()}`, icon: '📈', up: true },
-        ].map((s, i) => <StatCard key={i} {...s}/>)}
+    <div style={{ fontFamily: font.body, background: '#F7F5F2', minHeight: '100vh', paddingBottom: 80 }}>
+      <div style={{ background: '#fff', borderBottom: '1px solid #eee', padding: '28px 40px 24px' }}>
+        <div style={{ maxWidth: 1100, margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+          <div>
+            <p style={{ fontSize: 10.5, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>Vendor Portal</p>
+            <h1 style={{ fontFamily: font.display, fontSize: 34, color: colors.dark, fontWeight: 700, fontStyle: 'italic' }}>Earnings</h1>
+            <p style={{ color: colors.muted, fontSize: 14, marginTop: 4, fontWeight: 500 }}>Analytics and revenue from your Sabba packages.</p>
+          </div>
+          <button onClick={exportCsv} style={{ display: 'flex', alignItems: 'center', gap: 8, background: colors.green, color: '#fff', border: 'none', borderRadius: 10, padding: '11px 20px', fontSize: 13.5, fontWeight: 700, cursor: 'pointer', fontFamily: font.body, boxShadow: '0 2px 8px rgba(29,158,117,0.3)', transition: 'all 0.15s' }}
+            onMouseEnter={e => e.currentTarget.style.background='#0f6e56'}
+            onMouseLeave={e => e.currentTarget.style.background=colors.green}>
+            <svg width="16" height="16" fill="none" stroke="#fff" strokeWidth="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Export .csv
+          </button>
+        </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 20 }}>
-        {/* Bar chart */}
-        <div className="glass-card" style={{ padding: '22px 24px' }}>
-          <h2 style={{ fontSize: 15, fontWeight: 700, color: colors.dark, marginBottom: 4 }}>Monthly Revenue</h2>
-          <p style={{ fontSize: 12.5, color: colors.muted, marginBottom: 24, fontWeight: 500 }}>Last 6 months of confirmed bookings</p>
-          {monthly.length === 0 ? (
-            <EmptyState emoji="📊" title="No earnings data yet" subtitle="Revenue from confirmed bookings will appear here"/>
-          ) : (
-            <>
-              <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12, height: 140, marginBottom: 12 }}>
-                {[...monthly].reverse().map((m, i) => {
-                  const pct = (Number(m.revenue || 0) / maxRevenue) * 100;
-                  const isLatest = i === monthly.length - 1;
-                  return (
-                    <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, height: '100%', justifyContent: 'flex-end' }}>
-                      <span style={{ fontSize: 11, fontWeight: 700, color: isLatest ? colors.orange : colors.muted }}>£{Math.round(m.revenue/1000)}k</span>
-                      <div style={{ width: '100%', borderRadius: 6, height: `${Math.max(pct, 4)}%`, background: isLatest ? `linear-gradient(to top, ${colors.orange}, #f5a66d)` : 'rgba(224,108,42,0.2)', transition: 'height 0.4s ease' }}/>
+      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '28px 40px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16, marginBottom: 24 }}>
+          {stats.map((s, i) => <StatCard key={i} {...s}/>)}
+        </div>
+
+        {/* Dark earnings hero */}
+        <div style={{ background: '#1C1916', borderRadius: 20, padding: '36px 40px', marginBottom: 24, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 40, position: 'relative', overflow: 'hidden' }}>
+          <div style={{ position: 'absolute', right: -80, top: -80, width: 300, height: 300, borderRadius: '50%', border: '1px solid rgba(212,98,42,0.1)' }}/>
+          <div>
+            <p style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: 8 }}>Confirmed Revenue</p>
+            <p style={{ fontFamily: font.display, fontSize: 56, fontWeight: 700, color: '#f5a066', lineHeight: 1, marginBottom: 8 }}>£{Number(totals.confirmed_revenue || 0).toLocaleString()}</p>
+            <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.35)', fontWeight: 500 }}>From {totals.total_bookings || 0} total bookings</p>
+          </div>
+          {/* Bar chart */}
+          <div>
+            <p style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: 16 }}>Monthly Revenue</p>
+            {monthly.length === 0 ? (
+              <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.3)' }}>No data yet</p>
+            ) : (
+              <>
+                <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10, height: 100 }}>
+                  {[...monthly].reverse().map((m, i) => {
+                    const pct = (Number(m.revenue || 0) / maxRev) * 100;
+                    const isLatest = i === monthly.length - 1;
+                    return (
+                      <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, height: '100%', justifyContent: 'flex-end' }}>
+                        {Number(m.revenue) > 0 && <span style={{ fontSize: 9, fontWeight: 700, color: isLatest ? '#f5a066' : 'rgba(255,255,255,0.25)' }}>£{Math.round(m.revenue/1000)}k</span>}
+                        <div style={{ width: '100%', borderRadius: '4px 4px 0 0', height: `${Math.max(pct, 4)}%`, background: isLatest ? `linear-gradient(to top, ${colors.orange}, #f5a066)` : 'rgba(255,255,255,0.12)' }}/>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
+                  {[...monthly].reverse().map((m, i) => (
+                    <div key={i} style={{ flex: 1, textAlign: 'center' }}>
+                      <span style={{ fontSize: 9.5, color: 'rgba(255,255,255,0.3)', fontWeight: 600 }}>{new Date(m.month).toLocaleDateString('en-GB',{month:'short'})}</span>
                     </div>
-                  );
-                })}
-              </div>
-              <div style={{ display: 'flex', gap: 12 }}>
-                {[...monthly].reverse().map((m, i) => (
-                  <div key={i} style={{ flex: 1, textAlign: 'center' }}>
-                    <span style={{ fontSize: 10.5, color: colors.faint, fontWeight: 600 }}>{new Date(m.month).toLocaleDateString('en-GB',{month:'short'})}</span>
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
         </div>
 
         {/* Monthly breakdown */}
-        <div className="glass-card" style={{ padding: '22px 24px' }}>
-          <h2 style={{ fontSize: 15, fontWeight: 700, color: colors.dark, marginBottom: 16 }}>Monthly Breakdown</h2>
-          {monthly.length === 0 ? <p style={{ fontSize: 13, color: colors.muted }}>No data yet</p> : monthly.map((m, i) => (
-            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: i < monthly.length-1 ? 12 : 0, marginBottom: i < monthly.length-1 ? 12 : 0, borderBottom: i < monthly.length-1 ? `1px solid ${colors.border}` : 'none' }}>
-              <div>
-                <p style={{ fontSize: 13.5, fontWeight: 700, color: colors.dark }}>{new Date(m.month).toLocaleDateString('en-GB',{month:'long',year:'numeric'})}</p>
-                <p style={{ fontSize: 11.5, color: colors.muted, fontWeight: 500 }}>{m.bookings} bookings</p>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+          <div className="card" style={{ padding: '22px 24px' }}>
+            <p style={{ fontSize: 15, fontWeight: 700, color: colors.dark, marginBottom: 16 }}>Monthly Breakdown</p>
+            {monthly.length === 0 ? <p style={{ fontSize: 13, color: colors.muted }}>No data yet</p> : monthly.map((m, i) => (
+              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: i<monthly.length-1?12:0, marginBottom: i<monthly.length-1?12:0, borderBottom: i<monthly.length-1?'1px solid #f5f5f5':'none' }}>
+                <div>
+                  <p style={{ fontSize: 13.5, fontWeight: 700, color: colors.dark }}>{new Date(m.month).toLocaleDateString('en-GB',{month:'long',year:'numeric'})}</p>
+                  <p style={{ fontSize: 11.5, color: colors.muted, fontWeight: 500 }}>{m.bookings} booking{m.bookings!==1?'s':''}</p>
+                </div>
+                <p style={{ fontFamily: font.display, fontSize: 20, color: i===0 ? colors.orange : colors.dark, fontWeight: 700 }}>£{Number(m.revenue||0).toLocaleString()}</p>
               </div>
-              <span style={{ fontFamily: font.display, fontSize: 18, color: i === 0 ? colors.orange : colors.dark }}>£{Number(m.revenue || 0).toLocaleString()}</span>
-            </div>
-          ))}
+            ))}
+          </div>
+
+          <div className="card" style={{ padding: '22px 24px' }}>
+            <p style={{ fontSize: 15, fontWeight: 700, color: colors.dark, marginBottom: 16 }}>Recent Confirmed Bookings</p>
+            {bookings.filter(b => b.status === 'confirmed').slice(0,5).map((b, i, arr) => (
+              <div key={b.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: i<arr.length-1?12:0, marginBottom: i<arr.length-1?12:0, borderBottom: i<arr.length-1?'1px solid #f5f5f5':'none' }}>
+                <div>
+                  <p style={{ fontSize: 13.5, fontWeight: 600, color: colors.dark }}>{b.employee_name}</p>
+                  <p style={{ fontSize: 11.5, color: colors.muted }}>{b.package_title} · {b.company_name}</p>
+                </div>
+                <p style={{ fontFamily: font.display, fontSize: 18, fontWeight: 700, color: colors.dark }}>£{Number(b.total_amount).toLocaleString()}</p>
+              </div>
+            ))}
+            {bookings.filter(b => b.status === 'confirmed').length === 0 && <p style={{ fontSize: 13, color: colors.muted }}>No confirmed bookings yet</p>}
+          </div>
         </div>
       </div>
     </div>
@@ -336,57 +474,84 @@ export function VendorProfile() {
   if (loading) return <Spinner/>;
 
   return (
-    <div style={{ fontFamily: font.body, background: colors.bg, minHeight: '100vh', padding: '36px 40px', maxWidth: 800, margin: '0 auto' }}>
-      <SectionHeader label="Vendor Portal" title="Vendor Profile"/>
-
+    <div style={{ fontFamily: font.body, background: '#F7F5F2', minHeight: '100vh', paddingBottom: 80 }}>
       {/* Banner preview */}
-      <div className="glass-card" style={{ padding: 28, marginBottom: 20 }}>
-        {form.banner_url ? (
-          <div style={{ height: 160, borderRadius: 12, overflow: 'hidden', marginBottom: 20, position: 'relative' }}>
-            <img src={form.banner_url} alt="Banner" style={{ width: '100%', height: '100%', objectFit: 'cover' }}/>
-          </div>
-        ) : (
-          <div style={{ height: 100, borderRadius: 12, background: 'linear-gradient(135deg, #f5e6da, #fcd3b3)', marginBottom: 20, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <p style={{ fontSize: 13, color: colors.muted, fontWeight: 500 }}>Banner preview</p>
-          </div>
-        )}
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24 }}>
-          <Avatar initials={profile?.company_name?.slice(0,2).toUpperCase()} src={form.avatar_url} size={64}/>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <p style={{ fontSize: 18, fontWeight: 700, color: colors.dark }}>{profile?.company_name}</p>
-              {profile?.verified && <span style={{ fontSize: 10, fontWeight: 700, color: colors.green, background: colors.greenLight, borderRadius: 4, padding: '2px 7px' }}>✓ VERIFIED</span>}
-            </div>
-            <p style={{ fontSize: 13.5, color: colors.muted, fontWeight: 500 }}>{profile?.category} · Sabba Marketplace Partner</p>
-            <StarRating rating={Math.round(profile?.rating || 0)} size={16}/>
-          </div>
+      {form.banner_url && (
+        <div style={{ height: 200, overflow: 'hidden', position: 'relative' }}>
+          <img src={form.banner_url} alt="Banner" style={{ width: '100%', height: '100%', objectFit: 'cover' }}/>
+          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, transparent 40%, rgba(0,0,0,0.5))' }}/>
         </div>
+      )}
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <Input label="Company name" value={form.company_name} onChange={set('company_name')}/>
-          <div>
+      <div style={{ background: '#fff', borderBottom: '1px solid #eee', padding: '28px 40px 24px' }}>
+        <div style={{ maxWidth: 800, margin: '0 auto' }}>
+          <p style={{ fontSize: 10.5, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>Vendor Portal</p>
+          <h1 style={{ fontFamily: font.display, fontSize: 34, color: colors.dark, fontWeight: 700, fontStyle: 'italic' }}>Vendor Profile</h1>
+        </div>
+      </div>
+
+      <div style={{ maxWidth: 800, margin: '0 auto', padding: '28px 40px' }}>
+        <div className="card" style={{ padding: 32 }}>
+          {/* Avatar + name */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 20, marginBottom: 28, paddingBottom: 28, borderBottom: '1px solid #f5f5f5' }}>
+            <div style={{ position: 'relative' }}>
+              {form.avatar_url
+                ? <img src={form.avatar_url} alt="avatar" style={{ width: 72, height: 72, borderRadius: 18, objectFit: 'cover', border: '1px solid #eee' }}/>
+                : <div style={{ width: 72, height: 72, borderRadius: 18, background: `linear-gradient(135deg, ${colors.orange}, #f5a066)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28 }}>🌍</div>
+              }
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                <p style={{ fontSize: 20, fontWeight: 700, color: colors.dark }}>{profile?.company_name}</p>
+                {profile?.verified && <span style={{ fontSize: 10, fontWeight: 700, color: colors.green, background: colors.greenLight, borderRadius: 6, padding: '3px 8px' }}>✓ VERIFIED</span>}
+              </div>
+              <p style={{ fontSize: 13.5, color: colors.muted, fontWeight: 500 }}>{profile?.category} · Sabba Marketplace Partner</p>
+              <StarRating rating={Math.round(profile?.rating || 0)} size={16}/>
+            </div>
+          </div>
+
+          {/* Avatar URL */}
+          <div style={{ marginBottom: 16 }}>
+            <label style={{ fontSize: 11.5, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.08em', display: 'block', marginBottom: 6 }}>Avatar image URL</label>
+            <input value={form.avatar_url} onChange={set('avatar_url')} placeholder="https://… (square image, min 200×200px)" style={{ width: '100%', border: '1.5px solid #eee', borderRadius: 10, padding: '10px 14px', fontSize: 14, color: colors.dark, background: '#fff', outline: 'none', fontFamily: font.body, fontWeight: 500 }}/>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+            <div>
+              <label style={{ fontSize: 11.5, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.08em', display: 'block', marginBottom: 6 }}>Company name</label>
+              <input value={form.company_name} onChange={set('company_name')} style={{ width: '100%', border: '1.5px solid #eee', borderRadius: 10, padding: '10px 14px', fontSize: 14, color: colors.dark, background: '#fff', outline: 'none', fontFamily: font.body, fontWeight: 500 }}/>
+            </div>
+            <div>
+              <label style={{ fontSize: 11.5, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.08em', display: 'block', marginBottom: 6 }}>Website</label>
+              <input value={form.website} onChange={set('website')} placeholder="https://yourcompany.com" style={{ width: '100%', border: '1.5px solid #eee', borderRadius: 10, padding: '10px 14px', fontSize: 14, color: colors.dark, background: '#fff', outline: 'none', fontFamily: font.body, fontWeight: 500 }}/>
+            </div>
+          </div>
+
+          <div style={{ marginBottom: 16 }}>
             <label style={{ fontSize: 11.5, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.08em', display: 'block', marginBottom: 6 }}>About us</label>
             <textarea value={form.about} onChange={set('about')} placeholder="Describe your company and what makes your packages special…"
-              style={{ border: `1.5px solid ${colors.border}`, borderRadius: 10, padding: '10px 14px', fontSize: 13.5, color: colors.dark, background: 'rgba(255,255,255,0.8)', outline: 'none', fontFamily: font.body, width: '100%', resize: 'vertical', minHeight: 100, fontWeight: 500 }}/>
+              style={{ border: '1.5px solid #eee', borderRadius: 10, padding: '10px 14px', fontSize: 14, color: colors.dark, background: '#fff', outline: 'none', fontFamily: font.body, width: '100%', resize: 'vertical', minHeight: 100, fontWeight: 500 }}/>
           </div>
-          <Input label="Website" value={form.website} onChange={set('website')} placeholder="https://yourcompany.com"/>
-          <Input label="Avatar image URL" value={form.avatar_url} onChange={set('avatar_url')} placeholder="https://…"/>
-          <Input label="Banner image URL" value={form.banner_url} onChange={set('banner_url')} placeholder="https://… (recommended: 1200×400px)"/>
-        </div>
 
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginTop: 20 }}>
-          <Button onClick={save} disabled={saving}>{saving ? 'Saving…' : 'Save profile'}</Button>
-          {saved && <span style={{ fontSize: 13, color: colors.green, fontWeight: 700 }}>✓ Saved!</span>}
+          <div style={{ marginBottom: 28 }}>
+            <label style={{ fontSize: 11.5, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.08em', display: 'block', marginBottom: 6 }}>Banner image URL</label>
+            <input value={form.banner_url} onChange={set('banner_url')} placeholder="https://… (recommended: 1400×400px)" style={{ width: '100%', border: '1.5px solid #eee', borderRadius: 10, padding: '10px 14px', fontSize: 14, color: colors.dark, background: '#fff', outline: 'none', fontFamily: font.body, fontWeight: 500 }}/>
+            {form.banner_url && <p style={{ fontSize: 11.5, color: colors.faint, marginTop: 5 }}>Preview shown at the top of this page ↑</p>}
+          </div>
+
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+            <Button onClick={save} disabled={saving}>{saving ? 'Saving…' : 'Save profile'}</Button>
+            {saved && <span style={{ fontSize: 13, color: colors.green, fontWeight: 700 }}>✓ Saved!</span>}
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
-// ── Package Form ─────────────────────────────────────────────
+// ── Package Form Modal ───────────────────────────────────────
 function PackageForm({ initial, onClose, onSaved }) {
-  const [form, setForm] = useState(initial || { title: '', description: '', category: 'travel', destination: '', duration: '', price_gbp: '', emoji: '🌍' });
+  const [form, setForm]   = useState(initial || { title: '', description: '', category: 'travel', destination: '', duration: '', price_gbp: '', emoji: '🌍' });
   const [saving, setSaving] = useState(false);
   const [error, setError]   = useState('');
   const set = k => e => setForm(f => ({ ...f, [k]: e.target.value }));
@@ -409,7 +574,7 @@ function PackageForm({ initial, onClose, onSaved }) {
         <div>
           <label style={{ fontSize: 11.5, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.08em', display: 'block', marginBottom: 6 }}>Description</label>
           <textarea value={form.description} onChange={set('description')} placeholder="Describe this adventure for employees…"
-            style={{ border: `1.5px solid ${colors.border}`, borderRadius: 10, padding: '10px 14px', fontSize: 13.5, color: colors.dark, background: 'rgba(255,255,255,0.8)', outline: 'none', fontFamily: font.body, width: '100%', resize: 'vertical', minHeight: 70, fontWeight: 500 }}/>
+            style={{ border: '1.5px solid #eee', borderRadius: 10, padding: '10px 14px', fontSize: 13.5, color: colors.dark, background: '#fff', outline: 'none', fontFamily: font.body, width: '100%', resize: 'vertical', minHeight: 70, fontWeight: 500 }}/>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <Select label="Category" value={form.category} onChange={set('category')}>
