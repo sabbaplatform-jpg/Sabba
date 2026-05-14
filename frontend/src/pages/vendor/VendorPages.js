@@ -551,7 +551,7 @@ export function VendorProfile() {
 
 // ── Package Form Modal ───────────────────────────────────────
 function PackageForm({ initial, onClose, onSaved }) {
-  const [form, setForm]   = useState(initial || { title: '', description: '', category: 'travel', destination: '', duration: '', price_gbp: '', emoji: '🌍' });
+  const [form, setForm]   = useState(initial || { title: '', description: '', category: 'travel', destination: '', duration: '', price_gbp: '', emoji: '🌍', image_url: '' });
   const [saving, setSaving] = useState(false);
   const [error, setError]   = useState('');
   const set = k => e => setForm(f => ({ ...f, [k]: e.target.value }));
@@ -597,6 +597,17 @@ function PackageForm({ initial, onClose, onSaved }) {
           <Input label="Duration" required value={form.duration} onChange={set('duration')} placeholder="3 weeks"/>
         </div>
         <Input label="Price (£)" type="number" required min="1" value={form.price_gbp} onChange={set('price_gbp')} placeholder="3200"/>
+        <div>
+          <label style={{ fontSize: 11.5, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.08em', display: 'block', marginBottom: 6 }}>Package image URL <span style={{ fontWeight: 400, color: colors.faint }}>(optional)</span></label>
+          <input value={form.image_url || ''} onChange={set('image_url')} placeholder="https://… (a great photo of the destination)"
+            style={{ width: '100%', border: '1.5px solid #eee', borderRadius: 10, padding: '10px 14px', fontSize: 13.5, color: colors.dark, background: '#fff', outline: 'none', fontFamily: font.body, fontWeight: 500 }}/>
+          {form.image_url && (
+            <div style={{ marginTop: 8, height: 80, borderRadius: 8, overflow: 'hidden', border: '1px solid #eee' }}>
+              <img src={form.image_url} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => e.target.style.display='none'}/>
+            </div>
+          )}
+          <p style={{ fontSize: 11, color: colors.faint, marginTop: 4 }}>If left blank, a gradient based on the category will be shown instead.</p>
+        </div>
         {error && <p style={{ color: colors.red, fontSize: 13, fontWeight: 600 }}>{error}</p>}
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 8 }}>
           <Button variant="secondary" onClick={onClose}>Cancel</Button>

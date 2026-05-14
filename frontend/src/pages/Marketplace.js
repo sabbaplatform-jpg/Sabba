@@ -60,7 +60,21 @@ export default function Marketplace() {
 
       {/* Results */}
       <div style={{ maxWidth: 1280, margin: '0 auto', padding: '28px 40px' }}>
-        {loading ? <Spinner/> : packages.length === 0 ? (
+        {loading ? (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px,1fr))', gap: 20 }}>
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} style={{ background: '#fff', border: '1px solid #eee', borderRadius: 16, overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
+                <div style={{ height: 160, background: 'linear-gradient(90deg, #f0ede9 25%, #e8e4df 50%, #f0ede9 75%)', backgroundSize: '200% 100%', animation: 'shimmer 1.4s infinite' }}/>
+                <div style={{ padding: '16px 18px' }}>
+                  <div style={{ height: 16, borderRadius: 6, background: 'linear-gradient(90deg, #f0ede9 25%, #e8e4df 50%, #f0ede9 75%)', backgroundSize: '200% 100%', animation: 'shimmer 1.4s infinite', marginBottom: 8 }}/>
+                  <div style={{ height: 12, borderRadius: 6, background: 'linear-gradient(90deg, #f0ede9 25%, #e8e4df 50%, #f0ede9 75%)', backgroundSize: '200% 100%', animation: 'shimmer 1.4s infinite', width: '60%', marginBottom: 16 }}/>
+                  <div style={{ height: 24, borderRadius: 6, background: 'linear-gradient(90deg, #f0ede9 25%, #e8e4df 50%, #f0ede9 75%)', backgroundSize: '200% 100%', animation: 'shimmer 1.4s infinite', width: '40%' }}/>
+                </div>
+                <style>{`@keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }`}</style>
+              </div>
+            ))}
+          </div>
+        ) : packages.length === 0 ? (
           <EmptyState emoji="🔍" title="No packages found" subtitle="Try a different search or category"/>
         ) : (
           <>

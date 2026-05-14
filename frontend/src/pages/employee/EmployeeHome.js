@@ -71,7 +71,9 @@ export function OnboardingQuiz({ onComplete }) {
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 400, backdropFilter: 'blur(4px)' }}>
-      <div style={{ background: '#fff', borderRadius: 24, padding: 40, width: '100%', maxWidth: 540, boxShadow: '0 24px 80px rgba(0,0,0,0.2)' }}>
+      <div style={{ background: '#fff', borderRadius: 24, padding: 40, width: '100%', maxWidth: 540, boxShadow: '0 24px 80px rgba(0,0,0,0.2)', position: 'relative' }}>
+        {/* Dismiss button */}
+        <button onClick={() => { sessionStorage.setItem('quiz_dismissed','1'); onComplete(null); }} style={{ position: 'absolute', top: 16, right: 16, background: '#F7F5F2', border: 'none', borderRadius: 8, width: 32, height: 32, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, color: '#aaa' }}>✕</button>
         <div style={{ marginBottom: 28 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
             <span style={{ fontSize: 11, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Step {step + 1} of {QUIZ_STEPS.length}</span>
@@ -130,7 +132,9 @@ export function EmployeeHome() {
       setQuiz(q.data);
       setBookings(bkgs.data);
       setAllowance(alw.data);
-      if (!q.data?.completed) setShowQuiz(true);
+      // Only show quiz if not completed AND not already dismissed this session
+      const dismissed = sessionStorage.getItem('quiz_dismissed');
+      if (!q.data?.completed && !dismissed) setShowQuiz(true);
       if (q.data?.completed && q.data?.adventure_types?.length) {
         const matched = all.filter(p => q.data.adventure_types.includes(p.category));
         setCurated(matched.length ? matched.slice(0, 4) : all.slice(0, 4));
@@ -142,6 +146,8 @@ export function EmployeeHome() {
 
   const onQuizComplete = async (answers) => {
     setShowQuiz(false);
+    sessionStorage.setItem('quiz_dismissed', '1');
+    if (!answers) return; // dismissed without completing
     setQuiz({ ...answers, completed: true });
     const { data } = await api.get('/packages');
     const matched = data.filter(p => answers.adventure_types.includes(p.category));

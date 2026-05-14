@@ -132,7 +132,11 @@ export default function Nav({ loading }) {
                 </div>
                 <div style={{ maxHeight: 300, overflowY: 'auto' }}>
                   {notifications.length === 0
-                    ? <div style={{ padding: 24, textAlign: 'center', color: colors.muted, fontSize: 13.5 }}>No notifications</div>
+                    ? <div style={{ padding: '32px 24px', textAlign: 'center' }}>
+                        <div style={{ fontSize: 28, marginBottom: 8 }}>🔔</div>
+                        <p style={{ fontSize: 13.5, fontWeight: 600, color: colors.dark, marginBottom: 4 }}>You're all caught up</p>
+                        <p style={{ fontSize: 12, color: colors.muted }}>No notifications yet</p>
+                      </div>
                     : notifications.map(n => (
                       <div key={n.id} onClick={() => markRead(n.id)} style={{ padding: '12px 18px', borderBottom: '1px solid #f5f5f5', background: n.read ? 'transparent' : colors.orangeLight, cursor: 'pointer' }}
                         onMouseEnter={e => e.currentTarget.style.background = '#fdf8f5'}

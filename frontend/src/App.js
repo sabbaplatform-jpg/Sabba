@@ -6,6 +6,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Marketplace from './pages/Marketplace';
 import PackageDetail from './pages/PackageDetail';
+import { NotFound, Contact, FAQ } from './pages/StaticPages';
 import { Spinner } from './components/UI';
 import { font, globalStyles } from './lib/styles';
 
@@ -57,8 +58,11 @@ function AppRoutes() {
       {user && <Nav/>}
       <AppLayout>
         <Routes>
+          {/* Public */}
           <Route path="/login"    element={<Login/>}/>
           <Route path="/register" element={<Register/>}/>
+          <Route path="/contact"  element={<Contact/>}/>
+          <Route path="/faq"      element={<FAQ/>}/>
 
           {/* HR */}
           <Route path="/hr"              element={<RequireAuth role="hr"><HRDashboard/></RequireAuth>}/>
@@ -87,8 +91,8 @@ function AppRoutes() {
           <Route path="/marketplace" element={<RequireAuth><Marketplace/></RequireAuth>}/>
           <Route path="/package/:id" element={<RequireAuth><PackageDetail/></RequireAuth>}/>
 
-          <Route path="/" element={<RoleRedirect/>}/>
-          <Route path="*" element={<Navigate to="/" replace/>}/>
+          <Route path="/"  element={<RoleRedirect/>}/>
+          <Route path="*"  element={<NotFound/>}/>
         </Routes>
       </AppLayout>
     </div>

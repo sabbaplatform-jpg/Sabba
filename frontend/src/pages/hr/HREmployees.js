@@ -183,8 +183,25 @@ export default function HREmployees() {
                 Set a new password for <strong style={{ color: colors.dark }}>{pwdModal.full_name}</strong>. They will need to use this to log in. Advise them to change it on next login.
               </p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                <Input label="New password" type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="Min 8 characters" hint="Must be at least 8 characters"/>
+                <div>
+                  <Input label="New password" type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="Min 8 characters"/>
+                  {newPassword.length > 0 && (
+                    <div style={{ marginTop: 8 }}>
+                      <div style={{ display: 'flex', gap: 4, marginBottom: 4 }}>
+                        {[0,1,2,3].map(i => {
+                          const score = newPassword.length < 8 ? 0 : newPassword.length < 10 ? 1 : /[A-Z]/.test(newPassword) && /[0-9]/.test(newPassword) ? 3 : 2;
+                          const barColors = ['#ef4444','#f59e0b','#3b82f6',colors.green];
+                          return <div key={i} style={{ flex: 1, height: 3, borderRadius: 2, background: i < score ? barColors[score-1] : '#eee', transition: 'background 0.2s' }}/>;
+                        })}
+                      </div>
+                      <p style={{ fontSize: 11, color: colors.faint }}>
+                        {newPassword.length < 8 ? 'Too short — need at least 8 characters' : newPassword.length < 10 ? 'Weak — add more characters' : /[A-Z]/.test(newPassword) && /[0-9]/.test(newPassword) ? '✓ Strong password' : 'Fair — add uppercase letters and numbers'}
+                      </p>
+                    </div>
+                  )}
+                </div>
                 <Input label="Confirm password" type="password" value={pwdConfirm} onChange={e => setPwdConfirm(e.target.value)} placeholder="Re-enter password"/>
+                {pwdConfirm.length > 0 && newPassword !== pwdConfirm && <p style={{ fontSize: 12, color: colors.red, fontWeight: 600 }}>Passwords don't match</p>}
                 {pwdError && <p style={{ fontSize: 13, color: colors.red, fontWeight: 600 }}>{pwdError}</p>}
               </div>
               <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 20 }}>
@@ -198,4 +215,3 @@ export default function HREmployees() {
     </div>
   );
 }
-
