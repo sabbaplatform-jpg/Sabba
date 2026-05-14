@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Input, Button } from '../components/UI';
-import { colors, font, gradients } from '../lib/styles';
+import { colors, font } from '../lib/styles';
 
 export default function Login() {
   const { login }    = useAuth();
@@ -19,7 +19,7 @@ export default function Login() {
       const dest = { hr: '/hr', employee: '/home', vendor: '/vendor' }[user.role] || '/';
       navigate(dest);
     } catch (err) {
-      setError(err.response?.data?.error || 'Login failed');
+      setError(err.response?.data?.error || 'Invalid email or password');
     } finally {
       setLoading(false);
     }
@@ -29,7 +29,6 @@ export default function Login() {
     <div style={{ minHeight: '100vh', display: 'flex', fontFamily: font.body }}>
       {/* Left — branding panel */}
       <div style={{ flex: 1, background: '#1C1916', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '48px', position: 'relative', overflow: 'hidden' }}>
-        {/* Decorative arcs */}
         <div style={{ position: 'absolute', right: -120, top: -120, width: 400, height: 400, borderRadius: '50%', border: '1px solid rgba(212,98,42,0.12)' }}/>
         <div style={{ position: 'absolute', left: -60, bottom: -60, width: 260, height: 260, borderRadius: '50%', border: '1px solid rgba(212,98,42,0.08)' }}/>
 
@@ -59,7 +58,7 @@ export default function Login() {
       {/* Right — login form */}
       <div style={{ width: 480, background: '#F7F5F2', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 48 }}>
         <div style={{ width: '100%' }}>
-          <div style={{ marginBottom: 36 }}>
+          <div style={{ marginBottom: 32 }}>
             <h2 style={{ fontFamily: font.display, fontSize: 30, fontWeight: 700, fontStyle: 'italic', color: colors.dark, marginBottom: 6 }}>Welcome back</h2>
             <p style={{ fontSize: 14, color: colors.muted, fontWeight: 500 }}>Sign in to your Sabba account</p>
           </div>
@@ -80,14 +79,6 @@ export default function Login() {
               <p style={{ fontSize: 13, color: colors.muted }}>
                 New vendor? <Link to="/register" style={{ color: colors.orange, fontWeight: 700, textDecoration: 'none' }}>Create an account</Link>
               </p>
-            </div>
-
-            {/* Demo hint */}
-            <div style={{ marginTop: 16, padding: '12px 16px', background: '#F7F5F2', borderRadius: 10, fontSize: 12, color: colors.muted, lineHeight: 1.7 }}>
-              <strong style={{ color: colors.dark }}>Demo logins:</strong><br/>
-              HR: hr@barclays.com<br/>
-              Employee: james@barclays.com<br/>
-              Vendor: hello@remoteyear.com
             </div>
           </div>
         </div>
