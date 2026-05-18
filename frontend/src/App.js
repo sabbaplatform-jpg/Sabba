@@ -91,6 +91,16 @@ function AppRoutes() {
           <Route path="/marketplace" element={<RequireAuth><Marketplace/></RequireAuth>}/>
           <Route path="/package/:id" element={<RequireAuth><PackageDetail/></RequireAuth>}/>
 
+import Messages from './pages/Messages';
+import VendorOnboarding, { VendorPendingState } from './pages/VendorOnboarding';
+
+// Inside <Routes>:
+<Route path="/messages"      element={<RequireAuth><Messages/></RequireAuth>}/>
+<Route path="/messages/:threadId" element={<RequireAuth><Messages/></RequireAuth>}/>
+<Route path="/messages/new"  element={<RequireAuth><Messages/></RequireAuth>}/>
+<Route path="/vendor/onboarding" element={<VendorOnboarding/>}/>
+<Route path="/vendor/pending"    element={<VendorPendingState/>}/>
+
           <Route path="/"  element={<RoleRedirect/>}/>
           <Route path="*"  element={<NotFound/>}/>
         </Routes>

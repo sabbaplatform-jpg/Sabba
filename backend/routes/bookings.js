@@ -80,20 +80,70 @@ router.get('/vendor', auth, requireRole('vendor'), async (req, res) => {
   }
 });
 
-router.patch('/:id/status', auth, requireRole('hr'), async (req, res) => {
+router.patch('/:id/status', auth, async (req, res) => {
   try {
     const { status } = req.body;
-    if (!['approved','confirmed','cancelled'].includes(status)) {
-      return res.status(400).json({ error: 'Invalid status' });
-    }
-    const result = await db.query(
-      'UPDATE bookings SET status=$1 WHERE id=$2 AND company_id=$3 RETURNING *',
-      [status, req.params.id, req.user.company_id]
+    await db.query(
+      'UPDATE bookings SET status=$1 WHERE id=$2',
+      [status, req.params.id]
     );
-    if (!result.rows.length) return res.status(404).json({ error: 'Booking not found' });
-    res.json(result.rows[0]);
+
+    if (status === 'approved') {
+      const booking = await db.query(`
+        SELECT b.*, u.full_name AS employee_name, u.id AS employee_id,
+               p.title AS package_title, p.destination,
+               hr.full_name AS hr_name
+        FROM bookings b
+        JOIN users u  ON u.id = b.user_id
+        JOIN packages p ON p.id = b.package_id
+        JOIN users hr ON hr.id = $2
+        WHERE b.id = $1
+      `, [req.params.id, req.user.id]);
+
+      if (booking.rows.length) {
+        const b = booking.rows[0];
+        const subject = `Adventure approved: ${b.package_title}`;
+        const body    = `Great news! Your booking for "${b.package_title}" to ${b.destination} has been approved by ${b.hr_name}. Your vendor will be in touch with booking details shortly. Safe travels! 🌍`;
+
+        // Create thread
+        const thread = await db.query(`
+          INSERT INTO message_threads (subject, thread_type, booking_id)
+          VALUES ($1, 'booking', $2) RETURNING id
+        `, [subject, req.params.id]);
+        const threadId = thread.rows[0].id;
+
+        // Add both as participants
+        await db.query(
+          `INSERT INTO thread_participants (thread_id, user_id)
+           VALUES ($1,$2), ($1,$3) ON CONFLICT DO NOTHING`,
+          [threadId, b.employee_id, req.user.id]
+        );
+
+        // Post message
+        await db.query(
+          'INSERT INTO messages (thread_id, sender_id, body) VALUES ($1,$2,$3)',
+          [threadId, req.user.id, body]
+        );
+
+        // Notify employee
+        await db.query(`
+          INSERT INTO notifications (user_id, title, message, type)
+          VALUES ($1, 'Adventure approved! 🎉', $2, 'success')
+        `, [b.employee_id,
+            `Your booking for ${b.package_title} has been approved. Check your messages.`]);
+
+        // Confirm to HR
+        await db.query(`
+          INSERT INTO notifications (user_id, title, message, type)
+          VALUES ($1, 'Booking approved', $2, 'info')
+        `, [req.user.id,
+            `You approved ${b.employee_name}'s booking for ${b.package_title}.`]);
+      }
+    }
+
+    res.json({ success: true });
   } catch (err) {
-    res.status(500).json({ error: 'Server error' });
+    res.status(500).json({ error: err.message });
   }
 });
 

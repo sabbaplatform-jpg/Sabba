@@ -27,6 +27,9 @@ app.use('/api/quiz',          require('./routes/quiz'));
 app.use('/api/allowance',     require('./routes/allowance'));
 app.use('/api/upload',        require('./routes/upload'));
 
+const messagesRouter = require('./routes/messages');
+app.use('/api/messages', messagesRouter);
+
 app.get('/api/health', (_, res) => res.json({ status: 'ok', version: 'v3' }));
 
 app.get('/api/dbtest', async (_, res) => {

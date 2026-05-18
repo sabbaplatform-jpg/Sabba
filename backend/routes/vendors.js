@@ -163,4 +163,44 @@ router.get('/earnings', auth, requireRole('vendor'), async (req, res) => {
   }
 });
 
+// POST /api/vendors/onboarding
+router.post('/onboarding', auth, requireRole('vendor'), async (req, res) => {
+  try {
+    const { business_type, categories, about, standout,
+            website, company_name, contact_name, contact_phone } = req.body;
+
+    if (!about || about.trim().length < 80) {
+      return res.status(400).json({ error: 'About section must be at least 80 characters' });
+    }
+
+    const onboarding_data = JSON.stringify({ business_type, categories, standout, contact_name, contact_phone });
+
+    await db.query(`
+      INSERT INTO vendors
+        (user_id, company_name, category, website, about, onboarding_completed, onboarding_data, pending_since, verified)
+      VALUES ($1,$2,$3,$4,$5,TRUE,$6,NOW(),FALSE)
+      ON CONFLICT (user_id) DO UPDATE SET
+        company_name         = COALESCE(EXCLUDED.company_name,      vendors.company_name),
+        website              = COALESCE(EXCLUDED.website,           vendors.website),
+        about                = EXCLUDED.about,
+        onboarding_completed = TRUE,
+        onboarding_data      = EXCLUDED.onboarding_data,
+        pending_since        = NOW()
+    `, [req.user.id, company_name, business_type, website, about, onboarding_data]);
+
+    // Notify HR admins
+    const hrs = await db.query(`SELECT id FROM users WHERE role = 'hr' LIMIT 20`);
+    for (const { id } of hrs.rows) {
+      await db.query(`
+        INSERT INTO notifications (user_id, title, message, type)
+        VALUES ($1, 'New vendor pending review', $2, 'info')
+      `, [id, `${company_name || 'A new vendor'} has completed onboarding and is awaiting verification.`]);
+    }
+
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;
