@@ -17,6 +17,7 @@ export function Cart() {
   const [pointsBalance,  setPointsBalance]  = useState(0);
   const [pointsToApply,  setPointsToApply]  = useState(0);
   const [pointsInput,    setPointsInput]    = useState('');
+  const [spendLimit,     setSpendLimit]     = useState(null);
 
   // Points rate: 100 pts = £1
   const POINTS_PER_POUND = 100;
@@ -24,6 +25,7 @@ export function Cart() {
   useEffect(() => {
     api.get('/employees/me').then(r => {
       setPointsBalance(r.data.sabba_points || 0);
+      setSpendLimit(r.data.spend_limit_gbp ? Number(r.data.spend_limit_gbp) : null);
     }).catch(() => {});
   }, []);
 
@@ -44,6 +46,11 @@ export function Cart() {
   };
 
   const checkout = async () => {
+    // Spend limit only applies to payroll — card payments bypass it
+    if (paymentMethod === 'payroll' && spendLimit !== null && discountedTotal > spendLimit) {
+      setError(`Your spend limit is £${spendLimit.toLocaleString()}. Apply more Sabba Points to reduce the total, or pay by card instead.`);
+      return;
+    }
     setChecking(true); setError('');
     try {
       const { data } = await api.post('/cart/checkout', {
@@ -238,6 +245,24 @@ export function Cart() {
               )}
 
               {error && <p style={{ fontSize: 13, color: colors.red, fontWeight: 600, marginBottom: 12 }}>{error}</p>}
+
+              {/* Spend limit warning for payroll */}
+              {paymentMethod === 'payroll' && spendLimit !== null && discountedTotal > spendLimit && (
+                <div style={{ background: colors.redLight, borderRadius: 10, padding: '10px 14px', marginBottom: 12 }}>
+                  <p style={{ fontSize: 12.5, color: colors.red, fontWeight: 700, marginBottom: 2 }}>Exceeds your spend limit</p>
+                  <p style={{ fontSize: 12, color: colors.red }}>Your payroll limit is £{spendLimit.toLocaleString()}. Apply Sabba Points to reduce the total, or switch to card payment.</p>
+                </div>
+              )}
+              {paymentMethod === 'payroll' && spendLimit !== null && discountedTotal <= spendLimit && (
+                <div style={{ background: colors.greenLight, borderRadius: 10, padding: '8px 14px', marginBottom: 12 }}>
+                  <p style={{ fontSize: 12, color: colors.green, fontWeight: 600 }}>✓ Within your spend limit of £{spendLimit.toLocaleString()}</p>
+                </div>
+              )}
+              {paymentMethod === 'card' && spendLimit !== null && (
+                <div style={{ background: '#F7F5F2', borderRadius: 10, padding: '8px 14px', marginBottom: 12 }}>
+                  <p style={{ fontSize: 12, color: colors.muted }}>Card payments are not subject to your payroll spend limit.</p>
+                </div>
+              )}
 
               <Button onClick={checkout} disabled={checking} style={{ width: '100%', justifyContent: 'center', padding: '13px 20px', fontSize: 14 }}>
                 {checking ? 'Processing…' : paymentMethod === 'card' ? '🔒 Pay with Stripe' : '✓ Confirm via payroll'}

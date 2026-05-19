@@ -177,16 +177,21 @@ export default function Messages() {
 
 // ── New message modal ─────────────────────────────────────────
 function NewMessageModal({ onClose, onSent, userId }) {
-  const [users,    setUsers]    = useState([]);
-  const [selected, setSelected] = useState([]);
-  const [subject,  setSubject]  = useState('');
-  const [body,     setBody]     = useState('');
-  const [sending,  setSending]  = useState(false);
-  const [error,    setError]    = useState('');
+  const [users,       setUsers]       = useState([]);
+  const [selected,    setSelected]    = useState([]);
+  const [recipSearch, setRecipSearch] = useState('');
+  const [subject,     setSubject]     = useState('');
+  const [body,        setBody]        = useState('');
+  const [sending,     setSending]     = useState(false);
+  const [error,       setError]       = useState('');
 
   useEffect(() => { api.get('/messages/users').then(r => setUsers(r.data)).catch(() => {}); }, []);
 
   const toggleUser = (uid) => setSelected(s => s.includes(uid) ? s.filter(x => x !== uid) : [...s, uid]);
+
+  const filteredUsers = users.filter(u =>
+    !recipSearch || u.full_name?.toLowerCase().includes(recipSearch.toLowerCase()) || u.email?.toLowerCase().includes(recipSearch.toLowerCase())
+  );
 
   const send = async () => {
     if (!selected.length) { setError('Select at least one recipient'); return; }
@@ -223,14 +228,23 @@ function NewMessageModal({ onClose, onSent, userId }) {
               ) : null;
             })}
           </div>
-          <div style={{ maxHeight: 150, overflowY: 'auto', border: '1px solid #eee', borderRadius: 10, marginTop: 6 }}>
-            {users.map(u => (
+          {/* Recipient search */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#F7F5F2', border: '1px solid #eee', borderRadius: 8, padding: '7px 12px', marginTop: 6, marginBottom: 4 }}>
+            <svg width="14" height="14" fill="none" stroke={colors.faint} strokeWidth="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            <input value={recipSearch} onChange={e => setRecipSearch(e.target.value)} placeholder="Search by name or email…"
+              style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: 13, color: colors.dark, width: '100%', fontFamily: font.body }}/>
+            {recipSearch && <button onClick={() => setRecipSearch('')} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, color: colors.faint, padding: 0 }}>✕</button>}
+          </div>
+          <div style={{ maxHeight: 160, overflowY: 'auto', border: '1px solid #eee', borderRadius: 10 }}>
+            {filteredUsers.length === 0 ? (
+              <p style={{ padding: '12px 14px', fontSize: 13, color: colors.muted }}>No users found</p>
+            ) : filteredUsers.map(u => (
               <div key={u.id} onClick={() => toggleUser(u.id)} style={{ padding: '9px 12px', cursor: 'pointer', background: selected.includes(u.id) ? colors.orangeLight : 'transparent', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #f5f5f5' }}
                 onMouseEnter={e => { if (!selected.includes(u.id)) e.currentTarget.style.background='#F7F5F2'; }}
                 onMouseLeave={e => { if (!selected.includes(u.id)) e.currentTarget.style.background='transparent'; }}>
                 <div>
                   <p style={{ fontSize: 13, fontWeight: 600, color: colors.dark }}>{u.full_name}</p>
-                  <p style={{ fontSize: 11, color: colors.muted, textTransform: 'capitalize' }}>{u.role}</p>
+                  <p style={{ fontSize: 11, color: colors.muted, textTransform: 'capitalize' }}>{u.role} · {u.email}</p>
                 </div>
                 {selected.includes(u.id) && <span style={{ fontSize: 14, color: colors.orange }}>✓</span>}
               </div>

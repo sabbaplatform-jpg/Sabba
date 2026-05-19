@@ -324,12 +324,13 @@ export default function Nav() {
 
 export function Footer() {
   return (
-    <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: '#fff', borderTop: '1px solid #eee', padding: '10px 24px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 20, fontSize: 12, color: colors.muted, zIndex: 100, fontFamily: font.body }}>
+    <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: '#fff', borderTop: '1px solid #eee', padding: '10px 32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, color: colors.muted, zIndex: 100, fontFamily: font.body }}>
       <span style={{ fontFamily: font.display, fontSize: 13, fontStyle: 'italic', color: colors.dark }}>Sabba</span>
-      <span>·</span>
-      <Link to="/contact" style={{ color: colors.muted, textDecoration: 'none' }}>Contact</Link>
-      <Link to="/faq" style={{ color: colors.muted, textDecoration: 'none' }}>FAQ</Link>
-      <span>·</span>
+      <div style={{ display: 'flex', gap: 24, alignItems: 'center' }}>
+        <Link to="/contact" style={{ color: colors.muted, textDecoration: 'none' }}>Contact</Link>
+        <Link to="/faq" style={{ color: colors.muted, textDecoration: 'none' }}>FAQ</Link>
+        <Link to="/messages" style={{ color: colors.muted, textDecoration: 'none' }}>Messages</Link>
+      </div>
       <span>© 2025 Sabba Platform Ltd</span>
     </div>
   );
