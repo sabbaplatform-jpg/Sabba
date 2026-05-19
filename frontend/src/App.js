@@ -7,6 +7,8 @@ import Register from './pages/Register';
 import Marketplace from './pages/Marketplace';
 import PackageDetail from './pages/PackageDetail';
 import { NotFound, Contact, FAQ } from './pages/StaticPages';
+import Messages from './pages/Messages';
+import VendorOnboarding, { VendorPendingState } from './pages/VendorOnboarding';
 import { Spinner } from './components/UI';
 import { font, globalStyles } from './lib/styles';
 
@@ -59,10 +61,12 @@ function AppRoutes() {
       <AppLayout>
         <Routes>
           {/* Public */}
-          <Route path="/login"    element={<Login/>}/>
-          <Route path="/register" element={<Register/>}/>
-          <Route path="/contact"  element={<Contact/>}/>
-          <Route path="/faq"      element={<FAQ/>}/>
+          <Route path="/login"              element={<Login/>}/>
+          <Route path="/register"           element={<Register/>}/>
+          <Route path="/contact"            element={<Contact/>}/>
+          <Route path="/faq"                element={<FAQ/>}/>
+          <Route path="/vendor/onboarding"  element={<VendorOnboarding/>}/>
+          <Route path="/vendor/pending"     element={<VendorPendingState/>}/>
 
           {/* HR */}
           <Route path="/hr"              element={<RequireAuth role="hr"><HRDashboard/></RequireAuth>}/>
@@ -87,19 +91,14 @@ function AppRoutes() {
           <Route path="/vendor/earnings" element={<RequireAuth role="vendor"><VendorEarnings/></RequireAuth>}/>
           <Route path="/vendor/profile"  element={<RequireAuth role="vendor"><VendorProfile/></RequireAuth>}/>
 
+          {/* Messages — all roles */}
+          <Route path="/messages"            element={<RequireAuth><Messages/></RequireAuth>}/>
+          <Route path="/messages/new"        element={<RequireAuth><Messages/></RequireAuth>}/>
+          <Route path="/messages/:threadId"  element={<RequireAuth><Messages/></RequireAuth>}/>
+
           {/* Shared */}
           <Route path="/marketplace" element={<RequireAuth><Marketplace/></RequireAuth>}/>
           <Route path="/package/:id" element={<RequireAuth><PackageDetail/></RequireAuth>}/>
-
-import Messages from './pages/Messages';
-import VendorOnboarding, { VendorPendingState } from './pages/VendorOnboarding';
-
-// Inside <Routes>:
-<Route path="/messages"      element={<RequireAuth><Messages/></RequireAuth>}/>
-<Route path="/messages/:threadId" element={<RequireAuth><Messages/></RequireAuth>}/>
-<Route path="/messages/new"  element={<RequireAuth><Messages/></RequireAuth>}/>
-<Route path="/vendor/onboarding" element={<VendorOnboarding/>}/>
-<Route path="/vendor/pending"    element={<VendorPendingState/>}/>
 
           <Route path="/"  element={<RoleRedirect/>}/>
           <Route path="*"  element={<NotFound/>}/>
