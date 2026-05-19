@@ -32,10 +32,10 @@ export function Contact() {
       <div style={{ maxWidth: 760, margin: '0 auto', padding: '36px 40px' }}>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
           {[
-            { icon: '📧', label: 'General enquiries', value: 'hello@sabba.co' },
-            { icon: '💼', label: 'Employer partnerships', value: 'employers@sabba.co' },
-            { icon: '🌍', label: 'Vendor onboarding', value: 'vendors@sabba.co' },
-            { icon: '🛟', label: 'Support', value: 'support@sabba.co' },
+            { icon: '📧', label: 'General enquiries', value: 'hello@sabbaplatform.com' },
+            { icon: '💼', label: 'Employer partnerships', value: 'employers@sabbaplatform.com' },
+            { icon: '🌍', label: 'Vendor onboarding', value: 'vendors@sabbaplatform.com' },
+            { icon: '🛟', label: 'Support', value: 'support@sabbaplatform.com' },
           ].map((item, i) => (
             <div key={i} className="card" style={{ padding: '20px 24px', display: 'flex', alignItems: 'center', gap: 16 }}>
               <div style={{ width: 44, height: 44, borderRadius: 12, background: colors.orangeLight, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, flexShrink: 0 }}>{item.icon}</div>
@@ -76,7 +76,7 @@ export function FAQ() {
     { q: 'What is the Sabba Points system?', a: 'Employees earn Sabba Points for completing their adventure quiz (+25 pts), making bookings (+100 pts), and leaving package reviews (+50 pts). Points accumulate and can be redeemed as booking credit.' },
     { q: 'Is my payment information secure?', a: 'Yes. Card payments are processed entirely through Stripe — Sabba never stores or handles card details directly. Payroll deductions are handled through your employer\'s existing payroll integration.' },
     { q: 'Can I cancel a booking?', a: 'Cancellation policies vary by vendor. Contact your vendor directly for their specific terms. HR admins can also cancel pending bookings from the Adventures dashboard before they are confirmed.' },
-    { q: 'How do I contact support?', a: 'Email support@sabba.co or use the contact form on our Contact page. We aim to respond within one business day.' },
+    { q: 'How do I contact support?', a: 'Email support@sabbaplatform.com or use the contact form on our Contact page. We aim to respond within one business day.' },
   ];
 
   return (

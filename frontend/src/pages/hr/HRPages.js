@@ -148,9 +148,7 @@ export function HRMarketplace() {
   }, []);
 
   const approvePackage = async (id, admin_status) => {
-    try { await api.patch(`/packages/${id}/admin-status`, { admin_status }); } catch {
-      await api.patch(`/packages/${id}`, { admin_status });
-    }
+    await api.patch(`/packages/${id}`, { admin_status });
     setPackages(ps => ps.map(p => p.id === id ? { ...p, admin_status } : p));
   };
 

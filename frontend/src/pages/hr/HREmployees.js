@@ -17,6 +17,11 @@ export default function HREmployees() {
   const [pwdSaving, setPwdSaving]   = useState(false);
   const [pwdSuccess, setPwdSuccess] = useState(false);
   const [pwdError, setPwdError]     = useState('');
+  const [showImport, setShowImport] = useState(false);
+  const [editModal,  setEditModal]  = useState(null);
+  const [editForm,   setEditForm]   = useState({});
+  const [editSaving, setEditSaving] = useState(false);
+  const [editSaved,  setEditSaved]  = useState(false);
 
   const fetchEmployees = (q = '') => {
     setLoading(true);
@@ -30,6 +35,20 @@ export default function HREmployees() {
   const openEmployee = async (emp) => {
     const { data } = await api.get(`/employees/${emp.id}`);
     setSelected(data);
+  };
+
+  const saveEdit = async () => {
+    setEditSaving(true); setEditSaved(false);
+    try {
+      await api.patch(`/employees/${editModal.id}`, editForm);
+      setEditSaved(true);
+      fetchEmployees(search);
+      setTimeout(() => { setEditModal(null); setEditSaved(false); }, 1500);
+    } catch (err) {
+      alert(err.response?.data?.error || 'Failed to save');
+    } finally {
+      setEditSaving(false);
+    }
   };
 
   const saveLimit = async () => {
@@ -150,6 +169,7 @@ export default function HREmployees() {
             </>
           )}
           <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
+            <Button small onClick={() => { setEditModal(selected); setEditForm({ full_name: selected.full_name||'', department: selected.department||'', job_title: selected.job_title||'', location: selected.location||'', salary_band: selected.salary_band||'', spend_limit_gbp: selected.spend_limit_gbp||'', employment_category: selected.employment_category||'', assignment_status: selected.assignment_status||'Active', leave_type: selected.leave_type||'Both', gl_location: selected.gl_location||'', employee_number: selected.employee_number||'' }); setSelected(null); }}>✏️ Edit profile</Button>
             <Button small onClick={() => { setSelected(null); setPwdModal(selected); setNewPassword(''); setPwdConfirm(''); setPwdError(''); setPwdSuccess(false); }}>🔑 Reset password</Button>
             <Button small variant="secondary" onClick={() => { setSelected(null); setLimitModal(selected); setLimitVal(selected.spend_limit_gbp || ''); }}>Set spend limit</Button>
           </div>
@@ -210,6 +230,52 @@ export default function HREmployees() {
               </div>
             </>
           )}
+        </Modal>
+      )}
+
+      {/* Edit profile modal */}
+      {editModal && (
+        <Modal title={`Edit profile — ${editModal.full_name}`} onClose={() => setEditModal(null)} width={560}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+            {[
+              { key: 'full_name',            label: 'Full name',            placeholder: 'James Thornton' },
+              { key: 'employee_number',       label: 'Employee number',      placeholder: 'EMP001' },
+              { key: 'department',            label: 'Department',           placeholder: 'Finance' },
+              { key: 'job_title',             label: 'Job title',            placeholder: 'Senior Analyst' },
+              { key: 'location',              label: 'Location',             placeholder: 'London' },
+              { key: 'gl_location',           label: 'GL location code',     placeholder: 'GL-LON-001' },
+              { key: 'salary_band',           label: 'Salary band',          placeholder: 'Band 3' },
+              { key: 'spend_limit_gbp',       label: 'Spend limit (£)',      placeholder: '5000', type: 'number' },
+            ].map(f => (
+              <div key={f.key}>
+                <label style={{ fontSize: 11.5, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.07em', display: 'block', marginBottom: 5 }}>{f.label}</label>
+                <input type={f.type || 'text'} value={editForm[f.key] || ''} onChange={e => setEditForm(ef => ({ ...ef, [f.key]: e.target.value }))}
+                  placeholder={f.placeholder}
+                  style={{ width: '100%', border: '1.5px solid #eee', borderRadius: 10, padding: '9px 13px', fontSize: 13.5, color: colors.dark, fontFamily: font.body, outline: 'none' }}/>
+              </div>
+            ))}
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14, marginTop: 14 }}>
+            {[
+              { key: 'employment_category', label: 'Employment type', options: ['Permanent','Contract','Fixed Term','Intern'] },
+              { key: 'assignment_status',   label: 'Status',          options: ['Active','On Leave','Suspended','Inactive'] },
+              { key: 'leave_type',          label: 'Leave access',    options: ['Both','Annual Leave','Sabbatical'] },
+            ].map(f => (
+              <div key={f.key}>
+                <label style={{ fontSize: 11.5, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.07em', display: 'block', marginBottom: 5 }}>{f.label}</label>
+                <select value={editForm[f.key] || ''} onChange={e => setEditForm(ef => ({ ...ef, [f.key]: e.target.value }))}
+                  style={{ width: '100%', border: '1.5px solid #eee', borderRadius: 10, padding: '9px 13px', fontSize: 13.5, color: colors.dark, fontFamily: font.body, outline: 'none', background: '#fff' }}>
+                  <option value="">Select…</option>
+                  {f.options.map(o => <option key={o} value={o}>{o}</option>)}
+                </select>
+              </div>
+            ))}
+          </div>
+          {editSaved && <p style={{ fontSize: 13, color: colors.green, fontWeight: 700, marginTop: 14 }}>✓ Profile saved!</p>}
+          <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 20 }}>
+            <Button variant="secondary" onClick={() => setEditModal(null)}>Cancel</Button>
+            <Button onClick={saveEdit} disabled={editSaving}>{editSaving ? 'Saving…' : 'Save changes'}</Button>
+          </div>
         </Modal>
       )}
     </div>
