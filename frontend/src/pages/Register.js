@@ -12,6 +12,7 @@ export default function Register() {
   const [form, setForm] = useState({ email: '', password: '', full_name: '', company_name: '', category: 'travel' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
   const set = (k) => (e) => setForm(f => ({ ...f, [k]: e.target.value }));
 
   const handleSubmit = async (e) => {
@@ -19,10 +20,12 @@ export default function Register() {
     setError(''); setLoading(true);
     try {
       await register({ ...form, role: 'vendor' });
-      navigate('/vendor');
+      navigate('/vendor/onboarding');
     } catch (err) {
       setError(err.response?.data?.error || 'Registration failed');
-    } finally { setLoading(false); }
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -38,6 +41,7 @@ export default function Register() {
           <h1 style={{ fontFamily: font.display, fontSize: 26, color: colors.dark, fontWeight: 400, marginBottom: 6 }}>Join as a Vendor</h1>
           <p style={{ color: colors.muted, fontSize: 14 }}>List your packages on the Sabba marketplace</p>
         </div>
+
         <div style={{ background: '#fff', border: `1px solid ${colors.border}`, borderRadius: 16, padding: 32 }}>
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <Input label="Your full name" value={form.full_name} required onChange={set('full_name')} placeholder="Jane Smith"/>

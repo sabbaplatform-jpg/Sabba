@@ -3,10 +3,57 @@ import api from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
 import { Badge, Spinner, EmptyState, Button, Input, Select, Avatar, StarRating, Modal, Textarea, StatCard, TableHeader } from '../../components/UI';
 import { colors, font, gradients } from '../../lib/styles';
-import { ImageUpload } from '../../components/ImageUpload';
 
 const CATEGORIES = ['travel','volunteering','courses','jobs_abroad','accommodation','airlines'];
 const EMOJIS = ['🌍','🇯🇵','🇮🇩','🇵🇹','🇰🇪','🇪🇸','🎓','🤝','💼','✈️','🏠','🇨🇷','🇲🇦','🇧🇷','🇮🇳'];
+
+// ── Vendor Pending State ──────────────────────────────────────
+function VendorPendingScreen({ profile }) {
+  const { logout } = useAuth();
+  return (
+    <div style={{ fontFamily: font.body, background: '#F7F5F2', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+      <div style={{ maxWidth: 520, width: '100%', textAlign: 'center' }}>
+        <div style={{ background: '#fff', borderRadius: 24, padding: 40, border: '1px solid #eee', boxShadow: '0 4px 24px rgba(0,0,0,0.08)', marginBottom: 16 }}>
+          <div style={{ width: 72, height: 72, borderRadius: '50%', background: colors.orangeLight, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, margin: '0 auto 20px' }}>⏳</div>
+          <h2 style={{ fontFamily: font.display, fontSize: 26, fontWeight: 700, fontStyle: 'italic', color: colors.dark, marginBottom: 12 }}>
+            {profile?.onboarding_completed ? 'Pending verification' : 'Complete your profile'}
+          </h2>
+          <p style={{ fontSize: 14, color: colors.muted, lineHeight: 1.7, marginBottom: 24 }}>
+            {profile?.onboarding_completed
+              ? 'Your profile is under review by a Sabba admin. We\'ll notify you by email within 1–2 business days. Once verified, you can add packages to the marketplace.'
+              : 'Please complete your vendor onboarding to submit your profile for review.'}
+          </p>
+          <div style={{ background: '#F7F5F2', borderRadius: 12, padding: '14px 18px', marginBottom: 24, textAlign: 'left' }}>
+            {[
+              { done: true,                           text: 'Account created' },
+              { done: !!profile?.onboarding_completed, text: 'Onboarding Q&A completed' },
+              { done: !!profile?.verified,             text: 'Account verified by Sabba admin' },
+              { done: false,                           text: 'Packages live on marketplace' },
+            ].map((step, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: i < 3 ? 10 : 0 }}>
+                <div style={{ width: 22, height: 22, borderRadius: '50%', background: step.done ? colors.green : '#eee', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  {step.done
+                    ? <span style={{ fontSize: 12, color: '#fff', fontWeight: 800 }}>✓</span>
+                    : <span style={{ fontSize: 10, color: colors.faint, fontWeight: 700 }}>{i+1}</span>
+                  }
+                </div>
+                <p style={{ fontSize: 13, color: step.done ? colors.dark : colors.muted, fontWeight: step.done ? 600 : 400 }}>{step.text}</p>
+              </div>
+            ))}
+          </div>
+          {!profile?.onboarding_completed && (
+            <Button onClick={() => window.location.href = '/vendor/onboarding'} style={{ width: '100%', justifyContent: 'center' }}>
+              Complete onboarding →
+            </Button>
+          )}
+        </div>
+        <button onClick={() => { logout(); window.location.href = '/login'; }} style={{ background: 'none', border: 'none', color: colors.muted, cursor: 'pointer', fontSize: 13, fontFamily: font.body }}>
+          Sign out
+        </button>
+      </div>
+    </div>
+  );
+}
 
 // ── Vendor Dashboard ─────────────────────────────────────────
 export function VendorDashboard() {
@@ -20,7 +67,7 @@ export function VendorDashboard() {
     Promise.all([
       api.get('/packages/vendor/mine'),
       api.get('/bookings/vendor'),
-      api.get('/vendors/profile'),
+      api.get('/vendors/profile').catch(() => ({ data: null })),
     ]).then(([pkgs, bkgs, prof]) => {
       setPackages(pkgs.data); setBookings(bkgs.data); setProfile(prof.data);
     }).finally(() => setLoading(false));
@@ -36,6 +83,16 @@ export function VendorDashboard() {
   ];
 
   if (loading) return <Spinner/>;
+
+  // No profile row yet = just registered, redirect to onboarding
+  if (!profile) {
+    return <VendorPendingScreen profile={null}/>;
+  }
+
+  // Has profile but not yet verified = pending review
+  if (!profile.verified) {
+    return <VendorPendingScreen profile={profile}/>;
+  }
 
   return (
     <div style={{ fontFamily: font.body, background: '#F7F5F2', minHeight: '100vh', paddingBottom: 80 }}>
