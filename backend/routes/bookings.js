@@ -10,9 +10,9 @@ router.post('/', auth, requireRole('employee'), async (req, res) => {
     }
     const pkg = await db.query('SELECT * FROM packages WHERE id=$1 AND status=$2', [package_id, 'live']);
     if (!pkg.rows.length) return res.status(404).json({ error: 'Package not available' });
-    const total = parseFloat(pkg.rows[0].price_gbp);
+    const total   = parseFloat(pkg.rows[0].price_gbp);
     const monthly = parseFloat((total / payroll_months).toFixed(2));
-    const result = await db.query(
+    const result  = await db.query(
       `INSERT INTO bookings (employee_id, package_id, company_id, departure_date, payroll_months, monthly_amount, total_amount, status)
        VALUES ($1,$2,$3,$4,$5,$6,$7,'pending') RETURNING *`,
       [req.user.id, package_id, req.user.company_id, departure_date, payroll_months, monthly, total]
@@ -83,29 +83,34 @@ router.get('/vendor', auth, requireRole('vendor'), async (req, res) => {
 router.patch('/:id/status', auth, async (req, res) => {
   try {
     const { status } = req.body;
+
     await db.query(
       'UPDATE bookings SET status=$1 WHERE id=$2',
       [status, req.params.id]
     );
 
     if (status === 'approved') {
+      // FIX: use employee_id (not user_id) — bookings table uses employee_id
       const booking = await db.query(`
-        SELECT b.*, u.full_name AS employee_name, u.id AS employee_id,
-               p.title AS package_title, p.destination,
+        SELECT b.*,
+               u.full_name  AS employee_name,
+               u.id         AS employee_id,
+               p.title      AS package_title,
+               p.destination,
                hr.full_name AS hr_name
         FROM bookings b
-        JOIN users u  ON u.id = b.user_id
-        JOIN packages p ON p.id = b.package_id
-        JOIN users hr ON hr.id = $2
+        JOIN users    u  ON u.id  = b.employee_id
+        JOIN packages p  ON p.id  = b.package_id
+        JOIN users    hr ON hr.id = $2
         WHERE b.id = $1
       `, [req.params.id, req.user.id]);
 
       if (booking.rows.length) {
-        const b = booking.rows[0];
+        const b       = booking.rows[0];
         const subject = `Adventure approved: ${b.package_title}`;
         const body    = `Great news! Your booking for "${b.package_title}" to ${b.destination} has been approved by ${b.hr_name}. Your vendor will be in touch with booking details shortly. Safe travels! 🌍`;
 
-        // Create thread
+        // Create message thread between HR and employee
         const thread = await db.query(`
           INSERT INTO message_threads (subject, thread_type, booking_id)
           VALUES ($1, 'booking', $2) RETURNING id
@@ -113,15 +118,15 @@ router.patch('/:id/status', auth, async (req, res) => {
         const threadId = thread.rows[0].id;
 
         // Add both as participants
-        await db.query(
-          `INSERT INTO thread_participants (thread_id, user_id)
-           VALUES ($1,$2), ($1,$3) ON CONFLICT DO NOTHING`,
-          [threadId, b.employee_id, req.user.id]
-        );
+        await db.query(`
+          INSERT INTO thread_participants (thread_id, user_id)
+          VALUES ($1, $2), ($1, $3)
+          ON CONFLICT DO NOTHING
+        `, [threadId, b.employee_id, req.user.id]);
 
-        // Post message
+        // Post the approval message
         await db.query(
-          'INSERT INTO messages (thread_id, sender_id, body) VALUES ($1,$2,$3)',
+          'INSERT INTO messages (thread_id, sender_id, body) VALUES ($1, $2, $3)',
           [threadId, req.user.id, body]
         );
 
@@ -130,7 +135,7 @@ router.patch('/:id/status', auth, async (req, res) => {
           INSERT INTO notifications (user_id, title, message, type)
           VALUES ($1, 'Adventure approved! 🎉', $2, 'success')
         `, [b.employee_id,
-            `Your booking for ${b.package_title} has been approved. Check your messages.`]);
+            `Your booking for ${b.package_title} has been approved. Check your messages for details.`]);
 
         // Confirm to HR
         await db.query(`
@@ -143,6 +148,7 @@ router.patch('/:id/status', auth, async (req, res) => {
 
     res.json({ success: true });
   } catch (err) {
+    console.error(err);
     res.status(500).json({ error: err.message });
   }
 });
