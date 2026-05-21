@@ -64,10 +64,13 @@ export default function Allowance() {
   useEffect(() => { fetchAllowance(year); }, [year]);
 
   if (loading) return <Spinner/>;
+  if (!data) return <div style={{ padding: 40, fontFamily: font.body, color: colors.muted }}>Could not load allowance data. Please try again.</div>;
 
-  const { total_allowance, used, pending, remaining, bookings, available_years, sabba_points } = data;
+  const { total_allowance_gbp: total_allowance, used_allowance_gbp: used, remaining_allowance_gbp: remaining, available_years, sabba_points } = data || {};
+  const pending    = 0; // Pending calculated server-side in used total
+  const bookings   = data?.bookings || [];
   const usedPct    = total_allowance > 0 ? ((used / total_allowance) * 100).toFixed(0) : 0;
-  const pendingPct = total_allowance > 0 ? ((pending / total_allowance) * 100).toFixed(0) : 0;
+  const pendingPct = 0;
   const remPct     = total_allowance > 0 ? ((remaining / total_allowance) * 100).toFixed(0) : 100;
 
   return (
@@ -104,7 +107,7 @@ export default function Allowance() {
           </p>
           <div style={{ display: 'flex', alignItems: 'center', gap: 32 }}>
             <div style={{ position: 'relative' }}>
-              <PieChart used={used} pending={pending} remaining={remaining} total={total_allowance || 1}/>
+              <PieChart used={used || 0} pending={pending} remaining={remaining || 0} total={total_allowance || 1}/>
               <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
                 <p style={{ fontFamily: font.display, fontSize: 22, color: colors.dark, lineHeight: 1 }}>£{Number(total_allowance).toLocaleString()}</p>
                 <p style={{ fontSize: 10, color: colors.faint, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Total</p>
