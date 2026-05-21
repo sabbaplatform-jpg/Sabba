@@ -4,7 +4,6 @@ import api from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
 import { Badge, Avatar, Spinner, EmptyState, Button, TableHeader } from '../../components/UI';
 import { colors, font } from '../../lib/styles';
-import ImportModal from './HRImportModal';
 
 export default function HRDashboard() {
   const { user } = useAuth();
@@ -13,8 +12,6 @@ export default function HRDashboard() {
   const [vendors,      setVendors]      = useState([]);
   const [empCount,     setEmpCount]     = useState(null);
   const [loading,      setLoading]      = useState(true);
-  const [showImport,   setShowImport]   = useState(false);
-
   const fetchData = useCallback(() => {
     Promise.all([
       api.get('/bookings/company').catch(() => ({ data: [] })),
@@ -48,7 +45,7 @@ export default function HRDashboard() {
   const firstName = user?.full_name?.split(' ')[0] || 'there';
 
   const quickActions = [
-    { icon: '👥', label: 'Import employees', sub: 'CSV upload',        action: () => setShowImport(true) },
+    { icon: '👥', label: 'Import employees', sub: 'CSV upload',        action: () => navigate('/hr/employees?import=1') },
     { icon: '📋', label: 'Review adventures', sub: `${pending} pending`, action: () => navigate('/hr/adventures') },
     { icon: '🏪', label: 'Approve packages',  sub: 'Vendor listings',   action: () => navigate('/hr/marketplace') },
     { icon: '📊', label: 'View analytics',    sub: 'Programme data',    action: () => navigate('/hr/analytics') },
@@ -56,8 +53,6 @@ export default function HRDashboard() {
 
   return (
     <div style={{ fontFamily: font.body, background: '#F7F5F2', minHeight: '100vh', paddingBottom: 80 }}>
-
-      {showImport && <ImportModal onClose={() => setShowImport(false)} onImported={fetchData}/>}
 
       {/* Banner */}
       <div style={{ background: '#1C1916', position: 'relative', overflow: 'hidden' }}>
