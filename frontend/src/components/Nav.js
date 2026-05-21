@@ -286,6 +286,13 @@ export default function Nav() {
                   <p style={{ fontSize: 11.5, color: colors.muted, marginTop: 2 }}>{user?.email}</p>
                   <span style={{ display: 'inline-block', marginTop: 6, fontSize: 10, fontWeight: 700, color: colors.orange, background: colors.orangeLight, borderRadius: 5, padding: '2px 7px', textTransform: 'capitalize' }}>{user?.role}</span>
                 </div>
+                {user?.role === 'hr' && (
+                  <button onClick={() => { navigate('/hr/profile'); setUserOpen(false); }} style={{ width: '100%', textAlign: 'left', padding: '11px 16px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 13.5, color: colors.mid, fontFamily: font.body }}
+                    onMouseEnter={e => e.currentTarget.style.background='#F7F5F2'}
+                    onMouseLeave={e => e.currentTarget.style.background='transparent'}>
+                    Edit profile
+                  </button>
+                )}
                 {user?.role === 'employee' && (
                   <button onClick={() => { navigate('/profile'); setUserOpen(false); }} style={{ width: '100%', textAlign: 'left', padding: '11px 16px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 13.5, color: colors.mid, fontFamily: font.body }}
                     onMouseEnter={e => e.currentTarget.style.background='#F7F5F2'}
@@ -329,9 +336,8 @@ export function Footer() {
       <div style={{ display: 'flex', gap: 24, alignItems: 'center' }}>
         <Link to="/contact" style={{ color: colors.muted, textDecoration: 'none' }}>Contact</Link>
         <Link to="/faq" style={{ color: colors.muted, textDecoration: 'none' }}>FAQ</Link>
-        <Link to="/messages" style={{ color: colors.muted, textDecoration: 'none' }}>Messages</Link>
       </div>
-      <span>© 2025 Sabba Platform Ltd</span>
+      <span>© 2026 Sabba Platform Ltd</span>
     </div>
   );
 }

@@ -6,118 +6,133 @@ import { useCart } from '../../context/CartContext';
 import { PackageCard, Button, Spinner } from '../../components/UI';
 import { colors, font, gradients } from '../../lib/styles';
 
-// ── Onboarding Quiz ─────────────────────────────────────────
+// ── Onboarding Quiz (unchanged) ──────────────────────────────
 const QUIZ_STEPS = [
-  {
-    id: 'adventure_types', question: 'What excites you most?', subtitle: 'Select all that apply', multi: true,
-    options: [
-      { value: 'travel',       label: 'Travel & Exploration', emoji: '🌍' },
-      { value: 'volunteering', label: 'Volunteering',         emoji: '🤝' },
-      { value: 'courses',      label: 'Learning & Courses',   emoji: '🎓' },
-      { value: 'jobs_abroad',  label: 'Work Abroad',          emoji: '💼' },
-      { value: 'wellness',     label: 'Wellness & Retreat',   emoji: '🧘' },
-      { value: 'culture',      label: 'Culture & Arts',       emoji: '🎭' },
-    ],
-  },
-  {
-    id: 'duration_preference', question: 'Ideal adventure length?', subtitle: 'Choose one', multi: false,
-    options: [
-      { value: 'short',    label: '1–2 weeks',  emoji: '⚡' },
-      { value: 'medium',   label: '3–4 weeks',  emoji: '🗓️' },
-      { value: 'long',     label: '1–3 months', emoji: '📅' },
-      { value: 'extended', label: '3+ months',  emoji: '🌟' },
-    ],
-  },
-  {
-    id: 'budget_preference', question: 'Budget comfort zone?', subtitle: 'Via payroll spread', multi: false,
-    options: [
-      { value: 'budget',  label: 'Under £1,500',  emoji: '💚' },
-      { value: 'mid',     label: '£1,500–£3,000', emoji: '💛' },
-      { value: 'premium', label: '£3,000–£5,000', emoji: '🧡' },
-      { value: 'luxury',  label: '£5,000+',       emoji: '💜' },
-    ],
-  },
+  { id: 'adventure_types', question: 'What excites you most?', subtitle: 'Select all that apply', multi: true,
+    options: [{ value: 'travel', label: 'Travel & Exploration', emoji: '🌍' }, { value: 'volunteering', label: 'Volunteering', emoji: '🤝' }, { value: 'courses', label: 'Learning & Courses', emoji: '🎓' }, { value: 'jobs_abroad', label: 'Work Abroad', emoji: '💼' }, { value: 'wellness', label: 'Wellness & Retreat', emoji: '🧘' }, { value: 'culture', label: 'Culture & Arts', emoji: '🎭' }] },
+  { id: 'duration_preference', question: 'Ideal adventure length?', subtitle: 'Choose one', multi: false,
+    options: [{ value: 'short', label: '1–2 weeks', emoji: '⚡' }, { value: 'medium', label: '3–4 weeks', emoji: '🗓️' }, { value: 'long', label: '1–3 months', emoji: '📅' }, { value: 'extended', label: '3+ months', emoji: '🌟' }] },
+  { id: 'budget_preference', question: 'Budget comfort zone?', subtitle: 'Via payroll spread', multi: false,
+    options: [{ value: 'budget', label: 'Under £1,500', emoji: '💚' }, { value: 'mid', label: '£1,500–£3,000', emoji: '💛' }, { value: 'premium', label: '£3,000–£5,000', emoji: '🧡' }, { value: 'luxury', label: '£5,000+', emoji: '💜' }] },
 ];
 
 export function OnboardingQuiz({ onComplete }) {
-  const [step, setStep]   = useState(0);
-  const [answers, setAnswers] = useState({ adventure_types: [], duration_preference: '', budget_preference: '', interests: [] });
+  const [step, setStep]     = useState(0);
+  const [answers, setAnswers] = useState({ adventure_types: [], duration_preference: '', budget_preference: '' });
   const [saving, setSaving]   = useState(false);
   const current = QUIZ_STEPS[step];
-
   const toggle = (value) => {
-    if (current.multi) {
-      setAnswers(a => ({ ...a, [current.id]: a[current.id].includes(value) ? a[current.id].filter(v => v !== value) : [...a[current.id], value] }));
-    } else {
-      setAnswers(a => ({ ...a, [current.id]: value }));
-    }
+    if (current.multi) setAnswers(a => ({ ...a, [current.id]: a[current.id].includes(value) ? a[current.id].filter(v => v !== value) : [...a[current.id], value] }));
+    else setAnswers(a => ({ ...a, [current.id]: value }));
   };
-
-  const isSelected = (value) => {
-    const val = answers[current.id];
-    return Array.isArray(val) ? val.includes(value) : val === value;
-  };
-
+  const isSelected = (value) => { const val = answers[current.id]; return Array.isArray(val) ? val.includes(value) : val === value; };
   const canNext = current.multi ? answers[current.id]?.length > 0 : !!answers[current.id];
-  const progress = ((step + 1) / QUIZ_STEPS.length) * 100;
-
   const next = async () => {
     if (step < QUIZ_STEPS.length - 1) { setStep(s => s + 1); return; }
     setSaving(true);
-    await api.post('/quiz', answers);
+    await api.post('/quiz', answers).catch(() => {});
     setSaving(false);
     onComplete(answers);
   };
-
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 400, backdropFilter: 'blur(4px)' }}>
       <div style={{ background: '#fff', borderRadius: 24, padding: 40, width: '100%', maxWidth: 540, boxShadow: '0 24px 80px rgba(0,0,0,0.2)', position: 'relative' }}>
-        {/* Dismiss button */}
-        <button onClick={() => { sessionStorage.setItem('quiz_dismissed','1'); onComplete(null); }} style={{ position: 'absolute', top: 16, right: 16, background: '#F7F5F2', border: 'none', borderRadius: 8, width: 32, height: 32, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, color: '#aaa' }}>✕</button>
-        <div style={{ marginBottom: 28 }}>
+        <button onClick={() => { sessionStorage.setItem('quiz_dismissed','1'); onComplete(null); }} style={{ position: 'absolute', top: 16, right: 16, background: '#F7F5F2', border: 'none', borderRadius: 8, width: 32, height: 32, cursor: 'pointer', fontSize: 16, color: '#aaa' }}>✕</button>
+        <div style={{ marginBottom: 24 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
             <span style={{ fontSize: 11, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Step {step + 1} of {QUIZ_STEPS.length}</span>
             <span style={{ fontSize: 11, fontWeight: 700, color: colors.orange }}>+25 Sabba Points ⭐</span>
           </div>
           <div style={{ height: 4, background: '#eee', borderRadius: 2, overflow: 'hidden' }}>
-            <div style={{ height: '100%', width: `${progress}%`, background: `linear-gradient(90deg, ${colors.orange}, #f5a066)`, borderRadius: 2, transition: 'width 0.3s ease' }}/>
+            <div style={{ height: '100%', width: `${((step + 1) / QUIZ_STEPS.length) * 100}%`, background: colors.orange, borderRadius: 2, transition: 'width 0.3s' }}/>
           </div>
         </div>
-        <h2 style={{ fontFamily: font.display, fontSize: 26, color: colors.dark, fontWeight: 700, fontStyle: 'italic', marginBottom: 4 }}>{current.question}</h2>
-        <p style={{ fontSize: 13.5, color: colors.muted, marginBottom: 22, fontWeight: 500 }}>{current.subtitle}</p>
+        <h2 style={{ fontFamily: font.display, fontSize: 26, color: colors.dark, fontWeight: 700, fontStyle: 'italic', marginBottom: 6 }}>{current.question}</h2>
+        <p style={{ fontSize: 14, color: colors.muted, marginBottom: 24 }}>{current.subtitle}</p>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 28 }}>
           {current.options.map(opt => (
-            <div key={opt.value} className={`quiz-opt ${isSelected(opt.value) ? 'sel' : ''}`}
-              onClick={() => toggle(opt.value)}
-              style={{ padding: '14px 16px', border: `2px solid ${isSelected(opt.value) ? colors.orange : '#eee'}`, borderRadius: 12, background: isSelected(opt.value) ? colors.orangeLight : '#fff', display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div key={opt.value} onClick={() => toggle(opt.value)} style={{ padding: '14px 16px', border: `2px solid ${isSelected(opt.value) ? colors.orange : '#eee'}`, borderRadius: 12, cursor: 'pointer', background: isSelected(opt.value) ? colors.orangeLight : '#fff', display: 'flex', alignItems: 'center', gap: 10, transition: 'all 0.15s' }}>
               <span style={{ fontSize: 22 }}>{opt.emoji}</span>
-              <span style={{ fontSize: 13.5, fontWeight: isSelected(opt.value) ? 700 : 500, color: isSelected(opt.value) ? colors.orange : colors.dark }}>{opt.label}</span>
-              {isSelected(opt.value) && <span style={{ marginLeft: 'auto', color: colors.orange }}>✓</span>}
+              <p style={{ fontSize: 13.5, fontWeight: isSelected(opt.value) ? 700 : 500, color: isSelected(opt.value) ? colors.orange : colors.dark }}>{opt.label}</p>
             </div>
           ))}
         </div>
-        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-          {step > 0 && <Button variant="secondary" onClick={() => setStep(s => s - 1)}>Back</Button>}
-          <Button onClick={next} disabled={!canNext || saving}>{saving ? 'Saving…' : step < QUIZ_STEPS.length - 1 ? 'Next →' : 'Find my adventures 🚀'}</Button>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <button onClick={() => setStep(s => Math.max(0, s - 1))} disabled={step === 0} style={{ background: 'none', border: '1px solid #eee', borderRadius: 10, padding: '10px 20px', fontSize: 13.5, color: step === 0 ? '#ccc' : colors.mid, cursor: step === 0 ? 'default' : 'pointer', fontFamily: font.body, fontWeight: 600 }}>← Back</button>
+          <button onClick={next} disabled={!canNext || saving} style={{ background: canNext ? colors.dark : '#eee', color: canNext ? '#fff' : '#aaa', border: 'none', borderRadius: 10, padding: '12px 28px', fontSize: 14, fontWeight: 700, cursor: canNext ? 'pointer' : 'default', fontFamily: font.body }}>
+            {saving ? 'Saving…' : step === QUIZ_STEPS.length - 1 ? 'Complete ✓' : 'Next →'}
+          </button>
         </div>
       </div>
     </div>
   );
 }
 
-// ── Employee Home ────────────────────────────────────────────
+// ── Add to Cart Popup (same as Marketplace) ───────────────────
+function AddToCartPopup({ pkg, onClose, onConfirm }) {
+  const [departureDate, setDepartureDate] = useState('');
+  const [payrollMonths, setPayrollMonths] = useState(6);
+  const [error, setError] = useState('');
+  const minDate = new Date(); minDate.setDate(minDate.getDate() + 14);
+  const minStr  = minDate.toISOString().split('T')[0];
+  const handleConfirm = () => {
+    if (!departureDate) { setError('Please select a departure date'); return; }
+    onConfirm({ departure_date: departureDate, payroll_months: payrollMonths });
+  };
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 500, backdropFilter: 'blur(4px)' }}>
+      <div style={{ background: '#fff', borderRadius: 20, padding: 28, width: '100%', maxWidth: 420, boxShadow: '0 24px 80px rgba(0,0,0,0.2)', fontFamily: font.body }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
+          <div>
+            <p style={{ fontSize: 11, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>Add to cart</p>
+            <p style={{ fontFamily: font.display, fontSize: 20, fontWeight: 700, fontStyle: 'italic', color: colors.dark }}>{pkg.title}</p>
+            <p style={{ fontSize: 13, color: colors.muted, marginTop: 2 }}>{pkg.destination} · {pkg.duration}</p>
+          </div>
+          <button onClick={onClose} style={{ background: '#F7F5F2', border: 'none', borderRadius: 8, width: 30, height: 30, cursor: 'pointer', fontSize: 16, color: colors.muted, flexShrink: 0 }}>✕</button>
+        </div>
+        <div style={{ marginBottom: 18 }}>
+          <label style={{ fontSize: 11.5, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.07em', display: 'block', marginBottom: 6 }}>Departure date <span style={{ color: colors.orange }}>*</span></label>
+          <input type="date" value={departureDate} min={minStr} onChange={e => { setDepartureDate(e.target.value); setError(''); }}
+            style={{ width: '100%', border: `1.5px solid ${error ? colors.red : '#eee'}`, borderRadius: 10, padding: '10px 14px', fontSize: 14, color: colors.dark, fontFamily: font.body, outline: 'none' }}/>
+          {error && <p style={{ fontSize: 12, color: colors.red, marginTop: 4, fontWeight: 600 }}>{error}</p>}
+        </div>
+        <div style={{ marginBottom: 20 }}>
+          <label style={{ fontSize: 11.5, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.07em', display: 'block', marginBottom: 8 }}>Pay via payroll over</label>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {[3, 6, 12].map(mo => (
+              <div key={mo} onClick={() => setPayrollMonths(mo)} style={{ flex: 1, padding: '10px 8px', border: `2px solid ${payrollMonths === mo ? colors.orange : '#eee'}`, borderRadius: 10, background: payrollMonths === mo ? colors.orangeLight : '#fff', cursor: 'pointer', textAlign: 'center', transition: 'all 0.15s' }}>
+                <p style={{ fontSize: 13, fontWeight: 700, color: payrollMonths === mo ? colors.orange : colors.mid }}>{mo} months</p>
+                <p style={{ fontSize: 12, color: payrollMonths === mo ? colors.dark : colors.muted, marginTop: 2 }}>£{Math.round(pkg.price_gbp / mo)}/mo</p>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div style={{ background: '#F7F5F2', borderRadius: 12, padding: '12px 16px', marginBottom: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div><p style={{ fontSize: 12, color: colors.muted }}>Total cost</p><p style={{ fontSize: 13.5, fontWeight: 700, color: colors.dark }}>£{Number(pkg.price_gbp).toLocaleString()}</p></div>
+          <div style={{ textAlign: 'right' }}><p style={{ fontSize: 12, color: colors.muted }}>Monthly payment</p><p style={{ fontFamily: font.display, fontSize: 22, fontWeight: 700, color: colors.orange }}>£{(pkg.price_gbp / payrollMonths).toFixed(2)}</p></div>
+        </div>
+        <button onClick={handleConfirm} style={{ width: '100%', background: colors.dark, color: '#fff', border: 'none', borderRadius: 12, padding: '13px', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: font.body }}>🛒 Add to cart</button>
+      </div>
+    </div>
+  );
+}
+
+// ── Employee Home ─────────────────────────────────────────────
 export function EmployeeHome() {
-  const { user }         = useAuth();
-  const { addToCart }    = useCart();
-  const navigate         = useNavigate();
-  const [packages, setPkgs]   = useState([]);
-  const [trending, setTrend]  = useState([]);
-  const [curated, setCurated] = useState([]);
-  const [quiz, setQuiz]       = useState(null);
-  const [showQuiz, setShowQuiz] = useState(false);
-  const [bookings, setBookings] = useState([]);
+  const { user }      = useAuth();
+  const { addToCart } = useCart();
+  const navigate      = useNavigate();
+  const [packages,  setPkgs]      = useState([]);
+  const [curated,   setCurated]   = useState([]);
+  const [trending,  setTrend]     = useState([]);
+  const [quiz,      setQuiz]      = useState(null);
+  const [showQuiz,  setShowQuiz]  = useState(false);
+  const [bookings,  setBookings]  = useState([]);
   const [allowance, setAllowance] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading,   setLoading]   = useState(true);
+  const [cartPopup, setCartPopup] = useState(null);
+
+  const currentYear = new Date().getFullYear();
 
   useEffect(() => {
     Promise.all([
@@ -131,8 +146,20 @@ export function EmployeeHome() {
       setTrend([...all].sort((a, b) => (b.trending_score || 0) - (a.trending_score || 0)).slice(0, 4));
       setQuiz(q.data);
       setBookings(bkgs.data);
-      setAllowance(alw.data);
-      // Only show quiz if not completed AND not already dismissed this session
+
+      // Calculate 2026 allowance remaining dynamically
+      if (alw.data) {
+        const payrollBookings = bkgs.data.filter(b =>
+          ['approved','confirmed','vendor_confirmed'].includes(b.status) &&
+          (b.payment_method || 'payroll') === 'payroll' &&
+          new Date(b.created_at).getFullYear() === currentYear
+        );
+        const used = payrollBookings.reduce((s, b) => s + Number(b.total_amount || 0), 0);
+        const total = Number(alw.data.total_allowance_gbp || 0);
+        const remaining = Math.max(0, total - used);
+        setAllowance({ ...alw.data, used, remaining, total });
+      }
+
       const dismissed = sessionStorage.getItem('quiz_dismissed');
       if (!q.data?.completed && !dismissed) setShowQuiz(true);
       if (q.data?.completed && q.data?.adventure_types?.length) {
@@ -147,25 +174,34 @@ export function EmployeeHome() {
   const onQuizComplete = async (answers) => {
     setShowQuiz(false);
     sessionStorage.setItem('quiz_dismissed', '1');
-    if (!answers) return; // dismissed without completing
+    if (!answers) return;
     setQuiz({ ...answers, completed: true });
     const { data } = await api.get('/packages');
     const matched = data.filter(p => answers.adventure_types.includes(p.category));
     setCurated(matched.length ? matched.slice(0, 4) : data.slice(0, 4));
   };
 
-  const activeBooking = bookings.find(b => ['approved', 'confirmed'].includes(b.status));
+  // Add to cart requires date popup
+  const handleAddToCart = (pkg) => setCartPopup(pkg);
+  const confirmAddToCart = async ({ departure_date, payroll_months }) => {
+    if (cartPopup) {
+      await addToCart(cartPopup.id, { departure_date, payroll_months });
+      setCartPopup(null);
+    }
+  };
+
+  const activeBooking = bookings.find(b => ['approved','confirmed','vendor_confirmed'].includes(b.status));
   const daysUntil = activeBooking?.departure_date
     ? Math.max(0, Math.ceil((new Date(activeBooking.departure_date) - new Date()) / (1000 * 60 * 60 * 24)))
     : null;
 
   const cats = [
-    { icon: '🌍', label: 'Travel',      cat: 'travel',        grad: gradients.travel },
-    { icon: '🤝', label: 'Volunteer',    cat: 'volunteering',  grad: gradients.volunteering },
-    { icon: '🎓', label: 'Courses',      cat: 'courses',       grad: gradients.courses },
-    { icon: '💼', label: 'Work Abroad',  cat: 'jobs_abroad',   grad: gradients.jobs_abroad },
-    { icon: '✈️', label: 'Airlines',     cat: 'airlines',      grad: gradients.airlines },
-    { icon: '🏠', label: 'Stays',        cat: 'accommodation', grad: gradients.accommodation },
+    { icon: '🌍', label: 'Travel',     cat: 'travel',        grad: gradients.travel },
+    { icon: '🤝', label: 'Volunteer',  cat: 'volunteering',  grad: gradients.volunteering },
+    { icon: '🎓', label: 'Courses',    cat: 'courses',       grad: gradients.courses },
+    { icon: '💼', label: 'Work Abroad',cat: 'jobs_abroad',   grad: gradients.jobs_abroad },
+    { icon: '✈️', label: 'Airlines',   cat: 'airlines',      grad: gradients.airlines },
+    { icon: '🏠', label: 'Stays',      cat: 'accommodation', grad: gradients.accommodation },
   ];
 
   if (loading) return <Spinner/>;
@@ -173,8 +209,9 @@ export function EmployeeHome() {
   return (
     <div style={{ fontFamily: font.body, background: '#F7F5F2', minHeight: '100vh', paddingBottom: 52 }}>
       {showQuiz && <OnboardingQuiz onComplete={onQuizComplete}/>}
+      {cartPopup && <AddToCartPopup pkg={cartPopup} onClose={() => setCartPopup(null)} onConfirm={confirmAddToCart}/>}
 
-      {/* HERO */}
+      {/* Hero */}
       <div style={{ background: '#1C1916', padding: '56px 40px 64px', position: 'relative', overflow: 'hidden' }}>
         <div style={{ position: 'absolute', right: -100, top: -100, width: 400, height: 400, borderRadius: '50%', border: '1px solid rgba(212,98,42,0.1)' }}/>
         <div style={{ position: 'absolute', right: 40, bottom: -60, width: 240, height: 240, borderRadius: '50%', border: '1px solid rgba(212,98,42,0.07)' }}/>
@@ -184,14 +221,15 @@ export function EmployeeHome() {
             <h1 style={{ fontFamily: font.display, fontSize: 40, color: '#fff', fontWeight: 700, fontStyle: 'italic', lineHeight: 1.2, marginBottom: 14 }}>
               Your platform for <span style={{ color: '#f5a066' }}>discovery,</span> rejuvenation &amp; growth.
             </h1>
-            <p style={{ fontSize: 15, color: 'rgba(255,255,255,0.45)', marginBottom: 28, lineHeight: 1.7, fontWeight: 400 }}>
-              Explore packages that align with your adventure type — paid via your employer payroll.
+            <p style={{ fontSize: 15, color: 'rgba(255,255,255,0.45)', marginBottom: 28, lineHeight: 1.7 }}>
+              Explore packages paid via your employer payroll — a benefit funded by your company.
             </p>
             {allowance && (
               <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: colors.orangeLight, border: `1px solid ${colors.orangePale}`, borderRadius: 20, padding: '7px 16px', marginBottom: 24 }}>
                 <span style={{ fontSize: 14 }}>💳</span>
                 <span style={{ fontSize: 12, fontWeight: 600, color: colors.orange }}>
-                  {new Date().getFullYear()} allowance remaining: <strong>£{Number(allowance.remaining).toLocaleString()}</strong>
+                  {currentYear} allowance remaining: <strong>£{Number(allowance.remaining).toLocaleString()}</strong>
+                  {allowance.total > 0 && <span style={{ color: 'rgba(212,98,42,0.6)' }}> of £{Number(allowance.total).toLocaleString()}</span>}
                 </span>
               </div>
             )}
@@ -204,8 +242,6 @@ export function EmployeeHome() {
               )}
             </div>
           </div>
-
-          {/* Adventure countdown */}
           {daysUntil !== null && (
             <div style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 20, padding: '28px 36px', textAlign: 'center', zIndex: 1 }}>
               <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: 10 }}>Next adventure</p>
@@ -218,22 +254,18 @@ export function EmployeeHome() {
       </div>
 
       <div style={{ maxWidth: 1280, margin: '0 auto', padding: '40px 40px 0' }}>
-
         {/* Categories */}
         <section style={{ marginBottom: 48 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 20 }}>
-            <div>
-              <p style={{ fontSize: 10.5, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>Explore</p>
-              <h2 style={{ fontFamily: font.display, fontSize: 26, color: colors.dark, fontWeight: 700, fontStyle: 'italic' }}>Browse by category</h2>
-            </div>
+            <div><p style={{ fontSize: 10.5, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>Explore</p><h2 style={{ fontFamily: font.display, fontSize: 26, color: colors.dark, fontWeight: 700, fontStyle: 'italic' }}>Browse by category</h2></div>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6,1fr)', gap: 12 }}>
             {cats.map((c, i) => (
-              <div key={i} className="cat-card" onClick={() => navigate(`/marketplace?category=${c.cat}`)}>
+              <div key={i} onClick={() => navigate(`/marketplace?category=${c.cat}`)} style={{ cursor: 'pointer', borderRadius: 14, overflow: 'hidden', border: '1px solid #eee', transition: 'transform 0.15s' }}
+                onMouseEnter={e => e.currentTarget.style.transform='translateY(-2px)'}
+                onMouseLeave={e => e.currentTarget.style.transform='translateY(0)'}>
                 <div style={{ height: 72, background: c.grad, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28 }}>{c.icon}</div>
-                <div style={{ background: '#fff', border: '1px solid #eee', borderTop: 'none', padding: '9px 12px', borderBottomLeftRadius: 14, borderBottomRightRadius: 14 }}>
-                  <p style={{ fontSize: 12, fontWeight: 700, color: colors.dark, textAlign: 'center' }}>{c.label}</p>
-                </div>
+                <div style={{ background: '#fff', padding: '9px 12px' }}><p style={{ fontSize: 12, fontWeight: 700, color: colors.dark, textAlign: 'center' }}>{c.label}</p></div>
               </div>
             ))}
           </div>
@@ -243,19 +275,13 @@ export function EmployeeHome() {
         <section style={{ marginBottom: 48 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 20 }}>
             <div>
-              <p style={{ fontSize: 10.5, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>
-                {quiz?.completed ? '✦ Curated for you' : 'Packages of the month'}
-              </p>
-              <h2 style={{ fontFamily: font.display, fontSize: 26, color: colors.dark, fontWeight: 700, fontStyle: 'italic' }}>
-                {quiz?.completed ? 'Based on your adventure profile' : 'Hand-picked this month'}
-              </h2>
+              <p style={{ fontSize: 10.5, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>{quiz?.completed ? '✦ Curated for you' : 'Packages of the month'}</p>
+              <h2 style={{ fontFamily: font.display, fontSize: 26, color: colors.dark, fontWeight: 700, fontStyle: 'italic' }}>{quiz?.completed ? 'Based on your adventure profile' : 'Hand-picked this month'}</h2>
             </div>
             <span onClick={() => navigate('/marketplace')} style={{ fontSize: 13, color: colors.orange, fontWeight: 700, cursor: 'pointer' }}>See all →</span>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(280px,1fr))', gap: 20 }}>
-            {curated.map(pkg => (
-              <PackageCard key={pkg.id} pkg={pkg} onAddToCart={addToCart} onClick={() => navigate(`/package/${pkg.id}`)}/>
-            ))}
+            {curated.map(pkg => <PackageCard key={pkg.id} pkg={pkg} onAddToCart={() => handleAddToCart(pkg)} onClick={() => navigate(`/package/${pkg.id}`)}/>)}
           </div>
         </section>
 
@@ -263,16 +289,11 @@ export function EmployeeHome() {
         {trending.length > 0 && (
           <section style={{ marginBottom: 16 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 20 }}>
-              <div>
-                <p style={{ fontSize: 10.5, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>🔥 Hot right now</p>
-                <h2 style={{ fontFamily: font.display, fontSize: 26, color: colors.dark, fontWeight: 700, fontStyle: 'italic' }}>Trending packages</h2>
-              </div>
+              <div><p style={{ fontSize: 10.5, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>🔥 Hot right now</p><h2 style={{ fontFamily: font.display, fontSize: 26, color: colors.dark, fontWeight: 700, fontStyle: 'italic' }}>Trending packages</h2></div>
               <span onClick={() => navigate('/marketplace')} style={{ fontSize: 13, color: colors.orange, fontWeight: 700, cursor: 'pointer' }}>See more →</span>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(280px,1fr))', gap: 20 }}>
-              {trending.map(pkg => (
-                <PackageCard key={pkg.id} pkg={pkg} onAddToCart={addToCart} showTrending onClick={() => navigate(`/package/${pkg.id}`)}/>
-              ))}
+              {trending.map(pkg => <PackageCard key={pkg.id} pkg={pkg} onAddToCart={() => handleAddToCart(pkg)} onClick={() => navigate(`/package/${pkg.id}`)}/>)}
             </div>
           </section>
         )}

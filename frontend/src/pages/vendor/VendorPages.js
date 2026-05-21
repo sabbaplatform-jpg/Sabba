@@ -284,59 +284,161 @@ export function VendorPackages() {
 
 // ── Vendor Bookings ──────────────────────────────────────────
 export function VendorBookings() {
-  const [bookings, setBookings] = useState([]);
-  const [loading, setLoading]   = useState(true);
-  const [notesModal, setNotesModal] = useState(null);
-  const [notes, setNotes]       = useState('');
-  const [saving, setSaving]     = useState(false);
-  const [search, setSearch]     = useState('');
+  const [bookings,    setBookings]    = useState([]);
+  const [loading,     setLoading]     = useState(true);
+  const [notesModal,  setNotesModal]  = useState(null);
+  const [reviewModal, setReviewModal] = useState(null);
+  const [notes,       setNotes]       = useState('');
+  const [saving,      setSaving]      = useState(false);
+  const [search,      setSearch]      = useState('');
+  const [filter,      setFilter]      = useState('all');
 
-  useEffect(() => {
+  const fetchBookings = () => {
     api.get('/bookings/vendor').then(r => setBookings(r.data)).finally(() => setLoading(false));
-  }, []);
+  };
+
+  useEffect(() => { fetchBookings(); }, []);
 
   const sendNotes = async () => {
     setSaving(true);
     await api.patch(`/vendors/bookings/${notesModal.id}/notes`, { vendor_notes: notes });
     setSaving(false); setNotesModal(null); setNotes('');
-    api.get('/bookings/vendor').then(r => setBookings(r.data));
+    fetchBookings();
   };
 
-  const filtered = bookings.filter(b =>
-    !search || b.employee_name?.toLowerCase().includes(search.toLowerCase()) || b.package_title?.toLowerCase().includes(search.toLowerCase()) || b.company_name?.toLowerCase().includes(search.toLowerCase())
-  );
+  const confirmBooking = async (id) => {
+    await api.patch(`/bookings/${id}/status`, { status: 'confirmed' });
+    setBookings(bs => bs.map(b => b.id === id ? { ...b, status: 'confirmed' } : b));
+  };
+
+  const allStatuses = ['all', 'pending', 'approved', 'vendor_confirmed', 'confirmed', 'cancelled'];
+  const filtered = bookings.filter(b => {
+    const matchFilter = filter === 'all' || b.status === filter;
+    const q = search.toLowerCase();
+    const matchSearch = !q || b.employee_name?.toLowerCase().includes(q) || b.package_title?.toLowerCase().includes(q) || b.company_name?.toLowerCase().includes(q);
+    return matchFilter && matchSearch;
+  });
+
+  // Pipeline counts
+  const pendingHR     = bookings.filter(b => b.status === 'pending' && (b.payment_method||'payroll') === 'payroll').length;
+  const awaitingVendor = bookings.filter(b => b.status === 'approved').length;
+  const confirmed     = bookings.filter(b => b.status === 'confirmed').length;
 
   return (
     <div style={{ fontFamily: font.body, background: '#F7F5F2', minHeight: '100vh', paddingBottom: 80 }}>
+
+      {/* Booking Review Modal */}
+      {reviewModal && (
+        <Modal title="Booking Details" onClose={() => setReviewModal(null)} width={520}>
+          <div style={{ display: 'flex', gap: 14, marginBottom: 20, padding: 14, background: '#F7F5F2', borderRadius: 12, alignItems: 'center' }}>
+            <Avatar initials={reviewModal.employee_name?.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase()} size={44}/>
+            <div>
+              <p style={{ fontSize: 15, fontWeight: 700, color: colors.dark }}>{reviewModal.employee_name}</p>
+              <p style={{ fontSize: 12.5, color: colors.muted }}>{reviewModal.company_name}</p>
+            </div>
+            <div style={{ marginLeft: 'auto' }}><Badge status={reviewModal.status}/></div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
+            {[
+              { label: 'Package',     value: `${reviewModal.emoji || ''} ${reviewModal.package_title}` },
+              { label: 'Destination', value: reviewModal.destination },
+              { label: 'Departure',   value: reviewModal.departure_date ? new Date(reviewModal.departure_date).toLocaleDateString('en-GB', {day:'numeric',month:'long',year:'numeric'}) : '—' },
+              { label: 'Payment',     value: reviewModal.payment_method === 'card' ? 'Card (Stripe)' : `Payroll — ${reviewModal.payroll_months} months` },
+              { label: 'Monthly',     value: reviewModal.payment_method === 'payroll' ? `£${Number(reviewModal.monthly_amount||0).toFixed(2)}/mo` : '—' },
+              { label: 'Total Value', value: `£${Number(reviewModal.total_amount||0).toLocaleString()}` },
+            ].map((item, i) => (
+              <div key={i} style={{ background: '#F7F5F2', borderRadius: 10, padding: '10px 12px' }}>
+                <p style={{ fontSize: 10, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 3 }}>{item.label}</p>
+                <p style={{ fontSize: 13, fontWeight: 600, color: colors.dark }}>{item.value || '—'}</p>
+              </div>
+            ))}
+          </div>
+          {/* Payroll pipeline explainer */}
+          {(reviewModal.payment_method||'payroll') === 'payroll' && reviewModal.status === 'pending' && (
+            <div style={{ background: colors.orangeLight, borderRadius: 10, padding: '12px 14px', marginBottom: 16 }}>
+              <p style={{ fontSize: 12.5, fontWeight: 700, color: colors.orange, marginBottom: 4 }}>Awaiting HR approval</p>
+              <p style={{ fontSize: 12, color: colors.orange }}>This payroll booking is pending HR review. Once HR approves, you'll be asked to confirm the booking.</p>
+            </div>
+          )}
+          {reviewModal.status === 'approved' && (
+            <div style={{ background: colors.greenLight, borderRadius: 10, padding: '12px 14px', marginBottom: 16 }}>
+              <p style={{ fontSize: 12.5, fontWeight: 700, color: colors.green, marginBottom: 4 }}>Ready for your confirmation</p>
+              <p style={{ fontSize: 12, color: colors.green }}>{reviewModal.payment_method === 'card' ? 'Card payment confirmed. Please review and confirm this booking.' : 'HR has approved this payroll booking. Please confirm you can fulfil it.'}</p>
+            </div>
+          )}
+          <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+            <Button variant="secondary" onClick={() => setReviewModal(null)}>Close</Button>
+            {reviewModal.status === 'approved' && (
+              <button onClick={() => { confirmBooking(reviewModal.id); setReviewModal(null); }}
+                style={{ background: colors.green, color: '#fff', border: 'none', borderRadius: 10, padding: '10px 20px', fontSize: 13.5, fontWeight: 700, cursor: 'pointer', fontFamily: font.body }}>
+                ✓ Confirm booking
+              </button>
+            )}
+          </div>
+        </Modal>
+      )}
+
       <div style={{ background: '#fff', borderBottom: '1px solid #eee', padding: '28px 40px 24px' }}>
         <div style={{ maxWidth: 1280, margin: '0 auto' }}>
           <p style={{ fontSize: 10.5, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>Vendor Portal</p>
           <h1 style={{ fontFamily: font.display, fontSize: 34, color: colors.dark, fontWeight: 700, fontStyle: 'italic', marginBottom: 16 }}>Bookings</h1>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#F7F5F2', border: '1px solid #eee', borderRadius: 10, padding: '9px 16px', maxWidth: 380 }}>
-            <svg width="15" height="15" fill="none" stroke={colors.faint} strokeWidth="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search employee, package, employer…" style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: 13.5, color: colors.dark, width: '100%', fontFamily: font.body }}/>
+
+          {/* Pipeline summary */}
+          <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
+            {[
+              { label: 'Awaiting HR approval', count: pendingHR,      color: colors.amber,  bg: colors.amberLight  },
+              { label: 'Awaiting your confirmation', count: awaitingVendor, color: colors.green,  bg: colors.greenLight  },
+              { label: 'Confirmed',           count: confirmed,        color: colors.orange, bg: colors.orangeLight },
+            ].map((s, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, background: s.bg, borderRadius: 20, padding: '7px 16px', border: `1px solid ${s.color}22` }}>
+                <div style={{ width: 7, height: 7, borderRadius: '50%', background: s.color }}/>
+                <span style={{ fontSize: 12.5, fontWeight: 700, color: s.color }}>{s.count} {s.label}</span>
+              </div>
+            ))}
+          </div>
+
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#F7F5F2', border: '1px solid #eee', borderRadius: 10, padding: '9px 16px', flex: 1, maxWidth: 360 }}>
+              <svg width="15" height="15" fill="none" stroke={colors.faint} strokeWidth="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+              <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search employee, package, employer…" style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: 13.5, color: colors.dark, width: '100%', fontFamily: font.body }}/>
+            </div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {allStatuses.map(s => (
+                <button key={s} onClick={() => setFilter(s)} style={{ padding: '7px 14px', borderRadius: 20, border: `1.5px solid ${filter===s ? colors.orange : '#eee'}`, background: filter===s ? colors.orangeLight : '#fff', color: filter===s ? colors.orange : colors.mid, fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: font.body }}>
+                  {s === 'vendor_confirmed' ? 'Vendor Confirmed' : s.charAt(0).toUpperCase()+s.slice(1)} ({s==='all' ? bookings.length : bookings.filter(b=>b.status===s).length})
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </div>
 
       <div style={{ maxWidth: 1280, margin: '0 auto', padding: '28px 40px' }}>
         <div className="table-wrap">
-          <TableHeader cols={['Employee','Employer','Package','Departure','Payroll','Total','Status','Action']} template="1.8fr 1.2fr 1.4fr 0.9fr 0.7fr 0.9fr 1fr 1.2fr"/>
+          <TableHeader cols={['Employee','Employer','Package','Payment','Total','Status','Actions']} template="1.8fr 1.2fr 1.4fr 0.9fr 0.9fr 1fr 1.6fr"/>
           {loading ? <Spinner/> : filtered.length === 0 ? (
             <EmptyState emoji="📬" title="No bookings yet" subtitle="Bookings from employees will appear here"/>
           ) : filtered.map((b, i) => (
-            <div key={b.id} className="row-hover" style={{ display: 'grid', gridTemplateColumns: '1.8fr 1.2fr 1.4fr 0.9fr 0.7fr 0.9fr 1fr 1.2fr', padding: '12px 24px', alignItems: 'center', borderBottom: i<filtered.length-1?'1px solid #f5f5f5':'none' }}>
+            <div key={b.id} className="row-hover" style={{ display: 'grid', gridTemplateColumns: '1.8fr 1.2fr 1.4fr 0.9fr 0.9fr 1fr 1.6fr', padding: '12px 24px', alignItems: 'center', borderBottom: i<filtered.length-1?'1px solid #f5f5f5':'none' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <Avatar initials={b.employee_name?.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase()}/>
-                <span style={{ fontSize: 13.5, fontWeight: 600, color: colors.dark }}>{b.employee_name}</span>
+                <div>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: colors.dark }}>{b.employee_name}</p>
+                  <p style={{ fontSize: 10.5, color: colors.faint }}>{b.departure_date ? new Date(b.departure_date).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'2-digit'}) : 'No date'}</p>
+                </div>
               </div>
               <span style={{ fontSize: 13, color: colors.mid, fontWeight: 500 }}>{b.company_name}</span>
               <span style={{ fontSize: 13, color: colors.mid }}>{b.emoji} {b.package_title}</span>
-              <span style={{ fontSize: 13, color: colors.mid }}>{b.departure_date ? new Date(b.departure_date).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'2-digit'}) : '—'}</span>
-              <span style={{ fontSize: 12, color: colors.muted, fontWeight: 500 }}>{b.payroll_months}mo</span>
+              <span style={{ fontSize: 11.5, fontWeight: 700, color: (b.payment_method||'payroll')==='card' ? colors.blue : colors.orange, background: (b.payment_method||'payroll')==='card' ? colors.blueLight : colors.orangeLight, borderRadius: 6, padding: '3px 8px', display: 'inline-block' }}>{(b.payment_method||'payroll')=='card' ? 'Card' : 'Payroll'}</span>
               <span style={{ fontSize: 13, fontWeight: 700, color: colors.dark }}>£{Number(b.total_amount).toLocaleString()}</span>
               <Badge status={b.status}/>
-              <button onClick={() => { setNotesModal(b); setNotes(b.vendor_notes || ''); }} style={{ background: colors.orangeLight, color: colors.orange, border: 'none', borderRadius: 7, padding: '6px 10px', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', fontFamily: font.body }}>Send Details</button>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <button onClick={() => setReviewModal(b)} style={{ background: '#F7F5F2', color: colors.mid, border: '1px solid #eee', borderRadius: 6, padding: '5px 10px', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', fontFamily: font.body }}>Review</button>
+                {b.status === 'approved' && (
+                  <button onClick={() => confirmBooking(b.id)} style={{ background: colors.greenLight, color: colors.green, border: 'none', borderRadius: 6, padding: '5px 10px', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', fontFamily: font.body }}>✓ Confirm</button>
+                )}
+                <button onClick={() => { setNotesModal(b); setNotes(b.vendor_notes || ''); }} style={{ background: colors.orangeLight, color: colors.orange, border: 'none', borderRadius: 6, padding: '5px 10px', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', fontFamily: font.body }}>Send Details</button>
+              </div>
             </div>
           ))}
         </div>
@@ -344,7 +446,7 @@ export function VendorBookings() {
 
       {notesModal && (
         <Modal title={`Send details to ${notesModal.employee_name}`} onClose={() => setNotesModal(null)} width={480}>
-          <p style={{ fontSize: 13.5, color: colors.muted, marginBottom: 16, fontWeight: 500, lineHeight: 1.6 }}>Send booking details, meeting points, packing lists, or any important information about their adventure.</p>
+          <p style={{ fontSize: 13.5, color: colors.muted, marginBottom: 16, lineHeight: 1.6 }}>Send booking details, meeting points, packing lists or any important information about their adventure.</p>
           <Textarea label="Message" value={notes} onChange={e => setNotes(e.target.value)} placeholder="e.g. Please arrive at Heathrow Terminal 3 by 6am…"/>
           <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 20 }}>
             <Button variant="secondary" onClick={() => setNotesModal(null)}>Cancel</Button>
@@ -355,6 +457,8 @@ export function VendorBookings() {
     </div>
   );
 }
+
+
 
 // ── Vendor Earnings ──────────────────────────────────────────
 export function VendorEarnings() {

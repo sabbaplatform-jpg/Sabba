@@ -77,11 +77,12 @@ export default function Allowance() {
         <div>
           <p style={{ fontSize: 11, fontWeight: 700, color: colors.faint, letterSpacing: '0.09em', textTransform: 'uppercase', marginBottom: 4 }}>Employee Portal</p>
           <h1 style={{ fontFamily: font.display, fontSize: 30, color: colors.dark, fontWeight: 400 }}>Travel Allowance</h1>
-          <p style={{ color: colors.muted, fontSize: 14, marginTop: 4, fontWeight: 500 }}>Your annual budget for Sabba adventures via payroll.</p>
+          <p style={{ color: colors.muted, fontSize: 14, marginTop: 4, fontWeight: 500 }}>Your annual payroll allowance for Sabba adventures. Card payments are not counted against this limit.</p>
         </div>
         {/* Year selector */}
         <div style={{ display: 'flex', gap: 8 }}>
-          {(available_years || [year]).map(y => (
+          {/* Always include current year + any years with data */}
+        {([...new Set([...(available_years || []), new Date().getFullYear()])].sort((a,b)=>b-a)).map(y => (
             <button key={y} onClick={() => setYear(y)} style={{
               padding: '7px 14px', borderRadius: 20,
               border: `1.5px solid ${year === y ? colors.orange : colors.border}`,
@@ -97,7 +98,7 @@ export default function Allowance() {
 
         {/* Total allowance */}
         <div className="card" style={{ padding: 28 }}>
-          <h2 style={{ fontSize: 15, fontWeight: 700, color: colors.dark, marginBottom: 8 }}>Total Allowance {year}</h2>
+          <h2 style={{ fontSize: 15, fontWeight: 700, color: colors.dark, marginBottom: 8 }}>{year} Payroll Allowance {year === new Date().getFullYear() ? '· Current' : ''}</h2>
           <p style={{ fontSize: 13.5, color: colors.muted, lineHeight: 1.6, marginBottom: 24, fontWeight: 500 }}>
             Here's your total travel allowance for the year. This is the amount your company has permitted you to commit towards Sabba packages via payroll deduction.
           </p>

@@ -60,6 +60,7 @@ export default function MyBooking() {
   const [review, setReview]         = useState('');
   const [savingRating, setSavingRating] = useState(false);
   const [ratedIds, setRatedIds]     = useState(new Set());
+  const [filter,    setFilter]      = useState('all');
 
   useEffect(() => {
     api.get('/bookings/mine').then(r => setBookings(r.data)).finally(() => setLoading(false));
@@ -77,9 +78,11 @@ export default function MyBooking() {
 
   if (loading) return <Spinner/>;
 
-  const active   = bookings.filter(b => ['approved','confirmed'].includes(b.status));
-  const pending  = bookings.filter(b => b.status === 'pending');
-  const past     = bookings.filter(b => ['cancelled'].includes(b.status));
+  const allStatuses = ['all', 'pending', 'approved', 'confirmed', 'cancelled'];
+  const filtered = filter === 'all' ? bookings : bookings.filter(b => b.status === filter);
+  const active   = filtered.filter(b => ['approved','confirmed','vendor_confirmed'].includes(b.status));
+  const pending  = filtered.filter(b => b.status === 'pending');
+  const past     = filtered.filter(b => ['cancelled'].includes(b.status));
 
   const BookingCard = ({ b }) => {
     const gradient = gradients[b.category] || gradients.default;
@@ -176,18 +179,13 @@ export default function MyBooking() {
             <Button onClick={() => navigate('/marketplace')} small>+ Book another</Button>
           </div>
 
-          {/* Summary pills */}
+          {/* Filter pills */}
           {bookings.length > 0 && (
-            <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
-              {[
-                { label: 'Active',   count: active.length,  color: colors.green  },
-                { label: 'Pending',  count: pending.length, color: colors.amber  },
-                { label: 'Cancelled',count: past.length,    color: colors.faint  },
-              ].map((s, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#F7F5F2', borderRadius: 20, padding: '5px 14px', border: '1px solid #eee' }}>
-                  <div style={{ width: 6, height: 6, borderRadius: '50%', background: s.color }}/>
-                  <span style={{ fontSize: 12.5, fontWeight: 600, color: colors.mid }}>{s.count} {s.label}</span>
-                </div>
+            <div style={{ display: 'flex', gap: 8, marginTop: 16, flexWrap: 'wrap' }}>
+              {allStatuses.map(s => (
+                <button key={s} onClick={() => setFilter(s)} style={{ padding: '6px 14px', borderRadius: 20, border: `1.5px solid ${filter === s ? colors.orange : '#eee'}`, background: filter === s ? colors.orangeLight : '#fff', color: filter === s ? colors.orange : colors.mid, fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: font.body, transition: 'all 0.15s' }}>
+                  {s.charAt(0).toUpperCase() + s.slice(1)} ({s === 'all' ? bookings.length : bookings.filter(b => b.status === s).length})
+                </button>
               ))}
             </div>
           )}
