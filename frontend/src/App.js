@@ -119,9 +119,10 @@ function AppRoutes() {
 }
 
 function RequireAdmin({ children }) {
-  const { user } = useAuth();
-  if (!user) return <Navigate to="/login"/>;
-  if (user.role !== 'superadmin') return <Navigate to="/login"/>;
+  const { user, loading } = useAuth();
+  if (loading) return null;
+  if (!user) return <Navigate to="/login" replace/>;
+  if (user.role !== 'superadmin') return <Navigate to="/login" replace/>;
   return children;
 }
 
