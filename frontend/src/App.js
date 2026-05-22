@@ -41,7 +41,7 @@ function RoleRedirect() {
   const { user, loading } = useAuth();
   if (loading) return <Spinner/>;
   if (!user) return <Navigate to="/login" replace/>;
-  const dest = { hr: '/hr', employee: '/home', vendor: '/vendor' }[user.role];
+  const dest = { hr: '/hr', employee: '/home', vendor: '/vendor', superadmin: '/admin' }[user.role];
   return <Navigate to={dest || '/login'} replace/>;
 }
 
