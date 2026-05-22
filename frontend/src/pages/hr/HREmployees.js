@@ -1,8 +1,178 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import api from '../../lib/api';
 import { Avatar, Spinner, EmptyState, Badge, Button, Input, Modal, TableHeader } from '../../components/UI';
 import { colors, font } from '../../lib/styles';
+
+// ── CSV helpers ───────────────────────────────────────────────
+const CSV_HEADERS = ['employee_number','first_name','last_name','email','department','job_title','gl_location','location','salary_band','spend_limit_gbp','employment_category','assignment_status','leave_type'];
+
+function downloadTemplate() {
+  const example = [
+    ['EMP001','James','Thornton','james.thornton@company.com','Finance','Senior Analyst','GL-LON-001','London','Band 3','5000','Permanent','Active','Both'],
+    ['EMP002','Sarah','Chen','sarah.chen@company.com','Technology','Software Engineer','GL-LON-001','London','Band 3','5000','Permanent','Active','Annual Leave'],
+  ];
+  const csv = [CSV_HEADERS, ...example].map(r => r.map(c => `"${c}"`).join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+  a.download = 'sabba_employee_import_template.csv';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+}
+
+function parseCSV(text) {
+  const lines = text.trim().split(/\r?\n/);
+  if (lines.length < 2) return { rows: [], error: 'File appears to be empty' };
+  const parseRow = line => {
+    const cells = []; let cur = ''; let inQ = false;
+    for (const ch of line) {
+      if (ch === '"') inQ = !inQ;
+      else if (ch === ',' && !inQ) { cells.push(cur.trim()); cur = ''; }
+      else cur += ch;
+    }
+    cells.push(cur.trim()); return cells;
+  };
+  const headers = parseRow(lines[0]).map(h => h.toLowerCase().replace(/\s+/g,'_'));
+  if (!headers.includes('email')) return { rows: [], error: 'CSV must have an "email" column' };
+  if (!headers.includes('first_name') && !headers.includes('full_name')) return { rows: [], error: 'CSV must have a "first_name" column' };
+  const rows = lines.slice(1).filter(l => l.trim()).map(line => {
+    const vals = parseRow(line); const obj = {};
+    headers.forEach((h, i) => { obj[h] = vals[i] || ''; });
+    return obj;
+  });
+  return { rows, error: null };
+}
+
+// ── Import Modal ──────────────────────────────────────────────
+function ImportModal({ onClose, onImported }) {
+  const fileRef = useRef(null);
+  const [stage,       setStage]       = useState('upload');
+  const [parsed,      setParsed]      = useState([]);
+  const [parseError,  setParseError]  = useState('');
+  const [fileName,    setFileName]    = useState('');
+  const [results,     setResults]     = useState(null);
+
+  const handleFile = e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (!file.name.endsWith('.csv')) { setParseError('Please upload a .csv file'); return; }
+    setFileName(file.name);
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const { rows, error } = parseCSV(ev.target.result);
+      if (error) { setParseError(error); return; }
+      if (rows.length === 0) { setParseError('No employee rows found'); return; }
+      if (rows.length > 500) { setParseError('Maximum 500 employees per upload'); return; }
+      setParseError(''); setParsed(rows); setStage('preview');
+    };
+    reader.readAsText(file);
+  };
+
+  const doImport = async () => {
+    setStage('importing');
+    try {
+      const { data } = await api.post('/employees/import', { employees: parsed });
+      setResults(data); setStage('done'); onImported();
+    } catch (err) {
+      setParseError(err.response?.data?.error || 'Import failed'); setStage('preview');
+    }
+  };
+
+  return (
+    <Modal title="Import employees" onClose={onClose} width={640}>
+      {stage === 'upload' && (
+        <div>
+          <p style={{ fontSize: 13.5, color: colors.muted, marginBottom: 20, lineHeight: 1.6 }}>
+            Upload a CSV file with your employee list. All imported employees will receive the temporary password <strong style={{ color: colors.dark }}>Welcome2Sabba!</strong>
+          </p>
+          <div style={{ background: colors.orangeLight, border: `1px solid rgba(212,98,42,0.2)`, borderRadius: 12, padding: '14px 18px', marginBottom: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <p style={{ fontSize: 13.5, fontWeight: 700, color: colors.dark, marginBottom: 3 }}>Start with our template</p>
+              <p style={{ fontSize: 12.5, color: colors.muted }}>Download, fill in your employees, then upload below.</p>
+            </div>
+            <Button small variant="ghost" onClick={downloadTemplate}>⬇ Download template</Button>
+          </div>
+          <div onClick={() => fileRef.current?.click()} style={{ border: `2px dashed ${parseError ? colors.red : '#ddd'}`, borderRadius: 12, padding: '32px', textAlign: 'center', cursor: 'pointer' }}>
+            <div style={{ fontSize: 36, marginBottom: 8 }}>📄</div>
+            <p style={{ fontSize: 14, fontWeight: 700, color: colors.dark, marginBottom: 4 }}>Click to upload CSV</p>
+            <p style={{ fontSize: 12.5, color: colors.muted }}>Max 500 rows · .csv files only</p>
+            <input ref={fileRef} type="file" accept=".csv" onChange={handleFile} style={{ display: 'none' }}/>
+          </div>
+          {parseError && <p style={{ fontSize: 13, color: colors.red, fontWeight: 600, marginTop: 10 }}>{parseError}</p>}
+        </div>
+      )}
+
+      {stage === 'preview' && (
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, padding: '10px 14px', background: colors.greenLight, borderRadius: 10 }}>
+            <span>✓</span>
+            <p style={{ fontSize: 13.5, fontWeight: 700, color: colors.green }}>{parsed.length} employee{parsed.length !== 1 ? 's' : ''} ready · {fileName}</p>
+          </div>
+          <div style={{ maxHeight: 260, overflowY: 'auto', border: '1px solid #eee', borderRadius: 10, marginBottom: 16 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 2fr 1fr 1fr', background: '#F7F5F2', padding: '8px 14px' }}>
+              {['Name','Email','Department','Job Title'].map(h => <span key={h} style={{ fontSize: 10.5, fontWeight: 700, color: colors.faint, textTransform: 'uppercase' }}>{h}</span>)}
+            </div>
+            {parsed.map((emp, i) => {
+              const name = emp.full_name || `${emp.first_name||''} ${emp.last_name||''}`.trim();
+              const err  = !emp.email || !name;
+              return (
+                <div key={i} style={{ display: 'grid', gridTemplateColumns: '1.5fr 2fr 1fr 1fr', padding: '9px 14px', borderTop: '1px solid #f5f5f5', background: err ? colors.redLight : 'transparent' }}>
+                  <span style={{ fontSize: 13, color: err ? colors.red : colors.dark, fontWeight: 500 }}>{name || <em>Missing</em>}</span>
+                  <span style={{ fontSize: 12.5, color: err ? colors.red : colors.muted }}>{emp.email || <em>Missing</em>}</span>
+                  <span style={{ fontSize: 12.5, color: colors.muted }}>{emp.department || '—'}</span>
+                  <span style={{ fontSize: 12.5, color: colors.muted }}>{emp.job_title || '—'}</span>
+                </div>
+              );
+            })}
+          </div>
+          <p style={{ fontSize: 12.5, color: colors.muted, marginBottom: 20 }}>Employees with existing accounts will be skipped. Temporary password: <strong style={{ color: colors.dark }}>Welcome2Sabba!</strong></p>
+          {parseError && <p style={{ fontSize: 13, color: colors.red, fontWeight: 600, marginBottom: 12 }}>{parseError}</p>}
+          <div style={{ display: 'flex', gap: 10, justifyContent: 'space-between' }}>
+            <Button variant="secondary" onClick={() => { setStage('upload'); setParsed([]); setParseError(''); }}>← Back</Button>
+            <Button onClick={doImport}>Import {parsed.length} employee{parsed.length !== 1 ? 's' : ''} →</Button>
+          </div>
+        </div>
+      )}
+
+      {stage === 'importing' && (
+        <div style={{ textAlign: 'center', padding: '32px 0' }}>
+          <div style={{ width: 40, height: 40, border: `3px solid #eee`, borderTop: `3px solid ${colors.orange}`, borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 16px' }}/>
+          <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+          <p style={{ fontSize: 15, fontWeight: 700, color: colors.dark }}>Importing employees…</p>
+        </div>
+      )}
+
+      {stage === 'done' && results && (
+        <div>
+          <div style={{ textAlign: 'center', marginBottom: 24 }}>
+            <div style={{ fontSize: 48, marginBottom: 12 }}>🎉</div>
+            <p style={{ fontSize: 18, fontWeight: 700, color: colors.dark }}>Import complete</p>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12, marginBottom: 20 }}>
+            {[
+              { label: 'Created', value: results.created, color: colors.green,  bg: colors.greenLight },
+              { label: 'Skipped', value: results.skipped, color: '#b45309',      bg: '#fef3c7' },
+              { label: 'Errors',  value: results.errors?.length || 0, color: results.errors?.length ? colors.red : colors.muted, bg: results.errors?.length ? colors.redLight : '#F7F5F2' },
+            ].map((s, i) => (
+              <div key={i} style={{ background: s.bg, borderRadius: 10, padding: 14, textAlign: 'center' }}>
+                <p style={{ fontSize: 32, fontWeight: 700, color: s.color, lineHeight: 1 }}>{s.value}</p>
+                <p style={{ fontSize: 12, color: s.color, fontWeight: 700, marginTop: 4 }}>{s.label}</p>
+              </div>
+            ))}
+          </div>
+          {results.errors?.length > 0 && (
+            <div style={{ background: colors.redLight, borderRadius: 10, padding: '12px 16px', marginBottom: 16 }}>
+              <p style={{ fontSize: 13, fontWeight: 700, color: colors.red, marginBottom: 6 }}>Rows not imported:</p>
+              {results.errors.slice(0,5).map((e, i) => <p key={i} style={{ fontSize: 12, color: colors.red }}>· {e.email} — {e.reason}</p>)}
+              {results.errors.length > 5 && <p style={{ fontSize: 12, color: colors.red }}>…and {results.errors.length-5} more</p>}
+            </div>
+          )}
+          <p style={{ fontSize: 12.5, color: colors.muted, marginBottom: 20 }}>New employees log in with temporary password: <strong style={{ color: colors.dark }}>Welcome2Sabba!</strong></p>
+          <Button onClick={onClose} style={{ width: '100%', justifyContent: 'center' }}>Done</Button>
+        </div>
+      )}
+    </Modal>
+  );
+}
 
 export default function HREmployees() {
   const [searchParams]               = useSearchParams();
@@ -78,11 +248,18 @@ export default function HREmployees() {
 
   return (
     <div style={{ fontFamily: font.body, background: '#F7F5F2', minHeight: '100vh', paddingBottom: 80 }}>
-      {/* Header */}
+
+      {showImport && <ImportModal onClose={() => setShowImport(false)} onImported={() => fetchEmployees(search)}/>}
       <div style={{ background: '#fff', borderBottom: '1px solid #eee', padding: '28px 40px 24px' }}>
         <div style={{ maxWidth: 1280, margin: '0 auto' }}>
           <p style={{ fontSize: 10.5, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>HR Admin</p>
-          <h1 style={{ fontFamily: font.display, fontSize: 34, color: colors.dark, fontWeight: 700, fontStyle: 'italic', marginBottom: 16 }}>Employees</h1>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <h1 style={{ fontFamily: font.display, fontSize: 34, color: colors.dark, fontWeight: 700, fontStyle: 'italic' }}>Employees</h1>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <Button small variant="secondary" onClick={() => setShowImport(true)}>⬆ Import CSV</Button>
+              <Button small onClick={() => setShowImport(true)}>+ Add employees</Button>
+            </div>
+          </div>
           {/* Search */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#F7F5F2', border: '1px solid #eee', borderRadius: 10, padding: '9px 16px', maxWidth: 420 }}>
             <svg width="15" height="15" fill="none" stroke={colors.faint} strokeWidth="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>

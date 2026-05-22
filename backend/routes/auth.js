@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { body, validationResult } = require('express-validator');
 const db = require('../lib/db');
+const { auth } = require('../middleware/auth');
 
 router.post('/register', [
   body('email').isEmail(),
@@ -25,7 +26,11 @@ router.post('/register', [
     if (role === 'vendor' && company_name && category) {
       await db.query('INSERT INTO vendors (user_id, company_name, category) VALUES ($1,$2,$3)', [user.id, company_name, category]);
     }
-    const token = jwt.sign({ id: user.id, email: user.email, role: user.role, name: user.full_name }, process.env.JWT_SECRET, { expiresIn: '7d' });
+    const token = jwt.sign(
+      { id: user.id, email: user.email, role: user.role, name: user.full_name },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' }
+    );
     res.status(201).json({ token, user });
   } catch (err) {
     res.status(500).json({ error: err.message, code: err.code });
@@ -47,9 +52,13 @@ router.post('/login', [
     if (!valid) return res.status(401).json({ error: 'Invalid credentials' });
     const token = jwt.sign(
       { id: user.id, email: user.email, role: user.role, name: user.full_name, company_id: user.company_id },
-      process.env.JWT_SECRET, { expiresIn: '7d' }
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' }
     );
-    res.json({ token, user: { id: user.id, email: user.email, role: user.role, full_name: user.full_name, company_id: user.company_id } });
+    res.json({
+      token,
+      user: { id: user.id, email: user.email, role: user.role, full_name: user.full_name, company_id: user.company_id }
+    });
   } catch (err) {
     res.status(500).json({ error: err.message, code: err.code });
   }
@@ -59,14 +68,68 @@ router.get('/me', async (req, res) => {
   try {
     const token = req.headers.authorization?.split(' ')[1];
     if (!token) return res.status(401).json({ error: 'No token' });
-    const jwt_module = require('jsonwebtoken');
-    const decoded = jwt_module.verify(token, process.env.JWT_SECRET);
-    const result = await db.query('SELECT id, email, role, full_name, company_id FROM users WHERE id=$1', [decoded.id]);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const result = await db.query(
+      'SELECT id, email, role, full_name, company_id FROM users WHERE id=$1',
+      [decoded.id]
+    );
     res.json(result.rows[0]);
   } catch (err) {
     res.status(500).json({ error: err.message, code: err.code });
   }
 });
 
-module.exports = router;
+// GET /api/auth/profile — get current user's own profile
+router.get('/profile', auth, async (req, res) => {
+  try {
+    const result = await db.query(
+      'SELECT id, email, full_name, role, created_at FROM users WHERE id = $1',
+      [req.user.id]
+    );
+    if (!result.rows.length) return res.status(404).json({ error: 'User not found' });
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
+// PATCH /api/auth/profile — update current user's own profile (name, email, password)
+router.patch('/profile', auth, async (req, res) => {
+  try {
+    const { full_name, email, current_password, new_password } = req.body;
+
+    const user = await db.query('SELECT * FROM users WHERE id = $1', [req.user.id]);
+    if (!user.rows.length) return res.status(404).json({ error: 'User not found' });
+
+    const updates = [];
+    const values  = [];
+    let idx = 1;
+
+    if (full_name) { updates.push(`full_name=$${idx++}`); values.push(full_name); }
+    if (email)     { updates.push(`email=$${idx++}`);     values.push(email.toLowerCase().trim()); }
+
+    if (new_password) {
+      if (!current_password) return res.status(400).json({ error: 'Current password required to set a new one' });
+      const valid = await bcrypt.compare(current_password, user.rows[0].password_hash);
+      if (!valid) return res.status(401).json({ error: 'Current password is incorrect' });
+      if (new_password.length < 8) return res.status(400).json({ error: 'New password must be at least 8 characters' });
+      const hash = await bcrypt.hash(new_password, 10);
+      updates.push(`password_hash=$${idx++}`);
+      values.push(hash);
+    }
+
+    if (!updates.length) return res.status(400).json({ error: 'Nothing to update' });
+
+    values.push(req.user.id);
+    const result = await db.query(
+      `UPDATE users SET ${updates.join(', ')} WHERE id=$${idx} RETURNING id, email, full_name, role`,
+      values
+    );
+
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+module.exports = router;

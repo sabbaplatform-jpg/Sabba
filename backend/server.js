@@ -10,8 +10,10 @@ app.use(cors({
 }));
 app.use(express.json());
 
-// V1 + V2 routes
+// Auth
 app.use('/api/auth',          require('./routes/auth'));
+
+// Core
 app.use('/api/packages',      require('./routes/packages'));
 app.use('/api/bookings',      require('./routes/bookings'));
 app.use('/api/employees',     require('./routes/employees'));
@@ -21,14 +23,12 @@ app.use('/api/ratings',       require('./routes/ratings'));
 app.use('/api/profile',       require('./routes/profile'));
 app.use('/api/policies',      require('./routes/policies'));
 
-// V3 routes
+// V3
 app.use('/api/cart',          require('./routes/cart'));
 app.use('/api/quiz',          require('./routes/quiz'));
 app.use('/api/allowance',     require('./routes/allowance'));
 app.use('/api/upload',        require('./routes/upload'));
-
-const messagesRouter = require('./routes/messages');
-app.use('/api/messages', messagesRouter);
+app.use('/api/messages',      require('./routes/messages'));
 
 app.get('/api/health', (_, res) => res.json({ status: 'ok', version: 'v3' }));
 
@@ -44,4 +44,3 @@ app.get('/api/dbtest', async (_, res) => {
 
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => console.log(`Sabba V3 API running on port ${PORT}`));
- 
