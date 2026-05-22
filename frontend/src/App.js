@@ -118,6 +118,13 @@ function AppRoutes() {
   );
 }
 
+function RequireAdmin({ children }) {
+  const { user } = useAuth();
+  if (!user) return <Navigate to="/login"/>;
+  if (user.role !== 'superadmin') return <Navigate to="/login"/>;
+  return children;
+}
+
 export default function App() {
   return (
     <BrowserRouter>
