@@ -1,72 +1,11 @@
 import { useState, useEffect } from 'react';
+import { OnboardingQuiz, TRAVEL_TYPES } from './OnboardingQuiz';
 import { useNavigate } from 'react-router-dom';
 import api from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
 import { PackageCard, Button, Spinner } from '../../components/UI';
 import { colors, font, gradients } from '../../lib/styles';
-
-// ── Onboarding Quiz (unchanged) ──────────────────────────────
-const QUIZ_STEPS = [
-  { id: 'adventure_types', question: 'What excites you most?', subtitle: 'Select all that apply', multi: true,
-    options: [{ value: 'travel', label: 'Travel & Exploration', emoji: '🌍' }, { value: 'volunteering', label: 'Volunteering', emoji: '🤝' }, { value: 'courses', label: 'Learning & Courses', emoji: '🎓' }, { value: 'jobs_abroad', label: 'Work Abroad', emoji: '💼' }, { value: 'wellness', label: 'Wellness & Retreat', emoji: '🧘' }, { value: 'culture', label: 'Culture & Arts', emoji: '🎭' }] },
-  { id: 'duration_preference', question: 'Ideal adventure length?', subtitle: 'Choose one', multi: false,
-    options: [{ value: 'short', label: '1–2 weeks', emoji: '⚡' }, { value: 'medium', label: '3–4 weeks', emoji: '🗓️' }, { value: 'long', label: '1–3 months', emoji: '📅' }, { value: 'extended', label: '3+ months', emoji: '🌟' }] },
-  { id: 'budget_preference', question: 'Budget comfort zone?', subtitle: 'Via payroll spread', multi: false,
-    options: [{ value: 'budget', label: 'Under £1,500', emoji: '💚' }, { value: 'mid', label: '£1,500–£3,000', emoji: '💛' }, { value: 'premium', label: '£3,000–£5,000', emoji: '🧡' }, { value: 'luxury', label: '£5,000+', emoji: '💜' }] },
-];
-
-export function OnboardingQuiz({ onComplete }) {
-  const [step, setStep]     = useState(0);
-  const [answers, setAnswers] = useState({ adventure_types: [], duration_preference: '', budget_preference: '' });
-  const [saving, setSaving]   = useState(false);
-  const current = QUIZ_STEPS[step];
-  const toggle = (value) => {
-    if (current.multi) setAnswers(a => ({ ...a, [current.id]: a[current.id].includes(value) ? a[current.id].filter(v => v !== value) : [...a[current.id], value] }));
-    else setAnswers(a => ({ ...a, [current.id]: value }));
-  };
-  const isSelected = (value) => { const val = answers[current.id]; return Array.isArray(val) ? val.includes(value) : val === value; };
-  const canNext = current.multi ? answers[current.id]?.length > 0 : !!answers[current.id];
-  const next = async () => {
-    if (step < QUIZ_STEPS.length - 1) { setStep(s => s + 1); return; }
-    setSaving(true);
-    await api.post('/quiz', answers).catch(() => {});
-    setSaving(false);
-    onComplete(answers);
-  };
-  return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 400, backdropFilter: 'blur(4px)' }}>
-      <div style={{ background: '#fff', borderRadius: 24, padding: 40, width: '100%', maxWidth: 540, boxShadow: '0 24px 80px rgba(0,0,0,0.2)', position: 'relative' }}>
-        <button onClick={() => { sessionStorage.setItem('quiz_dismissed','1'); onComplete(null); }} style={{ position: 'absolute', top: 16, right: 16, background: '#F7F5F2', border: 'none', borderRadius: 8, width: 32, height: 32, cursor: 'pointer', fontSize: 16, color: '#aaa' }}>✕</button>
-        <div style={{ marginBottom: 24 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-            <span style={{ fontSize: 11, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Step {step + 1} of {QUIZ_STEPS.length}</span>
-            <span style={{ fontSize: 11, fontWeight: 700, color: colors.orange }}>+25 Sabba Points ⭐</span>
-          </div>
-          <div style={{ height: 4, background: '#eee', borderRadius: 2, overflow: 'hidden' }}>
-            <div style={{ height: '100%', width: `${((step + 1) / QUIZ_STEPS.length) * 100}%`, background: colors.orange, borderRadius: 2, transition: 'width 0.3s' }}/>
-          </div>
-        </div>
-        <h2 style={{ fontFamily: font.display, fontSize: 26, color: colors.dark, fontWeight: 700, fontStyle: 'italic', marginBottom: 6 }}>{current.question}</h2>
-        <p style={{ fontSize: 14, color: colors.muted, marginBottom: 24 }}>{current.subtitle}</p>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 28 }}>
-          {current.options.map(opt => (
-            <div key={opt.value} onClick={() => toggle(opt.value)} style={{ padding: '14px 16px', border: `2px solid ${isSelected(opt.value) ? colors.orange : '#eee'}`, borderRadius: 12, cursor: 'pointer', background: isSelected(opt.value) ? colors.orangeLight : '#fff', display: 'flex', alignItems: 'center', gap: 10, transition: 'all 0.15s' }}>
-              <span style={{ fontSize: 22 }}>{opt.emoji}</span>
-              <p style={{ fontSize: 13.5, fontWeight: isSelected(opt.value) ? 700 : 500, color: isSelected(opt.value) ? colors.orange : colors.dark }}>{opt.label}</p>
-            </div>
-          ))}
-        </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <button onClick={() => setStep(s => Math.max(0, s - 1))} disabled={step === 0} style={{ background: 'none', border: '1px solid #eee', borderRadius: 10, padding: '10px 20px', fontSize: 13.5, color: step === 0 ? '#ccc' : colors.mid, cursor: step === 0 ? 'default' : 'pointer', fontFamily: font.body, fontWeight: 600 }}>← Back</button>
-          <button onClick={next} disabled={!canNext || saving} style={{ background: canNext ? colors.dark : '#eee', color: canNext ? '#fff' : '#aaa', border: 'none', borderRadius: 10, padding: '12px 28px', fontSize: 14, fontWeight: 700, cursor: canNext ? 'pointer' : 'default', fontFamily: font.body }}>
-            {saving ? 'Saving…' : step === QUIZ_STEPS.length - 1 ? 'Complete ✓' : 'Next →'}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 // ── Add to Cart Popup (same as Marketplace) ───────────────────
 function AddToCartPopup({ pkg, onClose, onConfirm }) {
@@ -177,7 +116,9 @@ export function EmployeeHome() {
     if (!answers) return;
     setQuiz({ ...answers, completed: true });
     const { data } = await api.get('/packages');
-    const matched = data.filter(p => answers.adventure_types.includes(p.category));
+    // Use travel_type categories if available, fall back to adventure_types
+    const cats = answers.categories || answers.adventure_types || [];
+    const matched = data.filter(p => cats.includes(p.category));
     setCurated(matched.length ? matched.slice(0, 4) : data.slice(0, 4));
   };
 
