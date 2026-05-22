@@ -15,6 +15,7 @@ import { font, globalStyles } from './lib/styles';
 // HR pages
 import HRDashboard from './pages/hr/HRDashboard';
 import HREmployees from './pages/hr/HREmployees';
+import HRProfile from './pages/hr/HRProfile';
 import { HRAdventures, HRMarketplace, HRAnalytics, HRIntegrations } from './pages/hr/HRPages';
 
 // Employee pages
@@ -71,6 +72,7 @@ function AppRoutes() {
           {/* HR */}
           <Route path="/hr"              element={<RequireAuth role="hr"><HRDashboard/></RequireAuth>}/>
           <Route path="/hr/employees"    element={<RequireAuth role="hr"><HREmployees/></RequireAuth>}/>
+          <Route path="/hr/profile"      element={<RequireAuth role="hr"><HRProfile/></RequireAuth>}/>
           <Route path="/hr/adventures"   element={<RequireAuth role="hr"><HRAdventures/></RequireAuth>}/>
           <Route path="/hr/marketplace"  element={<RequireAuth role="hr"><HRMarketplace/></RequireAuth>}/>
           <Route path="/hr/analytics"    element={<RequireAuth role="hr"><HRAnalytics/></RequireAuth>}/>

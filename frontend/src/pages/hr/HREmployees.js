@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import api from '../../lib/api';
 import { Avatar, Spinner, EmptyState, Badge, Button, Input, Modal, TableHeader } from '../../components/UI';
 import { colors, font } from '../../lib/styles';
 
 export default function HREmployees() {
+  const [searchParams]               = useSearchParams();
   const [employees, setEmployees]   = useState([]);
   const [loading, setLoading]       = useState(true);
   const [search, setSearch]         = useState('');
@@ -17,7 +19,7 @@ export default function HREmployees() {
   const [pwdSaving, setPwdSaving]   = useState(false);
   const [pwdSuccess, setPwdSuccess] = useState(false);
   const [pwdError, setPwdError]     = useState('');
-  const [showImport, setShowImport] = useState(false);
+  const [showImport, setShowImport] = useState(searchParams.get('import') === '1');
   const [editModal,  setEditModal]  = useState(null);
   const [editForm,   setEditForm]   = useState({});
   const [editSaving, setEditSaving] = useState(false);
