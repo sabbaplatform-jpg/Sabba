@@ -5,7 +5,19 @@ const cors = require('cors');
 const app = express();
 
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  origin: (origin, callback) => {
+    const allowed = [
+      'http://localhost:3000',
+      'http://localhost:3001',
+      'https://sabba-frontend.vercel.app',
+      process.env.FRONTEND_URL,
+    ].filter(Boolean);
+    if (!origin || allowed.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(null, true); // allow all origins in production — restrict after custom domain
+    }
+  },
   credentials: true,
 }));
 app.use(express.json());
