@@ -292,4 +292,33 @@ router.post('/import', auth, requireRole('hr'), async (req, res) => {
   }
 });
 
+// PATCH /api/employees/me/avatar — employee updates own avatar
+router.patch('/me/avatar', auth, requireRole('employee'), async (req, res) => {
+  try {
+    const { avatar_url } = req.body;
+    await db.query(
+      `INSERT INTO employee_profiles (user_id, avatar_url)
+       VALUES ($1, $2)
+       ON CONFLICT (user_id) DO UPDATE SET avatar_url = $2`,
+      [req.user.id, avatar_url]
+    );
+    res.json({ success: true, avatar_url });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/employees/points/history — employee's points transaction history
+router.get('/points/history', auth, requireRole('employee'), async (req, res) => {
+  try {
+    const result = await db.query(
+      `SELECT * FROM points_transactions WHERE user_id=$1 ORDER BY created_at DESC LIMIT 50`,
+      [req.user.id]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;
