@@ -22,6 +22,7 @@ import { HRAdventures, HRMarketplace, HRAnalytics, HRIntegrations } from './page
 import { EmployeeHome } from './pages/employee/EmployeeHome';
 import MyBooking from './pages/employee/MyBooking';
 import { EmployeeProfile } from './pages/employee/EmployeeProfile';
+import { AdminDashboard, AdminEmployers, AdminVendors, AdminAnalytics, AdminBilling, AdminFeatureFlags, AdminAuditLog } from './pages/admin/AdminPages';
 import { Cart, CheckoutSuccess } from './pages/employee/Cart';
 import Allowance from './pages/employee/Allowance';
 
@@ -104,6 +105,13 @@ function AppRoutes() {
 
           <Route path="/"  element={<RoleRedirect/>}/>
           <Route path="*"  element={<NotFound/>}/>
+          <Route path="/admin"          element={<RequireAdmin><AdminDashboard/></RequireAdmin>}/>
+          <Route path="/admin/employers"  element={<RequireAdmin><AdminEmployers/></RequireAdmin>}/>
+          <Route path="/admin/vendors"    element={<RequireAdmin><AdminVendors/></RequireAdmin>}/>
+          <Route path="/admin/analytics"  element={<RequireAdmin><AdminAnalytics/></RequireAdmin>}/>
+          <Route path="/admin/billing"    element={<RequireAdmin><AdminBilling/></RequireAdmin>}/>
+          <Route path="/admin/flags"      element={<RequireAdmin><AdminFeatureFlags/></RequireAdmin>}/>
+          <Route path="/admin/audit"      element={<RequireAdmin><AdminAuditLog/></RequireAdmin>}/>
         </Routes>
       </AppLayout>
     </div>
