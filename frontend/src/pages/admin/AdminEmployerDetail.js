@@ -278,7 +278,7 @@ export function AdminEmployerDetail() {
               <span style={{fontSize:12,color:'rgba(255,255,255,0.3)'}}>ID: {id?.slice(0,8)}…</span>
             </div>
           </div>
-          <div style={{display:'flex',gap:8'}}>
+          <div style={{display:'flex',gap:8}}>
             <select value={company.plan||'starter'} onChange={e=>updateCompany({plan:e.target.value})}
               style={{background:'rgba(255,255,255,0.08)',border:'1px solid rgba(255,255,255,0.15)',borderRadius:8,padding:'8px 12px',color:'#fff',fontFamily:font.body,fontSize:13,cursor:'pointer'}}>
               {['starter','growth','enterprise','global'].map(p=><option key={p} value={p} style={{color:colors.dark,background:'#fff'}}>{p.charAt(0).toUpperCase()+p.slice(1)}</option>)}
