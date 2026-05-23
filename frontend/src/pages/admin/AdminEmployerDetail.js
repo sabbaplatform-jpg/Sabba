@@ -18,7 +18,7 @@ function downloadTemplate() {
 function parseCSV(text) {
   const lines = text.trim().split(/\r?\n/);
   if (lines.length < 2) return { rows:[], error:'File appears empty' };
-  const parse = l => { const c=[],; let cur='',inQ=false;
+  const parse = l => { const c=[]; let cur='',inQ=false;
     for(const ch of l){if(ch==='"')inQ=!inQ;else if(ch===','&&!inQ){c.push(cur.trim());cur='';}else cur+=ch;}
     c.push(cur.trim()); return c; };
   const hdrs = parse(lines[0]).map(h=>h.toLowerCase().replace(/\s+/g,'_'));
