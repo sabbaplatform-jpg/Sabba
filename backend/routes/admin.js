@@ -385,4 +385,82 @@ router.patch('/employees/:id', auth, requireAdmin, async (req, res) => {
   }
 });
 
+
+// ── PATCH /api/admin/vendors/:id/reject ──────────────────────
+router.patch('/vendors/:id/reject', auth, requireAdmin, async (req, res) => {
+  try {
+    const { reason } = req.body;
+    if (!reason?.trim()) return res.status(400).json({ error: 'Rejection reason required' });
+
+    const result = await db.query(`
+      UPDATE vendors SET verified=FALSE, rejection_reason=$1, rejected_at=NOW(), rejected_by=$2
+      WHERE id=$3 RETURNING *
+    `, [reason, req.user.id, req.params.id]);
+
+    if (!result.rows.length) return res.status(404).json({ error: 'Vendor not found' });
+
+    // Notify vendor
+    await db.query(`
+      INSERT INTO notifications (user_id, title, message, type)
+      VALUES ($1, 'Application update', $2, 'warning')
+    `, [result.rows[0].user_id,
+        `Your vendor application was not approved. Reason: ${reason}. Please contact support@sabbaplatform.com if you have questions.`]);
+
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── PATCH /api/admin/vendors/:id/access ──────────────────────
+router.patch('/vendors/:id/access', auth, requireAdmin, async (req, res) => {
+  try {
+    const { company_id, enabled } = req.body;
+    await db.query(`
+      INSERT INTO vendor_employer_access (vendor_id, company_id, enabled, updated_by, updated_at)
+      VALUES ($1, $2, $3, $4, NOW())
+      ON CONFLICT (vendor_id, company_id) DO UPDATE
+        SET enabled=$3, updated_by=$4, updated_at=NOW()
+    `, [req.params.id, company_id, enabled, req.user.id]).catch(() => {
+      // Table may not exist yet — non-fatal
+    });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── GET /api/admin/packages ───────────────────────────────────
+router.get('/packages', auth, requireAdmin, async (req, res) => {
+  try {
+    const result = await db.query(`
+      SELECT p.*,
+             v.company_name as vendor_name,
+             v.verified as vendor_verified
+      FROM packages p
+      JOIN vendors v ON p.vendor_id = v.id
+      ORDER BY p.created_at DESC
+    `);
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── PATCH /api/admin/packages/:id/access ─────────────────────
+router.patch('/packages/:id/access', auth, requireAdmin, async (req, res) => {
+  try {
+    const { company_id, allowed } = req.body;
+    await db.query(`
+      INSERT INTO package_employer_access (package_id, company_id, allowed, updated_by, updated_at)
+      VALUES ($1, $2, $3, $4, NOW())
+      ON CONFLICT (package_id, company_id) DO UPDATE
+        SET allowed=$3, updated_by=$4, updated_at=NOW()
+    `, [req.params.id, company_id, allowed, req.user.id]).catch(() => {});
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;

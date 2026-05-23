@@ -13,6 +13,7 @@ function AdminNav({ active }) {
     { id: 'dashboard',  label: 'Dashboard',     icon: '🏠', path: '/admin' },
     { id: 'employers',  label: 'Employers',      icon: '🏢', path: '/admin/employers' },
     { id: 'vendors',    label: 'Vendors',         icon: '🏪', path: '/admin/vendors' },
+    { id: 'packages',   label: 'Packages',         icon: '📦', path: '/admin/packages' },
     { id: 'analytics',  label: 'Analytics',       icon: '📊', path: '/admin/analytics' },
     { id: 'billing',    label: 'Billing',          icon: '💳', path: '/admin/billing' },
     { id: 'flags',      label: 'Feature flags',   icon: '🚩', path: '/admin/flags' },
@@ -279,37 +280,231 @@ export function AdminEmployers() {
 // ═══════════════════════════════════════════════════════════
 // 3. VENDORS
 // ═══════════════════════════════════════════════════════════
+
+function VendorReviewModal({ vendor, companies, onClose, onVerify, onReject, onAccessChange }) {
+  const [rejectMode,  setRejectMode]  = useState(false);
+  const [reason,      setReason]      = useState('');
+  const [submitting,  setSubmitting]  = useState(false);
+  const od = vendor.onboarding_data || {};
+
+  const handleVerify = async () => {
+    setSubmitting(true);
+    await onVerify(vendor.id);
+    setSubmitting(false); onClose();
+  };
+  const handleReject = async () => {
+    if (!reason.trim()) return;
+    setSubmitting(true);
+    await onReject(vendor.id, reason);
+    setSubmitting(false); onClose();
+  };
+
+  return (
+    <Modal title="Vendor review" onClose={onClose} width={640}>
+      {/* Identity */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 20, padding: 16, background: '#F7F5F2', borderRadius: 12 }}>
+        <div style={{ width: 52, height: 52, borderRadius: 14, background: `linear-gradient(135deg, ${colors.orange}, #f5a066)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, flexShrink: 0 }}>🏪</div>
+        <div style={{ flex: 1 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+            <p style={{ fontSize: 17, fontWeight: 700, color: colors.dark }}>{vendor.company_name}</p>
+            <Badge status={vendor.verified ? 'verified' : 'unverified'}/>
+          </div>
+          <p style={{ fontSize: 13, color: colors.muted }}>{vendor.email} · {vendor.category}</p>
+          {vendor.website && <p style={{ fontSize: 12, color: colors.orange, marginTop: 2 }}>{vendor.website}</p>}
+        </div>
+      </div>
+
+      {/* Stats */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10, marginBottom: 16 }}>
+        {[
+          { label: 'Packages',     value: vendor.package_count || 0 },
+          { label: 'Bookings',     value: vendor.booking_count || 0 },
+          { label: 'Revenue',      value: `£${Math.round(Number(vendor.total_revenue||0)/1000)}K` },
+          { label: 'Pending since', value: vendor.pending_since ? new Date(vendor.pending_since).toLocaleDateString('en-GB',{day:'numeric',month:'short'}) : '—' },
+        ].map((s,i) => (
+          <div key={i} style={{ background: '#F7F5F2', borderRadius: 10, padding: '10px 12px', textAlign: 'center' }}>
+            <p style={{ fontSize: 16, fontWeight: 700, color: colors.dark }}>{s.value}</p>
+            <p style={{ fontSize: 11, color: colors.muted, marginTop: 2 }}>{s.label}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* About */}
+      {vendor.about && (
+        <div style={{ background: '#F7F5F2', borderRadius: 10, padding: '12px 16px', marginBottom: 14 }}>
+          <p style={{ fontSize: 10.5, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>About</p>
+          <p style={{ fontSize: 13.5, color: colors.mid, lineHeight: 1.7 }}>{vendor.about}</p>
+        </div>
+      )}
+
+      {/* Onboarding Q&A */}
+      {(od.business_type || od.categories?.length || od.standout?.length) && (
+        <div style={{ background: '#F7F5F2', borderRadius: 10, padding: '12px 16px', marginBottom: 14 }}>
+          <p style={{ fontSize: 10.5, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 10 }}>Onboarding answers</p>
+          {od.business_type && <p style={{ fontSize: 13, color: colors.mid, marginBottom: 6 }}><strong style={{ color: colors.dark }}>Business type:</strong> {od.business_type}</p>}
+          {od.categories?.length > 0 && <p style={{ fontSize: 13, color: colors.mid, marginBottom: 6 }}><strong style={{ color: colors.dark }}>Categories:</strong> {od.categories.join(', ')}</p>}
+          {od.standout?.length > 0 && (
+            <div>
+              <p style={{ fontSize: 13, fontWeight: 700, color: colors.dark, marginBottom: 4 }}>How they stand out:</p>
+              {od.standout.map((s,i) => <p key={i} style={{ fontSize: 12.5, color: colors.mid, marginBottom: 2 }}>✓ {s.replace(/_/g,' ')}</p>)}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Employer access control */}
+      {companies.length > 0 && (
+        <div style={{ background: '#F7F5F2', borderRadius: 10, padding: '12px 16px', marginBottom: 16 }}>
+          <p style={{ fontSize: 10.5, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 10 }}>Employer access control</p>
+          <p style={{ fontSize: 12, color: colors.muted, marginBottom: 10 }}>Toggle which employers can see this vendor's packages.</p>
+          {companies.map(co => {
+            const access = vendor.employer_access?.find(a => a.company_id === co.id);
+            const enabled = access ? access.enabled : true;
+            return (
+              <div key={co.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <span style={{ fontSize: 13.5, color: colors.dark }}>{co.name}</span>
+                <div onClick={() => onAccessChange(vendor.id, co.id, !enabled)}
+                  style={{ width: 42, height: 22, borderRadius: 11, background: enabled ? colors.green : '#ddd', cursor: 'pointer', position: 'relative', transition: 'background 0.2s', flexShrink: 0 }}>
+                  <div style={{ position: 'absolute', top: 2, left: enabled ? 21 : 2, width: 18, height: 18, borderRadius: '50%', background: '#fff', transition: 'left 0.2s' }}/>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Rejection reason input */}
+      {rejectMode && (
+        <div style={{ marginBottom: 16 }}>
+          <label style={{ fontSize: 11, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.07em', display: 'block', marginBottom: 6 }}>Rejection reason <span style={{ color: colors.red }}>*</span></label>
+          <textarea value={reason} onChange={e => setReason(e.target.value)} placeholder="Explain why this vendor is being rejected. This will be sent to them via notification."
+            style={{ width: '100%', border: `1.5px solid ${!reason.trim() ? colors.red : '#eee'}`, borderRadius: 10, padding: '10px 14px', fontSize: 13.5, color: colors.dark, fontFamily: font.body, outline: 'none', resize: 'vertical', minHeight: 80 }}/>
+        </div>
+      )}
+
+      <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+        {!rejectMode && <Button variant="secondary" onClick={onClose}>Close</Button>}
+        {rejectMode ? (
+          <>
+            <button onClick={() => setRejectMode(false)} style={{ background: '#F7F5F2', color: colors.mid, border: '1px solid #eee', borderRadius: 10, padding: '10px 18px', fontSize: 13.5, fontWeight: 700, cursor: 'pointer', fontFamily: font.body }}>← Back</button>
+            <button onClick={handleReject} disabled={!reason.trim() || submitting}
+              style={{ background: submitting ? '#eee' : colors.red, color: '#fff', border: 'none', borderRadius: 10, padding: '10px 20px', fontSize: 13.5, fontWeight: 700, cursor: 'pointer', fontFamily: font.body }}>
+              {submitting ? 'Rejecting…' : 'Confirm rejection'}
+            </button>
+          </>
+        ) : (
+          <>
+            {!vendor.verified && <button onClick={() => setRejectMode(true)}
+              style={{ background: colors.redLight, color: colors.red, border: 'none', borderRadius: 10, padding: '10px 18px', fontSize: 13.5, fontWeight: 700, cursor: 'pointer', fontFamily: font.body }}>
+              Reject vendor
+            </button>}
+            {vendor.verified
+              ? <button onClick={() => { onVerify(vendor.id, false); onClose(); }}
+                  style={{ background: colors.redLight, color: colors.red, border: 'none', borderRadius: 10, padding: '10px 20px', fontSize: 13.5, fontWeight: 700, cursor: 'pointer', fontFamily: font.body }}>
+                  Revoke verification
+                </button>
+              : <button onClick={handleVerify} disabled={submitting}
+                  style={{ background: colors.green, color: '#fff', border: 'none', borderRadius: 10, padding: '10px 20px', fontSize: 13.5, fontWeight: 700, cursor: 'pointer', fontFamily: font.body }}>
+                  {submitting ? 'Verifying…' : '✓ Verify vendor'}
+                </button>
+            }
+          </>
+        )}
+      </div>
+    </Modal>
+  );
+}
+
 export function AdminVendors() {
-  const [vendors,  setVendors]  = useState([]);
-  const [loading,  setLoading]  = useState(true);
-  const [search,   setSearch]   = useState('');
-  const [filter,   setFilter]   = useState('all');
+  const [vendors,    setVendors]    = useState([]);
+  const [companies,  setCompanies]  = useState([]);
+  const [loading,    setLoading]    = useState(true);
+  const [search,     setSearch]     = useState('');
+  const [filter,     setFilter]     = useState('all');
+  const [reviewing,  setReviewing]  = useState(null);
 
   useEffect(() => {
-    api.get('/admin/vendors').then(r => setVendors(r.data)).finally(() => setLoading(false));
+    Promise.all([
+      api.get('/admin/vendors'),
+      api.get('/admin/companies'),
+    ]).then(([v, c]) => {
+      setVendors(v.data);
+      setCompanies(c.data);
+    }).finally(() => setLoading(false));
   }, []);
 
-  const toggleVerify = async (id, verified) => {
-    await api.patch(`/vendors/${id}/verify`, { verified: !verified });
-    setVendors(vs => vs.map(v => v.id === id ? { ...v, verified: !verified } : v));
+  const handleVerify = async (id, verified = true) => {
+    await api.patch(`/vendors/${id}/verify`, { verified });
+    setVendors(vs => vs.map(v => v.id === id ? { ...v, verified } : v));
+    if (reviewing?.id === id) setReviewing(r => ({ ...r, verified }));
+  };
+
+  const handleReject = async (id, reason) => {
+    await api.patch(`/admin/vendors/${id}/reject`, { reason });
+    setVendors(vs => vs.map(v => v.id === id ? { ...v, verified: false, rejected: true, rejection_reason: reason } : v));
+  };
+
+  const handleAccessChange = async (vendorId, companyId, enabled) => {
+    await api.patch(`/admin/vendors/${vendorId}/access`, { company_id: companyId, enabled });
+    setVendors(vs => vs.map(v => {
+      if (v.id !== vendorId) return v;
+      const existing = v.employer_access || [];
+      const idx = existing.findIndex(a => a.company_id === companyId);
+      const updated = idx >= 0
+        ? existing.map((a,i) => i === idx ? { ...a, enabled } : a)
+        : [...existing, { company_id: companyId, enabled }];
+      return { ...v, employer_access: updated };
+    }));
+    if (reviewing?.id === vendorId) {
+      setReviewing(r => {
+        const existing = r.employer_access || [];
+        const idx = existing.findIndex(a => a.company_id === companyId);
+        const updated = idx >= 0
+          ? existing.map((a,i) => i === idx ? { ...a, enabled } : a)
+          : [...existing, { company_id: companyId, enabled }];
+        return { ...r, employer_access: updated };
+      });
+    }
   };
 
   const filtered = vendors.filter(v => {
-    const matchFilter = filter === 'all' || (filter === 'pending' && !v.verified && v.onboarding_completed) || (filter === 'verified' && v.verified) || (filter === 'incomplete' && !v.onboarding_completed);
+    const matchFilter = filter === 'all'
+      || (filter === 'pending'    && !v.verified && v.onboarding_completed)
+      || (filter === 'verified'   && v.verified)
+      || (filter === 'incomplete' && !v.onboarding_completed)
+      || (filter === 'rejected'   && v.rejected);
     const q = search.toLowerCase();
     return matchFilter && (!q || v.company_name?.toLowerCase().includes(q) || v.email?.toLowerCase().includes(q));
   });
 
+  const counts = {
+    all:        vendors.length,
+    pending:    vendors.filter(v => !v.verified && v.onboarding_completed && !v.rejected).length,
+    verified:   vendors.filter(v => v.verified).length,
+    incomplete: vendors.filter(v => !v.onboarding_completed).length,
+    rejected:   vendors.filter(v => v.rejected).length,
+  };
+
   return (
     <AdminLayout active="vendors">
+      {reviewing && (
+        <VendorReviewModal
+          vendor={reviewing}
+          companies={companies}
+          onClose={() => setReviewing(null)}
+          onVerify={handleVerify}
+          onReject={handleReject}
+          onAccessChange={handleAccessChange}
+        />
+      )}
       <div style={{ background: '#fff', borderBottom: '1px solid #eee', padding: '24px 36px' }}>
         <p style={{ fontSize: 10.5, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 3 }}>Super Admin</p>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 16 }}>
           <h1 style={{ fontFamily: font.display, fontSize: 30, color: colors.dark, fontWeight: 700, fontStyle: 'italic' }}>All vendors</h1>
-          <div style={{ display: 'flex', gap: 8 }}>
-            {['all','pending','verified','incomplete'].map(f => (
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {Object.entries(counts).map(([f, count]) => (
               <button key={f} onClick={() => setFilter(f)} style={{ padding: '6px 14px', borderRadius: 20, border: `1.5px solid ${filter===f ? colors.orange : '#eee'}`, background: filter===f ? colors.orangeLight : '#fff', color: filter===f ? colors.orange : colors.mid, fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: font.body, textTransform: 'capitalize' }}>
-                {f} ({f==='all' ? vendors.length : f==='pending' ? vendors.filter(v=>!v.verified&&v.onboarding_completed).length : f==='verified' ? vendors.filter(v=>v.verified).length : vendors.filter(v=>!v.onboarding_completed).length})
+                {f} ({count})
               </button>
             ))}
           </div>
@@ -321,11 +516,11 @@ export function AdminVendors() {
       </div>
       <div style={{ padding: '24px 36px' }}>
         <div className="table-wrap">
-          <TableHeader cols={['Vendor','Category','Packages','Bookings','Revenue','Onboarding','Status','Actions']} template="1.8fr 1fr 0.7fr 0.7fr 0.9fr 1fr 0.9fr 1.2fr"/>
+          <TableHeader cols={['Vendor','Category','Packages','Bookings','Revenue','Onboarding','Status','Actions']} template="1.8fr 1fr 0.7fr 0.7fr 0.9fr 1fr 0.9fr 1.4fr"/>
           {loading ? <Spinner/> : filtered.length === 0 ? (
             <EmptyState emoji="🏪" title="No vendors" subtitle="Vendors appear here once they register"/>
           ) : filtered.map((v, i) => (
-            <div key={v.id} className="row-hover" style={{ display: 'grid', gridTemplateColumns: '1.8fr 1fr 0.7fr 0.7fr 0.9fr 1fr 0.9fr 1.2fr', padding: '11px 24px', alignItems: 'center', borderBottom: i<filtered.length-1?'1px solid #f5f5f5':'none' }}>
+            <div key={v.id} className="row-hover" style={{ display: 'grid', gridTemplateColumns: '1.8fr 1fr 0.7fr 0.7fr 0.9fr 1fr 0.9fr 1.4fr', padding: '11px 24px', alignItems: 'center', borderBottom: i<filtered.length-1?'1px solid #f5f5f5':'none' }}>
               <div>
                 <p style={{ fontSize: 13.5, fontWeight: 700, color: colors.dark }}>{v.company_name}</p>
                 <p style={{ fontSize: 11, color: colors.faint }}>{v.email}</p>
@@ -334,15 +529,237 @@ export function AdminVendors() {
               <span style={{ fontSize: 13, color: colors.mid }}>{v.package_count || 0}</span>
               <span style={{ fontSize: 13, color: colors.mid }}>{v.booking_count || 0}</span>
               <span style={{ fontSize: 13, fontWeight: 700, color: colors.dark }}>£{Math.round(Number(v.total_revenue||0)/1000)}K</span>
-              <span style={{ fontSize: 11.5, fontWeight: 700, color: v.onboarding_completed ? colors.green : colors.amber, background: v.onboarding_completed ? colors.greenLight : '#FEF3C7', borderRadius: 6, padding: '2px 8px', display: 'inline-block' }}>{v.onboarding_completed ? 'Complete' : 'Incomplete'}</span>
-              <Badge status={v.verified ? 'verified' : 'unverified'}/>
+              <span style={{ fontSize: 11.5, fontWeight: 700, color: v.onboarding_completed ? colors.green : '#b45309', background: v.onboarding_completed ? colors.greenLight : '#FEF3C7', borderRadius: 6, padding: '2px 8px', display: 'inline-block' }}>{v.onboarding_completed ? 'Complete' : 'Incomplete'}</span>
+              <Badge status={v.verified ? 'verified' : v.rejected ? 'rejected' : 'unverified'}/>
               <div style={{ display: 'flex', gap: 5 }}>
-                <button onClick={() => toggleVerify(v.id, v.verified)} style={{ background: v.verified ? colors.redLight : colors.greenLight, color: v.verified ? colors.red : colors.green, border: 'none', borderRadius: 6, padding: '4px 10px', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', fontFamily: font.body }}>
+                <button onClick={() => setReviewing(v)} style={{ background: colors.dark, color: '#fff', border: 'none', borderRadius: 6, padding: '4px 10px', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', fontFamily: font.body }}>Review</button>
+                <button onClick={() => handleVerify(v.id, !v.verified)} style={{ background: v.verified ? colors.redLight : colors.greenLight, color: v.verified ? colors.red : colors.green, border: 'none', borderRadius: 6, padding: '4px 9px', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', fontFamily: font.body }}>
                   {v.verified ? 'Revoke' : 'Verify'}
                 </button>
               </div>
             </div>
           ))}
+        </div>
+      </div>
+    </AdminLayout>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════
+// 3b. PACKAGES (new tab)
+// ═══════════════════════════════════════════════════════════
+export function AdminPackages() {
+  const [packages,  setPackages]  = useState([]);
+  const [companies, setCompanies] = useState([]);
+  const [loading,   setLoading]   = useState(true);
+  const [filter,    setFilter]    = useState('all');
+  const [search,    setSearch]    = useState('');
+  const [reviewing, setReviewing] = useState(null);
+  const [rejectMode, setRejectMode] = useState(false);
+  const [rejectReason, setRejectReason] = useState('');
+
+  useEffect(() => {
+    Promise.all([
+      api.get('/admin/packages'),
+      api.get('/admin/companies'),
+    ]).then(([p, c]) => {
+      setPackages(p.data);
+      setCompanies(c.data);
+    }).finally(() => setLoading(false));
+  }, []);
+
+  const updatePkg = async (id, fields) => {
+    await api.patch(`/packages/${id}`, fields);
+    setPackages(ps => ps.map(p => p.id === id ? { ...p, ...fields } : p));
+  };
+
+  const rejectPkg = async (id, reason) => {
+    await api.patch(`/packages/${id}`, { admin_status: 'rejected', admin_rejection_reason: reason });
+    setPackages(ps => ps.map(p => p.id === id ? { ...p, admin_status: 'rejected', admin_rejection_reason: reason } : p));
+    setReviewing(null); setRejectMode(false); setRejectReason('');
+  };
+
+  const toggleAccess = async (pkgId, companyId, allowed) => {
+    await api.patch(`/admin/packages/${pkgId}/access`, { company_id: companyId, allowed });
+    setPackages(ps => ps.map(p => {
+      if (p.id !== pkgId) return p;
+      const existing = p.employer_access || [];
+      const idx = existing.findIndex(a => a.company_id === companyId);
+      const updated = idx >= 0
+        ? existing.map((a,i) => i === idx ? { ...a, allowed } : a)
+        : [...existing, { company_id: companyId, allowed }];
+      return { ...p, employer_access: updated };
+    }));
+  };
+
+  const filtered = packages.filter(p => {
+    const s = p.admin_status || 'pending';
+    const matchFilter = filter === 'all' || s === filter;
+    const q = search.toLowerCase();
+    return matchFilter && (!q || p.title?.toLowerCase().includes(q) || p.vendor_name?.toLowerCase().includes(q) || p.destination?.toLowerCase().includes(q));
+  });
+
+  const counts = {
+    all: packages.length,
+    pending:  packages.filter(p => (p.admin_status||'pending') === 'pending').length,
+    approved: packages.filter(p => p.admin_status === 'approved').length,
+    rejected: packages.filter(p => p.admin_status === 'rejected').length,
+  };
+
+  const STATUS_BADGE = { pending: {c:'#b45309',bg:'#FEF3C7'}, approved: {c:colors.green,bg:colors.greenLight}, rejected: {c:colors.red,bg:colors.redLight} };
+
+  return (
+    <AdminLayout active="packages">
+      {/* Package review modal */}
+      {reviewing && (
+        <Modal title="Package review" onClose={() => { setReviewing(null); setRejectMode(false); setRejectReason(''); }} width={620}>
+          {/* Image/emoji header */}
+          <div style={{ height: 180, background: `linear-gradient(135deg, #1C1916, #2A2320)`, borderRadius: 12, overflow: 'hidden', marginBottom: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+            {reviewing.image_url
+              ? <img src={reviewing.image_url} alt={reviewing.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }}/>
+              : <span style={{ fontSize: 64 }}>{reviewing.emoji || '🌍'}</span>
+            }
+            <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.5) 0%, transparent 60%)' }}/>
+            <div style={{ position: 'absolute', bottom: 14, left: 16 }}>
+              <p style={{ fontFamily: font.display, fontSize: 20, fontWeight: 700, fontStyle: 'italic', color: '#fff' }}>{reviewing.title}</p>
+              <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.7)' }}>{reviewing.vendor_name} · {reviewing.destination}</p>
+            </div>
+            <div style={{ position: 'absolute', top: 12, right: 12 }}>
+              <span style={{ fontSize: 11.5, fontWeight: 700, color: STATUS_BADGE[reviewing.admin_status||'pending'].c, background: STATUS_BADGE[reviewing.admin_status||'pending'].bg, borderRadius: 8, padding: '4px 10px' }}>
+                {(reviewing.admin_status||'pending').charAt(0).toUpperCase()+(reviewing.admin_status||'pending').slice(1)}
+              </span>
+            </div>
+          </div>
+
+          {/* Details grid */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10, marginBottom: 14 }}>
+            {[
+              { label: 'Category',    value: reviewing.category?.replace(/_/g,' ') },
+              { label: 'Duration',    value: reviewing.duration },
+              { label: 'Price',       value: `£${Number(reviewing.price_gbp||0).toLocaleString()}` },
+              { label: 'Destination', value: reviewing.destination },
+              { label: 'Vendor',      value: reviewing.vendor_name },
+              { label: 'Status',      value: reviewing.status },
+            ].map((d,i) => (
+              <div key={i} style={{ background: '#F7F5F2', borderRadius: 8, padding: '9px 12px' }}>
+                <p style={{ fontSize: 10, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 2 }}>{d.label}</p>
+                <p style={{ fontSize: 13, fontWeight: 600, color: colors.dark, textTransform: 'capitalize' }}>{d.value || '—'}</p>
+              </div>
+            ))}
+          </div>
+
+          {reviewing.description && (
+            <div style={{ background: '#F7F5F2', borderRadius: 10, padding: '12px 14px', marginBottom: 14 }}>
+              <p style={{ fontSize: 10.5, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>Description</p>
+              <p style={{ fontSize: 13, color: colors.mid, lineHeight: 1.7 }}>{reviewing.description}</p>
+            </div>
+          )}
+
+          {/* Employer access */}
+          {companies.length > 0 && (
+            <div style={{ background: '#F7F5F2', borderRadius: 10, padding: '12px 14px', marginBottom: 14 }}>
+              <p style={{ fontSize: 10.5, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 8 }}>Restrict to specific employers</p>
+              <p style={{ fontSize: 12, color: colors.muted, marginBottom: 10 }}>By default packages are visible to all employers. Toggle off to restrict.</p>
+              {companies.map(co => {
+                const access = reviewing.employer_access?.find(a => a.company_id === co.id);
+                const allowed = access ? access.allowed : true;
+                return (
+                  <div key={co.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                    <span style={{ fontSize: 13.5, color: colors.dark }}>{co.name}</span>
+                    <div onClick={() => toggleAccess(reviewing.id, co.id, !allowed)}
+                      style={{ width: 42, height: 22, borderRadius: 11, background: allowed ? colors.green : '#ddd', cursor: 'pointer', position: 'relative', transition: 'background 0.2s' }}>
+                      <div style={{ position: 'absolute', top: 2, left: allowed ? 21 : 2, width: 18, height: 18, borderRadius: '50%', background: '#fff', transition: 'left 0.2s' }}/>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Rejection reason */}
+          {rejectMode && (
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ fontSize: 11, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.07em', display: 'block', marginBottom: 6 }}>Rejection reason <span style={{ color: colors.red }}>*</span></label>
+              <textarea value={rejectReason} onChange={e => setRejectReason(e.target.value)}
+                placeholder="Explain why this package is being rejected. This will be sent to the vendor."
+                style={{ width: '100%', border: `1.5px solid ${!rejectReason.trim() ? colors.red : '#eee'}`, borderRadius: 10, padding: '10px 14px', fontSize: 13.5, color: colors.dark, fontFamily: font.body, outline: 'none', resize: 'vertical', minHeight: 80 }}/>
+            </div>
+          )}
+
+          <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+            {rejectMode ? (
+              <>
+                <button onClick={() => setRejectMode(false)} style={{ background: '#F7F5F2', color: colors.mid, border: '1px solid #eee', borderRadius: 10, padding: '10px 18px', fontSize: 13.5, fontWeight: 700, cursor: 'pointer', fontFamily: font.body }}>← Back</button>
+                <button onClick={() => rejectPkg(reviewing.id, rejectReason)} disabled={!rejectReason.trim()}
+                  style={{ background: colors.red, color: '#fff', border: 'none', borderRadius: 10, padding: '10px 20px', fontSize: 13.5, fontWeight: 700, cursor: 'pointer', fontFamily: font.body }}>
+                  Confirm rejection
+                </button>
+              </>
+            ) : (
+              <>
+                <Button variant="secondary" onClick={() => setReviewing(null)}>Close</Button>
+                {(reviewing.admin_status||'pending') !== 'rejected' && (
+                  <button onClick={() => setRejectMode(true)}
+                    style={{ background: colors.redLight, color: colors.red, border: 'none', borderRadius: 10, padding: '10px 18px', fontSize: 13.5, fontWeight: 700, cursor: 'pointer', fontFamily: font.body }}>
+                    Reject
+                  </button>
+                )}
+                {(reviewing.admin_status||'pending') !== 'approved' && (
+                  <button onClick={() => { updatePkg(reviewing.id, { admin_status: 'approved' }); setReviewing(null); }}
+                    style={{ background: colors.green, color: '#fff', border: 'none', borderRadius: 10, padding: '10px 20px', fontSize: 13.5, fontWeight: 700, cursor: 'pointer', fontFamily: font.body }}>
+                    ✓ Approve
+                  </button>
+                )}
+              </>
+            )}
+          </div>
+        </Modal>
+      )}
+
+      <div style={{ background: '#fff', borderBottom: '1px solid #eee', padding: '24px 36px' }}>
+        <p style={{ fontSize: 10.5, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 3 }}>Super Admin</p>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 16 }}>
+          <h1 style={{ fontFamily: font.display, fontSize: 30, color: colors.dark, fontWeight: 700, fontStyle: 'italic' }}>All packages</h1>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {Object.entries(counts).map(([f, count]) => (
+              <button key={f} onClick={() => setFilter(f)} style={{ padding: '6px 14px', borderRadius: 20, border: `1.5px solid ${filter===f?colors.orange:'#eee'}`, background: filter===f?colors.orangeLight:'#fff', color: filter===f?colors.orange:colors.mid, fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: font.body, textTransform: 'capitalize' }}>
+                {f} ({count})
+              </button>
+            ))}
+          </div>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#F7F5F2', border: '1px solid #eee', borderRadius: 10, padding: '8px 14px', maxWidth: 420 }}>
+          <svg width="14" height="14" fill="none" stroke={colors.faint} strokeWidth="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by title, vendor or destination…" style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: 13.5, color: colors.dark, width: '100%', fontFamily: font.body }}/>
+        </div>
+      </div>
+
+      <div style={{ padding: '24px 36px' }}>
+        <div className="table-wrap">
+          <TableHeader cols={['Package','Vendor','Category','Price','Status','Admin','Actions']} template="2fr 1.4fr 1fr 0.9fr 0.9fr 1fr 1.4fr"/>
+          {loading ? <Spinner/> : filtered.length === 0 ? (
+            <EmptyState emoji="📦" title="No packages" subtitle="Vendor packages appear here once added"/>
+          ) : filtered.map((p, i) => {
+            const sb = STATUS_BADGE[p.admin_status||'pending'];
+            return (
+              <div key={p.id} className="row-hover" style={{ display: 'grid', gridTemplateColumns: '2fr 1.4fr 1fr 0.9fr 0.9fr 1fr 1.4fr', padding: '11px 24px', alignItems: 'center', borderBottom: i<filtered.length-1?'1px solid #f5f5f5':'none' }}>
+                <div>
+                  <p style={{ fontSize: 13.5, fontWeight: 700, color: colors.dark }}>{p.emoji} {p.title}</p>
+                  <p style={{ fontSize: 11, color: colors.faint }}>{p.destination}</p>
+                </div>
+                <span style={{ fontSize: 12.5, color: colors.mid }}>{p.vendor_name}</span>
+                <span style={{ fontSize: 12.5, color: colors.mid, textTransform: 'capitalize' }}>{p.category?.replace(/_/g,' ')}</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: colors.dark }}>£{Number(p.price_gbp||0).toLocaleString()}</span>
+                <span style={{ fontSize: 11.5, fontWeight: 700, color: p.status === 'live' ? colors.green : colors.muted, background: p.status === 'live' ? colors.greenLight : '#F7F5F2', borderRadius: 6, padding: '2px 8px', display: 'inline-block', textTransform: 'capitalize' }}>{p.status}</span>
+                <span style={{ fontSize: 11.5, fontWeight: 700, color: sb.c, background: sb.bg, borderRadius: 6, padding: '2px 8px', display: 'inline-block', textTransform: 'capitalize' }}>{p.admin_status||'pending'}</span>
+                <div style={{ display: 'flex', gap: 5 }}>
+                  <button onClick={() => setReviewing(p)} style={{ background: colors.dark, color: '#fff', border: 'none', borderRadius: 6, padding: '4px 10px', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', fontFamily: font.body }}>Review</button>
+                  {(p.admin_status||'pending') !== 'approved' && <button onClick={() => updatePkg(p.id, { admin_status: 'approved' })} style={{ background: colors.greenLight, color: colors.green, border: 'none', borderRadius: 6, padding: '4px 9px', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', fontFamily: font.body }}>Approve</button>}
+                  {(p.admin_status||'pending') !== 'rejected' && <button onClick={() => { setReviewing(p); setRejectMode(true); }} style={{ background: colors.redLight, color: colors.red, border: 'none', borderRadius: 6, padding: '4px 9px', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', fontFamily: font.body }}>Reject</button>}
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
     </AdminLayout>
