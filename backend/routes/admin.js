@@ -245,7 +245,7 @@ router.get('/companies/:id/employees', auth, requireAdmin, async (req, res) => {
              ep.department, ep.job_title, ep.location, ep.salary_band,
              ep.spend_limit_gbp, ep.sabba_points, ep.avatar_url,
              ep.employee_number, ep.gl_location, ep.employment_category,
-             ep.assignment_status, ep.leave_type, ep.first_name, ep.last_name
+             ep.assignment_status, ep.leave_type
       FROM users u
       LEFT JOIN employee_profiles ep ON u.id = ep.user_id
       WHERE u.company_id = $1 AND u.role = 'employee'

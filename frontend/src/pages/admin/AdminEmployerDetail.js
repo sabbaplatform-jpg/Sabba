@@ -210,14 +210,17 @@ export function AdminEmployerDetail() {
   const fetchAll = useCallback(async () => {
     setLoading(true);
     try {
-      const [co, emps, bkgs] = await Promise.all([
-        api.get('/admin/companies').then(r => r.data.find(c=>c.id===id)),
-        api.get(`/admin/companies/${id}/employees`),
-        api.get(`/admin/companies/${id}/bookings`),
-      ]);
-      setCompany(co || null);
-      setEmployees(emps.data || []);
-      setBookings(bkgs.data || []);
+      const companies = await api.get('/admin/companies').then(r => r.data);
+      const co = companies.find(c => c.id === id) || null;
+      setCompany(co);
+      if (co) {
+        const [emps, bkgs] = await Promise.all([
+          api.get(`/admin/companies/${id}/employees`).catch(() => ({ data: [] })),
+          api.get(`/admin/companies/${id}/bookings`).catch(() => ({ data: [] })),
+        ]);
+        setEmployees(emps.data || []);
+        setBookings(bkgs.data || []);
+      }
     } catch {}
     finally { setLoading(false); }
   }, [id]);
