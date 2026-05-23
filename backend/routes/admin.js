@@ -236,4 +236,153 @@ router.patch('/feature-flags/:name', auth, requireAdmin, async (req, res) => {
   }
 });
 
+
+// ── GET /api/admin/companies/:id/employees ────────────────────
+router.get('/companies/:id/employees', auth, requireAdmin, async (req, res) => {
+  try {
+    const result = await db.query(`
+      SELECT u.id, u.email, u.full_name, u.created_at,
+             ep.department, ep.job_title, ep.location, ep.salary_band,
+             ep.spend_limit_gbp, ep.sabba_points, ep.avatar_url,
+             ep.employee_number, ep.gl_location, ep.employment_category,
+             ep.assignment_status, ep.leave_type, ep.first_name, ep.last_name
+      FROM users u
+      LEFT JOIN employee_profiles ep ON u.id = ep.user_id
+      WHERE u.company_id = $1 AND u.role = 'employee'
+      ORDER BY u.full_name
+    `, [req.params.id]);
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── GET /api/admin/companies/:id/bookings ─────────────────────
+router.get('/companies/:id/bookings', auth, requireAdmin, async (req, res) => {
+  try {
+    const result = await db.query(`
+      SELECT b.*,
+             p.title as package_title, p.destination, p.emoji, p.category,
+             u.full_name as employee_name, u.email as employee_email,
+             v.company_name as vendor_name
+      FROM bookings b
+      JOIN packages  p ON b.package_id  = p.id
+      JOIN users     u ON b.employee_id = u.id
+      JOIN vendors   v ON p.vendor_id   = v.id
+      WHERE b.company_id = $1
+      ORDER BY b.created_at DESC
+    `, [req.params.id]);
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── POST /api/admin/companies/:id/employees/import ────────────
+router.post('/companies/:id/employees/import', auth, requireAdmin, async (req, res) => {
+  try {
+    const { employees } = req.body;
+    if (!Array.isArray(employees) || !employees.length) {
+      return res.status(400).json({ error: 'No employee data provided' });
+    }
+
+    const bcrypt  = require('bcryptjs');
+    const defPw   = await bcrypt.hash('Welcome2Sabba!', 10);
+    const results = { created: 0, skipped: 0, errors: [] };
+    const year    = new Date().getFullYear();
+    const companyId = req.params.id;
+
+    for (const emp of employees) {
+      const email     = emp.email?.trim().toLowerCase();
+      const firstName = emp.first_name?.trim() || emp.full_name?.split(' ')[0] || '';
+      const lastName  = emp.last_name?.trim()  || emp.full_name?.split(' ').slice(1).join(' ') || '';
+      const fullName  = `${firstName} ${lastName}`.trim();
+      if (!email || !fullName) { results.errors.push({ email: email||'(missing)', reason: 'Missing email or name' }); continue; }
+
+      try {
+        const existing = await db.query('SELECT id FROM users WHERE email=$1', [email]);
+        if (existing.rows.length) { results.skipped++; continue; }
+
+        const ur = await db.query(
+          `INSERT INTO users (email, full_name, first_name, last_name, role, company_id, password_hash)
+           VALUES ($1,$2,$3,$4,'employee',$5,$6) RETURNING id`,
+          [email, fullName, firstName, lastName, companyId, defPw]
+        );
+        const uid = ur.rows[0].id;
+        const allowance = emp.spend_limit_gbp ? parseFloat(emp.spend_limit_gbp) : 5000;
+
+        await db.query(`
+          INSERT INTO employee_profiles
+            (user_id, department, job_title, location, salary_band, spend_limit_gbp,
+             gl_location, employee_number, employment_category, assignment_status, leave_type, sabba_points)
+          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,0) ON CONFLICT (user_id) DO NOTHING
+        `, [uid, emp.department||null, emp.job_title||null, emp.location||null,
+            emp.salary_band||null, allowance, emp.gl_location||null, emp.employee_number||null,
+            emp.employment_category||'Permanent', emp.assignment_status||'Active', emp.leave_type||'Both']);
+
+        await db.query(
+          `INSERT INTO travel_allowances (user_id, company_id, year, total_allowance_gbp)
+           VALUES ($1,$2,$3,$4) ON CONFLICT (user_id, year) DO NOTHING`,
+          [uid, companyId, year, allowance]
+        );
+        results.created++;
+      } catch (err) {
+        results.errors.push({ email, reason: err.message });
+      }
+    }
+    res.json(results);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── PATCH /api/admin/employees/:id ───────────────────────────
+// Super admin edits any employee directly
+router.patch('/employees/:id', auth, requireAdmin, async (req, res) => {
+  try {
+    const {
+      full_name, first_name, last_name, department, job_title, location,
+      salary_band, spend_limit_gbp, employment_category,
+      assignment_status, leave_type, gl_location, employee_number
+    } = req.body;
+
+    if (full_name || first_name || last_name) {
+      const name = full_name || `${first_name||''} ${last_name||''}`.trim();
+      await db.query(
+        'UPDATE users SET full_name=$1, first_name=$2, last_name=$3 WHERE id=$4',
+        [name, first_name||null, last_name||null, req.params.id]
+      );
+    }
+
+    await db.query(`
+      INSERT INTO employee_profiles
+        (user_id, department, job_title, location, salary_band, spend_limit_gbp,
+         employment_category, assignment_status, leave_type, gl_location, employee_number)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+      ON CONFLICT (user_id) DO UPDATE SET
+        department          = COALESCE(EXCLUDED.department,          employee_profiles.department),
+        job_title           = COALESCE(EXCLUDED.job_title,           employee_profiles.job_title),
+        location            = COALESCE(EXCLUDED.location,            employee_profiles.location),
+        salary_band         = COALESCE(EXCLUDED.salary_band,         employee_profiles.salary_band),
+        spend_limit_gbp     = COALESCE(EXCLUDED.spend_limit_gbp,     employee_profiles.spend_limit_gbp),
+        employment_category = COALESCE(EXCLUDED.employment_category, employee_profiles.employment_category),
+        assignment_status   = COALESCE(EXCLUDED.assignment_status,   employee_profiles.assignment_status),
+        leave_type          = COALESCE(EXCLUDED.leave_type,          employee_profiles.leave_type),
+        gl_location         = COALESCE(EXCLUDED.gl_location,         employee_profiles.gl_location),
+        employee_number     = COALESCE(EXCLUDED.employee_number,     employee_profiles.employee_number)
+    `, [req.params.id, department, job_title, location, salary_band,
+        spend_limit_gbp ? parseFloat(spend_limit_gbp) : null,
+        employment_category, assignment_status, leave_type, gl_location, employee_number]);
+
+    const result = await db.query(
+      `SELECT u.*, ep.* FROM users u
+       LEFT JOIN employee_profiles ep ON ep.user_id = u.id WHERE u.id=$1`,
+      [req.params.id]
+    );
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;

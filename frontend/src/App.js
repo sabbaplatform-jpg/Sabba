@@ -23,6 +23,7 @@ import { EmployeeHome } from './pages/employee/EmployeeHome';
 import MyBooking from './pages/employee/MyBooking';
 import { EmployeeProfile } from './pages/employee/EmployeeProfile';
 import { AdminDashboard, AdminEmployers, AdminVendors, AdminAnalytics, AdminBilling, AdminFeatureFlags, AdminAuditLog } from './pages/admin/AdminPages';
+import { AdminEmployerDetail } from './pages/admin/AdminEmployerDetail';
 import { Cart, CheckoutSuccess } from './pages/employee/Cart';
 import Allowance from './pages/employee/Allowance';
 
@@ -112,6 +113,7 @@ function AppRoutes() {
           <Route path="/admin/billing"    element={<RequireAdmin><AdminBilling/></RequireAdmin>}/>
           <Route path="/admin/flags"      element={<RequireAdmin><AdminFeatureFlags/></RequireAdmin>}/>
           <Route path="/admin/audit"      element={<RequireAdmin><AdminAuditLog/></RequireAdmin>}/>
+          <Route path="/admin/employers/:id" element={<RequireAdmin><AdminEmployerDetail/></RequireAdmin>}/>
         </Routes>
       </AppLayout>
     </div>

@@ -260,7 +260,7 @@ export function AdminEmployers() {
               <span style={{ fontSize: 13, fontWeight: 700, color: colors.dark }}>£{Math.round(Number(co.total_gmv || 0) / 1000)}K</span>
               <span style={{ fontSize: 12, fontWeight: 700, color: STATUS_COLORS[co.status] || colors.green, background: '#F7F5F2', borderRadius: 6, padding: '3px 8px', display: 'inline-block', textTransform: 'capitalize' }}>{co.status || 'active'}</span>
               <div style={{ display: 'flex', gap: 5 }}>
-                <button onClick={() => navigate(`/admin/employers/${co.id}`)} style={{ background: '#F7F5F2', color: colors.mid, border: '1px solid #eee', borderRadius: 6, padding: '4px 9px', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', fontFamily: font.body }}>View</button>
+                <button onClick={() => navigate(`/admin/employers/${co.id}`)} style={{ background: colors.dark, color: '#fff', border: 'none', borderRadius: 6, padding: '4px 10px', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', fontFamily: font.body }}>View →</button>
                 <button onClick={() => impersonate(co)} disabled={impersonating === co.id} style={{ background: colors.orangeLight, color: colors.orange, border: 'none', borderRadius: 6, padding: '4px 9px', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', fontFamily: font.body }}>Login as HR</button>
                 {(co.status === 'active' || !co.status) ? (
                   <button onClick={() => updateStatus(co.id, 'suspended')} style={{ background: colors.redLight, color: colors.red, border: 'none', borderRadius: 6, padding: '4px 9px', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', fontFamily: font.body }}>Suspend</button>
