@@ -60,62 +60,71 @@ function AppRoutes() {
   return (
     <div style={{ fontFamily: font.body }}>
       <style>{globalStyles}</style>
-      {user && <Nav/>}
-      <AppLayout>
-        <Routes>
-          {/* Public */}
-          <Route path="/login"              element={<Login/>}/>
-          <Route path="/register"           element={<Register/>}/>
-          <Route path="/contact"            element={<Contact/>}/>
-          <Route path="/faq"                element={<FAQ/>}/>
-          <Route path="/vendor/onboarding"  element={<VendorOnboarding/>}/>
-          <Route path="/vendor/pending"     element={<VendorPendingState/>}/>
+      <Routes>
+        {/* ── Admin routes — render without Nav/Footer ── */}
+        <Route path="/admin"               element={<RequireAdmin><AdminDashboard/></RequireAdmin>}/>
+        <Route path="/admin/employers"     element={<RequireAdmin><AdminEmployers/></RequireAdmin>}/>
+        <Route path="/admin/employers/:id" element={<RequireAdmin><AdminEmployerDetail/></RequireAdmin>}/>
+        <Route path="/admin/vendors"       element={<RequireAdmin><AdminVendors/></RequireAdmin>}/>
+        <Route path="/admin/analytics"     element={<RequireAdmin><AdminAnalytics/></RequireAdmin>}/>
+        <Route path="/admin/billing"       element={<RequireAdmin><AdminBilling/></RequireAdmin>}/>
+        <Route path="/admin/flags"         element={<RequireAdmin><AdminFeatureFlags/></RequireAdmin>}/>
+        <Route path="/admin/audit"         element={<RequireAdmin><AdminAuditLog/></RequireAdmin>}/>
 
-          {/* HR */}
-          <Route path="/hr"              element={<RequireAuth role="hr"><HRDashboard/></RequireAuth>}/>
-          <Route path="/hr/employees"    element={<RequireAuth role="hr"><HREmployees/></RequireAuth>}/>
-          <Route path="/hr/profile"      element={<RequireAuth role="hr"><HRProfile/></RequireAuth>}/>
-          <Route path="/hr/adventures"   element={<RequireAuth role="hr"><HRAdventures/></RequireAuth>}/>
-          <Route path="/hr/marketplace"  element={<RequireAuth role="hr"><HRMarketplace/></RequireAuth>}/>
-          <Route path="/hr/analytics"    element={<RequireAuth role="hr"><HRAnalytics/></RequireAuth>}/>
-          <Route path="/hr/integrations" element={<RequireAuth role="hr"><HRIntegrations/></RequireAuth>}/>
+        {/* ── All other routes — with Nav/Footer ── */}
+        <Route path="*" element={
+          <>
+            {user && <Nav/>}
+            <AppLayout>
+              <Routes>
+                {/* Public */}
+                <Route path="/login"              element={<Login/>}/>
+                <Route path="/register"           element={<Register/>}/>
+                <Route path="/contact"            element={<Contact/>}/>
+                <Route path="/faq"                element={<FAQ/>}/>
+                <Route path="/vendor/onboarding"  element={<VendorOnboarding/>}/>
+                <Route path="/vendor/pending"     element={<VendorPendingState/>}/>
 
-          {/* Employee */}
-          <Route path="/home"             element={<RequireAuth role="employee"><EmployeeHome/></RequireAuth>}/>
-          <Route path="/my-booking"       element={<RequireAuth role="employee"><MyBooking/></RequireAuth>}/>
-          <Route path="/profile"          element={<RequireAuth role="employee"><EmployeeProfile/></RequireAuth>}/>
-          <Route path="/cart"             element={<RequireAuth role="employee"><Cart/></RequireAuth>}/>
-          <Route path="/allowance"        element={<RequireAuth role="employee"><Allowance/></RequireAuth>}/>
-          <Route path="/checkout-success" element={<RequireAuth role="employee"><CheckoutSuccess/></RequireAuth>}/>
+                {/* HR */}
+                <Route path="/hr"              element={<RequireAuth role="hr"><HRDashboard/></RequireAuth>}/>
+                <Route path="/hr/employees"    element={<RequireAuth role="hr"><HREmployees/></RequireAuth>}/>
+                <Route path="/hr/profile"      element={<RequireAuth role="hr"><HRProfile/></RequireAuth>}/>
+                <Route path="/hr/adventures"   element={<RequireAuth role="hr"><HRAdventures/></RequireAuth>}/>
+                <Route path="/hr/marketplace"  element={<RequireAuth role="hr"><HRMarketplace/></RequireAuth>}/>
+                <Route path="/hr/analytics"    element={<RequireAuth role="hr"><HRAnalytics/></RequireAuth>}/>
+                <Route path="/hr/integrations" element={<RequireAuth role="hr"><HRIntegrations/></RequireAuth>}/>
 
-          {/* Vendor */}
-          <Route path="/vendor"          element={<RequireAuth role="vendor"><VendorDashboard/></RequireAuth>}/>
-          <Route path="/vendor/packages" element={<RequireAuth role="vendor"><VendorPackages/></RequireAuth>}/>
-          <Route path="/vendor/bookings" element={<RequireAuth role="vendor"><VendorBookings/></RequireAuth>}/>
-          <Route path="/vendor/earnings" element={<RequireAuth role="vendor"><VendorEarnings/></RequireAuth>}/>
-          <Route path="/vendor/profile"  element={<RequireAuth role="vendor"><VendorProfile/></RequireAuth>}/>
+                {/* Employee */}
+                <Route path="/home"             element={<RequireAuth role="employee"><EmployeeHome/></RequireAuth>}/>
+                <Route path="/my-booking"       element={<RequireAuth role="employee"><MyBooking/></RequireAuth>}/>
+                <Route path="/profile"          element={<RequireAuth role="employee"><EmployeeProfile/></RequireAuth>}/>
+                <Route path="/cart"             element={<RequireAuth role="employee"><Cart/></RequireAuth>}/>
+                <Route path="/allowance"        element={<RequireAuth role="employee"><Allowance/></RequireAuth>}/>
+                <Route path="/checkout-success" element={<RequireAuth role="employee"><CheckoutSuccess/></RequireAuth>}/>
 
-          {/* Messages — all roles */}
-          <Route path="/messages"            element={<RequireAuth><Messages/></RequireAuth>}/>
-          <Route path="/messages/new"        element={<RequireAuth><Messages/></RequireAuth>}/>
-          <Route path="/messages/:threadId"  element={<RequireAuth><Messages/></RequireAuth>}/>
+                {/* Vendor */}
+                <Route path="/vendor"          element={<RequireAuth role="vendor"><VendorDashboard/></RequireAuth>}/>
+                <Route path="/vendor/packages" element={<RequireAuth role="vendor"><VendorPackages/></RequireAuth>}/>
+                <Route path="/vendor/bookings" element={<RequireAuth role="vendor"><VendorBookings/></RequireAuth>}/>
+                <Route path="/vendor/earnings" element={<RequireAuth role="vendor"><VendorEarnings/></RequireAuth>}/>
+                <Route path="/vendor/profile"  element={<RequireAuth role="vendor"><VendorProfile/></RequireAuth>}/>
 
-          {/* Shared */}
-          <Route path="/marketplace" element={<RequireAuth><Marketplace/></RequireAuth>}/>
-          <Route path="/package/:id" element={<RequireAuth><PackageDetail/></RequireAuth>}/>
+                {/* Messages */}
+                <Route path="/messages"           element={<RequireAuth><Messages/></RequireAuth>}/>
+                <Route path="/messages/new"        element={<RequireAuth><Messages/></RequireAuth>}/>
+                <Route path="/messages/:threadId"  element={<RequireAuth><Messages/></RequireAuth>}/>
 
-          <Route path="/"  element={<RoleRedirect/>}/>
-          <Route path="*"  element={<NotFound/>}/>
-          <Route path="/admin"          element={<RequireAdmin><AdminDashboard/></RequireAdmin>}/>
-          <Route path="/admin/employers"  element={<RequireAdmin><AdminEmployers/></RequireAdmin>}/>
-          <Route path="/admin/vendors"    element={<RequireAdmin><AdminVendors/></RequireAdmin>}/>
-          <Route path="/admin/analytics"  element={<RequireAdmin><AdminAnalytics/></RequireAdmin>}/>
-          <Route path="/admin/billing"    element={<RequireAdmin><AdminBilling/></RequireAdmin>}/>
-          <Route path="/admin/flags"      element={<RequireAdmin><AdminFeatureFlags/></RequireAdmin>}/>
-          <Route path="/admin/audit"      element={<RequireAdmin><AdminAuditLog/></RequireAdmin>}/>
-          <Route path="/admin/employers/:id" element={<RequireAdmin><AdminEmployerDetail/></RequireAdmin>}/>
-        </Routes>
-      </AppLayout>
+                {/* Shared */}
+                <Route path="/marketplace" element={<RequireAuth><Marketplace/></RequireAuth>}/>
+                <Route path="/package/:id" element={<RequireAuth><PackageDetail/></RequireAuth>}/>
+
+                <Route path="/"  element={<RoleRedirect/>}/>
+                <Route path="*"  element={<NotFound/>}/>
+              </Routes>
+            </AppLayout>
+          </>
+        }/>
+      </Routes>
     </div>
   );
 }
