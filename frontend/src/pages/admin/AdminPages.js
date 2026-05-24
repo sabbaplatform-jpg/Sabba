@@ -15,6 +15,7 @@ function AdminNav({ active }) {
     { id: 'vendors',    label: 'Vendors',         icon: '🏪', path: '/admin/vendors' },
     { id: 'packages',   label: 'Packages',         icon: '📦', path: '/admin/packages' },
     { id: 'integrations', label: 'Integrations',   icon: '🔌', path: '/admin/integrations' },
+    { id: 'settings',     label: 'Settings & team', icon: '⚙️', path: '/admin/settings' },
     { id: 'analytics',  label: 'Analytics',       icon: '📊', path: '/admin/analytics' },
     { id: 'billing',    label: 'Billing',          icon: '💳', path: '/admin/billing' },
     { id: 'flags',      label: 'Feature flags',   icon: '🚩', path: '/admin/flags' },
@@ -1924,6 +1925,265 @@ export function AdminIntegrations() {
             </div>
           </div>
         )}
+      </div>
+    </AdminLayout>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════
+// SETTINGS & TEAM — Add super admins + impersonate HR
+// ═══════════════════════════════════════════════════════════
+export function AdminSettings() {
+  const { user: currentUser } = useAuth();
+  const navigate = useNavigate();
+
+  // Super admin team state
+  const [admins,       setAdmins]       = useState([]);
+  const [companies,    setCompanies]    = useState([]);
+  const [loadingAdmins,setLoadingAdmins]= useState(true);
+
+  // Add admin form
+  const [showAddAdmin, setShowAddAdmin] = useState(false);
+  const [addForm,      setAddForm]      = useState({ full_name: '', email: '' });
+  const [addError,     setAddError]     = useState('');
+  const [addSaving,    setAddSaving]    = useState(false);
+  const [addSuccess,   setAddSuccess]   = useState('');
+
+  // Impersonation
+  const [impersSelCompany, setImpersSelCompany] = useState('');
+  const [hrUsers,           setHrUsers]          = useState([]);
+  const [loadingHr,         setLoadingHr]        = useState(false);
+  const [impersonating,     setImpersonating]    = useState(false);
+  const [impersonateResult, setImpersonateResult]= useState(null);
+
+  useEffect(() => {
+    Promise.all([
+      api.get('/admin/team'),
+      api.get('/admin/companies'),
+    ]).then(([t, c]) => {
+      setAdmins(t.data);
+      setCompanies(c.data);
+      if (c.data.length > 0) setImpersSelCompany(c.data[0].id);
+    }).finally(() => setLoadingAdmins(false));
+  }, []);
+
+  // Load HR users when employer changes
+  useEffect(() => {
+    if (!impersSelCompany) return;
+    setLoadingHr(true); setHrUsers([]); setImpersonateResult(null);
+    api.get(`/admin/companies/${impersSelCompany}/hr-users`)
+      .then(r => setHrUsers(r.data))
+      .catch(() => setHrUsers([]))
+      .finally(() => setLoadingHr(false));
+  }, [impersSelCompany]);
+
+  const addAdmin = async () => {
+    if (!addForm.full_name || !addForm.email) { setAddError('Name and email are required'); return; }
+    setAddSaving(true); setAddError('');
+    try {
+      const { data } = await api.post('/admin/team', addForm);
+      setAdmins(a => [...a, data]);
+      setAddSuccess(`Super admin created. Temp password: Sabba@Admin2026!`);
+      setAddForm({ full_name: '', email: '' });
+      setTimeout(() => setAddSuccess(''), 8000);
+    } catch (err) {
+      setAddError(err.response?.data?.error || 'Failed to create admin');
+    } finally {
+      setAddSaving(false);
+    }
+  };
+
+  const deactivateAdmin = async (id) => {
+    if (!window.confirm('Deactivate this super admin?')) return;
+    await api.patch(`/admin/team/${id}`, { active: false });
+    setAdmins(a => a.map(x => x.id === id ? { ...x, active: false } : x));
+  };
+
+  const impersonate = async (hrUser) => {
+    setImpersonating(true); setImpersonateResult(null);
+    try {
+      const { data } = await api.post('/admin/impersonate', { user_id: hrUser.id });
+      setImpersonateResult({ success: true, user: hrUser, token: data.token });
+    } catch (err) {
+      setImpersonateResult({ success: false, message: err.response?.data?.error || 'Failed to impersonate' });
+    } finally {
+      setImpersonating(false);
+    }
+  };
+
+  const launchImpersonation = (token, user) => {
+    // Store the impersonation token separately so we can restore the admin session
+    const adminToken = localStorage.getItem('sabba_token');
+    sessionStorage.setItem('sabba_admin_token', adminToken);
+    sessionStorage.setItem('sabba_impersonating', JSON.stringify({ name: user.full_name, email: user.email, company: user.company_name }));
+    localStorage.setItem('sabba_token', token);
+    navigate('/hr');
+    window.location.reload();
+  };
+
+  const company = companies.find(c => c.id === impersSelCompany);
+
+  return (
+    <AdminLayout active="settings">
+      <div style={{ background: '#fff', borderBottom: '1px solid #eee', padding: '24px 36px' }}>
+        <p style={{ fontSize: 10.5, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 3 }}>Super Admin</p>
+        <h1 style={{ fontFamily: font.display, fontSize: 30, color: colors.dark, fontWeight: 700, fontStyle: 'italic' }}>Settings & team</h1>
+      </div>
+
+      <div style={{ padding: '28px 36px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, alignItems: 'start' }}>
+
+        {/* ── Super admin team ── */}
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <div>
+              <h2 style={{ fontSize: 16, fontWeight: 700, color: colors.dark, marginBottom: 3 }}>Super admin team</h2>
+              <p style={{ fontSize: 13, color: colors.muted }}>Manage who has platform-wide admin access.</p>
+            </div>
+            <button onClick={() => setShowAddAdmin(s => !s)}
+              style={{ background: colors.dark, color: '#fff', border: 'none', borderRadius: 10, padding: '9px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: font.body }}>
+              {showAddAdmin ? 'Cancel' : '+ Add admin'}
+            </button>
+          </div>
+
+          {/* Add admin form */}
+          {showAddAdmin && (
+            <div style={{ background: '#F7F5F2', borderRadius: 12, padding: '16px 18px', marginBottom: 16 }}>
+              <p style={{ fontSize: 13, fontWeight: 700, color: colors.dark, marginBottom: 12 }}>New super admin</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 12 }}>
+                <div>
+                  <label style={lStyle}>Full name</label>
+                  <input value={addForm.full_name} onChange={e => setAddForm(f=>({...f,full_name:e.target.value}))}
+                    placeholder="e.g. Amara Osei" style={iStyle}/>
+                </div>
+                <div>
+                  <label style={lStyle}>Email address</label>
+                  <input type="email" value={addForm.email} onChange={e => setAddForm(f=>({...f,email:e.target.value}))}
+                    placeholder="amara@sabbaplatform.com" style={iStyle}/>
+                </div>
+              </div>
+              {addError   && <p style={{ fontSize: 12.5, color: colors.red, fontWeight: 600, marginBottom: 8 }}>⚠ {addError}</p>}
+              {addSuccess  && (
+                <div style={{ background: colors.greenLight, borderRadius: 8, padding: '10px 12px', marginBottom: 10 }}>
+                  <p style={{ fontSize: 12.5, color: colors.green, fontWeight: 700 }}>✓ {addSuccess}</p>
+                </div>
+              )}
+              <div style={{ display: 'flex', gap: 8, background: colors.orangeLight, borderRadius: 8, padding: '10px 12px', marginBottom: 12 }}>
+                <span style={{ fontSize: 14 }}>🔑</span>
+                <p style={{ fontSize: 12, color: colors.orange }}>Temporary password: <strong>Sabba@Admin2026!</strong> — ask them to change it on first login.</p>
+              </div>
+              <button onClick={addAdmin} disabled={addSaving}
+                style={{ background: colors.green, color: '#fff', border: 'none', borderRadius: 10, padding: '10px 20px', fontSize: 13.5, fontWeight: 700, cursor: 'pointer', fontFamily: font.body, width: '100%' }}>
+                {addSaving ? 'Creating…' : 'Create super admin'}
+              </button>
+            </div>
+          )}
+
+          {/* Admin list */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {loadingAdmins ? <Spinner/> : admins.length === 0 ? (
+              <p style={{ fontSize: 13, color: colors.muted }}>No admins found.</p>
+            ) : admins.map(admin => {
+              const isCurrentUser = admin.id === currentUser?.id;
+              return (
+                <div key={admin.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', background: '#fff', border: '1px solid #eee', borderRadius: 12 }}>
+                  <div style={{ width: 38, height: 38, borderRadius: 10, background: isCurrentUser ? `linear-gradient(135deg, ${colors.orange}, #f5a066)` : colors.dark, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 800, color: '#fff', flexShrink: 0 }}>
+                    {admin.full_name?.charAt(0) || '?'}
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                      <p style={{ fontSize: 13.5, fontWeight: 700, color: colors.dark }}>{admin.full_name}</p>
+                      {isCurrentUser && <span style={{ fontSize: 10.5, fontWeight: 700, color: colors.orange, background: colors.orangeLight, borderRadius: 5, padding: '1px 7px' }}>You</span>}
+                      {admin.active === false && <span style={{ fontSize: 10.5, fontWeight: 700, color: colors.red, background: colors.redLight, borderRadius: 5, padding: '1px 7px' }}>Inactive</span>}
+                    </div>
+                    <p style={{ fontSize: 12, color: colors.muted }}>{admin.email}</p>
+                    <p style={{ fontSize: 11, color: colors.faint }}>Added {admin.created_at ? new Date(admin.created_at).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) : '—'}</p>
+                  </div>
+                  {!isCurrentUser && admin.active !== false && (
+                    <button onClick={() => deactivateAdmin(admin.id)}
+                      style={{ background: colors.redLight, color: colors.red, border: 'none', borderRadius: 8, padding: '5px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: font.body, flexShrink: 0 }}>
+                      Deactivate
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* ── Impersonate HR admin ── */}
+        <div>
+          <div style={{ marginBottom: 16 }}>
+            <h2 style={{ fontSize: 16, fontWeight: 700, color: colors.dark, marginBottom: 3 }}>Impersonate HR admin</h2>
+            <p style={{ fontSize: 13, color: colors.muted }}>Log in as an HR admin to view and troubleshoot their exact experience. Every impersonation is logged.</p>
+          </div>
+
+          {/* Warning */}
+          <div style={{ display: 'flex', gap: 10, background: '#FEF3C7', border: '1px solid #fbbf24', borderRadius: 10, padding: '12px 14px', marginBottom: 16 }}>
+            <span style={{ fontSize: 16, flexShrink: 0 }}>⚠️</span>
+            <p style={{ fontSize: 12.5, color: '#92400E', lineHeight: 1.6 }}>
+              Impersonation gives you full access to the employer's account. Actions taken during impersonation appear as if performed by that HR admin. Use only for support purposes.
+            </p>
+          </div>
+
+          {/* Employer select */}
+          <div style={{ marginBottom: 12 }}>
+            <label style={lStyle}>Select employer</label>
+            <select value={impersSelCompany} onChange={e => setImpersSelCompany(e.target.value)}
+              style={{ ...iStyle, background: '#fff' }}>
+              {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </div>
+
+          {/* HR users for selected company */}
+          <div style={{ marginBottom: 14 }}>
+            <label style={{ ...lStyle, marginBottom: 10 }}>Select HR admin to impersonate</label>
+            {loadingHr ? <Spinner/> : hrUsers.length === 0 ? (
+              <div style={{ background: '#F7F5F2', borderRadius: 10, padding: '16px', textAlign: 'center' }}>
+                <p style={{ fontSize: 13, color: colors.muted }}>No HR admins found for {company?.name}</p>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {hrUsers.map(hr => (
+                  <div key={hr.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', background: '#fff', border: '1px solid #eee', borderRadius: 12 }}>
+                    <div style={{ width: 36, height: 36, borderRadius: 9, background: colors.blue, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 800, color: '#fff', flexShrink: 0 }}>
+                      {hr.full_name?.charAt(0) || '?'}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <p style={{ fontSize: 13.5, fontWeight: 700, color: colors.dark, marginBottom: 2 }}>{hr.full_name}</p>
+                      <p style={{ fontSize: 12, color: colors.muted }}>{hr.email}</p>
+                    </div>
+                    <button onClick={() => impersonate(hr)} disabled={impersonating}
+                      style={{ background: colors.orangeLight, color: colors.orange, border: 'none', borderRadius: 8, padding: '6px 14px', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: font.body, flexShrink: 0 }}>
+                      {impersonating ? '…' : 'Login as'}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Impersonation result */}
+          {impersonateResult && (
+            <div style={{ background: impersonateResult.success ? colors.greenLight : colors.redLight, border: `1px solid ${impersonateResult.success ? colors.green : colors.red}`, borderRadius: 12, padding: '16px 18px' }}>
+              {impersonateResult.success ? (
+                <>
+                  <p style={{ fontSize: 13.5, fontWeight: 700, color: colors.green, marginBottom: 8 }}>
+                    ✓ Ready to impersonate {impersonateResult.user.full_name}
+                  </p>
+                  <p style={{ fontSize: 12.5, color: colors.green, marginBottom: 12, lineHeight: 1.6 }}>
+                    This will open the HR portal as {impersonateResult.user.email}. An impersonation banner will appear at the top. Click "Exit impersonation" to return to your admin session.
+                  </p>
+                  <button onClick={() => launchImpersonation(impersonateResult.token, impersonateResult.user)}
+                    style={{ background: colors.green, color: '#fff', border: 'none', borderRadius: 10, padding: '10px 20px', fontSize: 13.5, fontWeight: 700, cursor: 'pointer', fontFamily: font.body, width: '100%' }}>
+                    Open HR portal as {impersonateResult.user.full_name} →
+                  </button>
+                </>
+              ) : (
+                <p style={{ fontSize: 13, color: colors.red, fontWeight: 600 }}>⚠ {impersonateResult.message}</p>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </AdminLayout>
   );

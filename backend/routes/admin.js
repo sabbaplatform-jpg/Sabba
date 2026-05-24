@@ -621,4 +621,87 @@ router.post('/integrations/:companyId/:integrationId/test', auth, requireAdmin, 
   }
 });
 
+
+// ── GET /api/admin/team ───────────────────────────────────────
+// List all super admins
+router.get('/team', auth, requireAdmin, async (req, res) => {
+  try {
+    const result = await db.query(
+      `SELECT id, email, full_name, created_at, active
+       FROM users WHERE role='superadmin' ORDER BY created_at ASC`
+    );
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── POST /api/admin/team ──────────────────────────────────────
+// Create a new super admin
+router.post('/team', auth, requireAdmin, async (req, res) => {
+  try {
+    const { full_name, email } = req.body;
+    if (!full_name || !email) return res.status(400).json({ error: 'Name and email required' });
+
+    const existing = await db.query('SELECT id FROM users WHERE email=$1', [email]);
+    if (existing.rows.length) return res.status(409).json({ error: 'Email already in use' });
+
+    const bcrypt = require('bcryptjs');
+    const pw = await bcrypt.hash('Sabba@Admin2026!', 10);
+    const result = await db.query(
+      `INSERT INTO users (email, full_name, role, password_hash)
+       VALUES ($1,$2,'superadmin',$3) RETURNING id, email, full_name, created_at`,
+      [email, full_name, pw]
+    );
+
+    await db.query(
+      `INSERT INTO audit_log (actor_id, action, target_id, target_type, meta)
+       VALUES ($1,'create_admin',$2,'user',$3)`,
+      [req.user.id, result.rows[0].id, JSON.stringify({ email, full_name })]
+    ).catch(()=>{});
+
+    res.status(201).json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── PATCH /api/admin/team/:id ─────────────────────────────────
+// Deactivate a super admin
+router.patch('/team/:id', auth, requireAdmin, async (req, res) => {
+  try {
+    if (req.params.id === req.user.id) {
+      return res.status(400).json({ error: 'Cannot deactivate your own account' });
+    }
+    const { active } = req.body;
+    const result = await db.query(
+      `UPDATE users SET active=$1 WHERE id=$2 AND role='superadmin' RETURNING id, email, full_name, active`,
+      [active, req.params.id]
+    );
+    await db.query(
+      `INSERT INTO audit_log (actor_id, action, target_id, target_type, meta)
+       VALUES ($1,'deactivate_admin',$2,'user',$3)`,
+      [req.user.id, req.params.id, JSON.stringify({ active })]
+    ).catch(()=>{});
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── GET /api/admin/companies/:id/hr-users ─────────────────────
+// Get HR admins for a specific company (for impersonation selector)
+router.get('/companies/:id/hr-users', auth, requireAdmin, async (req, res) => {
+  try {
+    const result = await db.query(
+      `SELECT id, email, full_name, company_id FROM users
+       WHERE company_id=$1 AND role='hr' ORDER BY full_name`,
+      [req.params.id]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;

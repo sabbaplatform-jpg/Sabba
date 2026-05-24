@@ -22,7 +22,7 @@ import { HRAdventures, HRMarketplace, HRAnalytics, HRIntegrations } from './page
 import { EmployeeHome } from './pages/employee/EmployeeHome';
 import MyBooking from './pages/employee/MyBooking';
 import { EmployeeProfile } from './pages/employee/EmployeeProfile';
-import { AdminDashboard, AdminEmployers, AdminVendors, AdminPackages, AdminAnalytics, AdminBilling, AdminFeatureFlags, AdminAuditLog, AdminIntegrations } from './pages/admin/AdminPages';
+import { AdminDashboard, AdminEmployers, AdminVendors, AdminPackages, AdminAnalytics, AdminBilling, AdminFeatureFlags, AdminAuditLog, AdminIntegrations, AdminSettings } from './pages/admin/AdminPages';
 import { AdminEmployerDetail } from './pages/admin/AdminEmployerDetail';
 import { Cart, CheckoutSuccess } from './pages/employee/Cart';
 import Allowance from './pages/employee/Allowance';
@@ -68,6 +68,7 @@ function AppRoutes() {
         <Route path="/admin/vendors"       element={<RequireAdmin><AdminVendors/></RequireAdmin>}/>
         <Route path="/admin/packages"      element={<RequireAdmin><AdminPackages/></RequireAdmin>}/>
         <Route path="/admin/integrations" element={<RequireAdmin><AdminIntegrations/></RequireAdmin>}/>
+        <Route path="/admin/settings"     element={<RequireAdmin><AdminSettings/></RequireAdmin>}/>
         <Route path="/admin/analytics"     element={<RequireAdmin><AdminAnalytics/></RequireAdmin>}/>
         <Route path="/admin/billing"       element={<RequireAdmin><AdminBilling/></RequireAdmin>}/>
         <Route path="/admin/flags"         element={<RequireAdmin><AdminFeatureFlags/></RequireAdmin>}/>
@@ -76,6 +77,7 @@ function AppRoutes() {
         {/* ── All other routes — with Nav/Footer ── */}
         <Route path="*" element={
           <>
+            <ImpersonationBanner/>
             {user && <Nav/>}
             <AppLayout>
               <Routes>
@@ -127,6 +129,32 @@ function AppRoutes() {
           </>
         }/>
       </Routes>
+    </div>
+  );
+}
+
+
+function ImpersonationBanner() {
+  const navigate = useNavigate();
+  const info = sessionStorage.getItem('sabba_impersonating');
+  if (!info) return null;
+  const { name, email, company } = JSON.parse(info);
+  const exit = () => {
+    const adminToken = sessionStorage.getItem('sabba_admin_token');
+    if (adminToken) localStorage.setItem('sabba_token', adminToken);
+    sessionStorage.removeItem('sabba_admin_token');
+    sessionStorage.removeItem('sabba_impersonating');
+    navigate('/admin');
+    window.location.reload();
+  };
+  return (
+    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 9999, background: '#B45309', padding: '8px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <span style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>
+        👁 Impersonating: {name} ({email}) · {company}
+      </span>
+      <button onClick={exit} style={{ background: '#fff', color: '#B45309', border: 'none', borderRadius: 6, padding: '4px 14px', fontSize: 12.5, fontWeight: 700, cursor: 'pointer' }}>
+        Exit impersonation →
+      </button>
     </div>
   );
 }
