@@ -1109,19 +1109,109 @@ export function AdminPackages() {
 // 4. ANALYTICS
 // ═══════════════════════════════════════════════════════════
 export function AdminAnalytics() {
-  const [bookings, setBookings] = useState([]);
-  const [loading,  setLoading]  = useState(true);
+  const [bookings,  setBookings]  = useState([]);
+  const [companies, setCompanies] = useState([]);
+  const [employees, setEmployees] = useState(0);
+  const [loading,   setLoading]   = useState(true);
+
+  // Report builder filters
+  const [fEmployer,  setFEmployer]  = useState('');
+  const [fVendor,    setFVendor]    = useState('');
+  const [fStatus,    setFStatus]    = useState('');
+  const [fPayment,   setFPayment]   = useState('');
+  const [fCategory,  setFCategory]  = useState('');
+  const [fDateFrom,  setFDateFrom]  = useState('');
+  const [fDateTo,    setFDateTo]    = useState('');
 
   useEffect(() => {
-    api.get('/admin/bookings').then(r => setBookings(r.data)).finally(() => setLoading(false));
+    Promise.all([
+      api.get('/admin/bookings'),
+      api.get('/admin/companies'),
+      api.get('/admin/stats'),
+    ]).then(([b, c, s]) => {
+      setBookings(b.data);
+      setCompanies(c.data);
+      setEmployees(s.data.employees || 0);
+    }).finally(() => setLoading(false));
   }, []);
 
-  const totalGmv   = bookings.filter(b => ['approved','confirmed','vendor_confirmed'].includes(b.status)).reduce((s,b) => s+Number(b.total_amount||0), 0);
-  const byCompany  = bookings.reduce((a, b) => { a[b.company_name] = (a[b.company_name]||0)+1; return a; }, {});
-  const byVendor   = bookings.reduce((a, b) => { a[b.vendor_name]  = (a[b.vendor_name]||0)+Number(b.total_amount||0); return a; }, {});
-  const byCategory = bookings.reduce((a, b) => { a[b.category]     = (a[b.category]||0)+1; return a; }, {});
-  const payroll    = bookings.filter(b => (b.payment_method||'payroll')==='payroll').length;
-  const card       = bookings.filter(b => b.payment_method==='card').length;
+  // Apply report filters
+  const filtered = bookings.filter(b => {
+    if (fEmployer  && b.company_name !== fEmployer) return false;
+    if (fVendor    && b.vendor_name  !== fVendor)   return false;
+    if (fStatus    && b.status       !== fStatus)   return false;
+    if (fPayment   && (b.payment_method||'payroll') !== fPayment) return false;
+    if (fCategory  && b.category     !== fCategory) return false;
+    if (fDateFrom  && new Date(b.created_at) < new Date(fDateFrom)) return false;
+    if (fDateTo    && new Date(b.created_at) > new Date(fDateTo+'T23:59:59')) return false;
+    return true;
+  });
+
+  // Core metrics from filtered set
+  const confirmed = filtered.filter(b => ['approved','confirmed','vendor_confirmed'].includes(b.status));
+  const totalGmv  = confirmed.reduce((s,b) => s+Number(b.total_amount||0), 0);
+  const avgVal    = confirmed.length ? totalGmv / confirmed.length : 0;
+  const payroll   = filtered.filter(b => (b.payment_method||'payroll')==='payroll').length;
+  const card      = filtered.filter(b => b.payment_method==='card').length;
+
+  // Aggregations
+  const byCompany  = filtered.reduce((a,b) => { a[b.company_name] = (a[b.company_name]||0)+1; return a; }, {});
+  const byVendor   = filtered.reduce((a,b) => { a[b.vendor_name]  = (a[b.vendor_name]||0)+Number(b.total_amount||0); return a; }, {});
+  const byCategory = filtered.reduce((a,b) => { const k=b.category?.replace(/_/g,' ')||'Other'; a[k]=(a[k]||0)+1; return a; }, {});
+  const byStatus   = filtered.reduce((a,b) => { a[b.status]=(a[b.status]||0)+1; return a; }, {});
+
+  // Monthly GMV from ALL bookings (not filtered — for trend line)
+  const monthlyGmv = bookings.filter(b=>['approved','confirmed','vendor_confirmed'].includes(b.status)).reduce((a,b) => {
+    const m = b.created_at?.slice(0,7) || 'unknown';
+    a[m] = (a[m]||0)+Number(b.total_amount||0);
+    return a;
+  }, {});
+  const monthKeys = Object.keys(monthlyGmv).sort().slice(-6);
+
+  // CSV export of filtered results
+  const exportCSV = () => {
+    const headers = ['ID','Employee','Employer','Vendor','Package','Category','Destination','Departure','Payment','Total (£)','Status','Date'];
+    const rows = filtered.map(b => [
+      b.id, b.employee_name, b.company_name, b.vendor_name, b.package_title,
+      b.category, b.destination,
+      b.departure_date ? new Date(b.departure_date).toLocaleDateString('en-GB') : '',
+      b.payment_method||'payroll',
+      Number(b.total_amount||0).toFixed(2),
+      b.status,
+      b.created_at ? new Date(b.created_at).toLocaleDateString('en-GB') : '',
+    ]);
+    const csv = [headers, ...rows].map(r => r.map(c => `"${String(c||'').replace(/"/g,'""')}"`).join(',')).join('\n');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+    a.download = `sabba_report_${new Date().toISOString().slice(0,10)}.csv`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  };
+
+  const resetFilters = () => {
+    setFEmployer(''); setFVendor(''); setFStatus('');
+    setFPayment(''); setFCategory(''); setFDateFrom(''); setFDateTo('');
+  };
+
+  const hasFilters = fEmployer||fVendor||fStatus||fPayment||fCategory||fDateFrom||fDateTo;
+
+  // Unique values for filter dropdowns
+  const allVendors    = [...new Set(bookings.map(b=>b.vendor_name).filter(Boolean))].sort();
+  const allCategories = [...new Set(bookings.map(b=>b.category?.replace(/_/g,' ')).filter(Boolean))].sort();
+
+  const BarRow = ({ label, value, max, accent, fmt }) => (
+    <div style={{ marginBottom: 10 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+        <span style={{ fontSize: 13, fontWeight: 600, color: colors.dark, textTransform: 'capitalize' }}>{label}</span>
+        <span style={{ fontSize: 12, color: colors.muted }}>{fmt ? fmt(value) : value}</span>
+      </div>
+      <div style={{ height: 5, background: '#eee', borderRadius: 3 }}>
+        <div style={{ height: '100%', width: `${max > 0 ? (value/max)*100 : 0}%`, background: accent, borderRadius: 3, transition: 'width 0.4s' }}/>
+      </div>
+    </div>
+  );
+
+  const selStyle = { border: '1.5px solid #eee', borderRadius: 8, padding: '7px 10px', fontSize: 13, color: colors.dark, fontFamily: font.body, outline: 'none', background: '#fff', cursor: 'pointer' };
+  const inpStyle = { border: '1.5px solid #eee', borderRadius: 8, padding: '7px 10px', fontSize: 13, color: colors.dark, fontFamily: font.body, outline: 'none' };
 
   if (loading) return <AdminLayout active="analytics"><div style={{ padding: 40 }}><Spinner/></div></AdminLayout>;
 
@@ -1129,47 +1219,182 @@ export function AdminAnalytics() {
     <AdminLayout active="analytics">
       <div style={{ background: '#fff', borderBottom: '1px solid #eee', padding: '24px 36px' }}>
         <p style={{ fontSize: 10.5, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 3 }}>Super Admin</p>
-        <h1 style={{ fontFamily: font.display, fontSize: 30, color: colors.dark, fontWeight: 700, fontStyle: 'italic' }}>Platform analytics</h1>
-      </div>
-      <div style={{ padding: '24px 36px' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14, marginBottom: 20 }}>
-          <StatCard icon="📋" label="Total bookings"  value={bookings.length} accent={colors.blue}/>
-          <StatCard icon="💷" label="Total GMV"        value={`£${Math.round(totalGmv/1000)}K`} accent={colors.green}/>
-          <StatCard icon="💳" label="Payroll bookings" value={payroll} sub={`${bookings.length ? Math.round(payroll/bookings.length*100) : 0}%`} accent={colors.orange}/>
-          <StatCard icon="🏦" label="Card bookings"    value={card}    sub={`${bookings.length ? Math.round(card/bookings.length*100) : 0}%`}    accent="#7B3FA0"/>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+          <h1 style={{ fontFamily: font.display, fontSize: 30, color: colors.dark, fontWeight: 700, fontStyle: 'italic' }}>Platform analytics</h1>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+            {hasFilters && <span style={{ fontSize: 12.5, color: colors.orange, fontWeight: 700 }}>Filters active · {filtered.length} of {bookings.length} bookings</span>}
+            <button onClick={exportCSV} style={{ background: colors.dark, color: '#fff', border: 'none', borderRadius: 10, padding: '9px 18px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: font.body }}>
+              ⬇ Export CSV
+            </button>
+          </div>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
-          {/* Top employers */}
-          <div className="card" style={{ padding: '20px 22px' }}>
-            <p style={{ fontSize: 14, fontWeight: 700, color: colors.dark, marginBottom: 16 }}>Top employers by bookings</p>
-            {Object.entries(byCompany).sort((a,b)=>b[1]-a[1]).slice(0,6).map(([name, count], i) => (
-              <div key={i} style={{ marginBottom: 10 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: colors.dark }}>{name}</span>
-                  <span style={{ fontSize: 12, color: colors.muted }}>{count}</span>
-                </div>
-                <div style={{ height: 5, background: '#eee', borderRadius: 3 }}>
-                  <div style={{ height: '100%', width: `${(count/Math.max(...Object.values(byCompany)))*100}%`, background: colors.blue, borderRadius: 3 }}/>
-                </div>
+      </div>
+
+      <div style={{ padding: '24px 36px' }}>
+
+        {/* ── Report builder ── */}
+        <div style={{ background: '#fff', border: '1px solid #eee', borderRadius: 14, padding: '18px 22px', marginBottom: 22 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+            <p style={{ fontSize: 14, fontWeight: 700, color: colors.dark }}>Report filters</p>
+            {hasFilters && <button onClick={resetFilters} style={{ background: 'none', border: 'none', fontSize: 12.5, color: colors.orange, cursor: 'pointer', fontWeight: 700, fontFamily: font.body }}>Clear all</button>}
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10, marginBottom: 10 }}>
+            <div>
+              <p style={lStyle}>Employer</p>
+              <select value={fEmployer} onChange={e=>setFEmployer(e.target.value)} style={selStyle}>
+                <option value="">All employers</option>
+                {companies.map(c=><option key={c.id} value={c.name}>{c.name}</option>)}
+              </select>
+            </div>
+            <div>
+              <p style={lStyle}>Vendor</p>
+              <select value={fVendor} onChange={e=>setFVendor(e.target.value)} style={selStyle}>
+                <option value="">All vendors</option>
+                {allVendors.map(v=><option key={v} value={v}>{v}</option>)}
+              </select>
+            </div>
+            <div>
+              <p style={lStyle}>Status</p>
+              <select value={fStatus} onChange={e=>setFStatus(e.target.value)} style={selStyle}>
+                <option value="">All statuses</option>
+                {['pending','approved','vendor_confirmed','confirmed','cancelled'].map(s=><option key={s} value={s}>{s.replace(/_/g,' ')}</option>)}
+              </select>
+            </div>
+            <div>
+              <p style={lStyle}>Payment</p>
+              <select value={fPayment} onChange={e=>setFPayment(e.target.value)} style={selStyle}>
+                <option value="">All methods</option>
+                <option value="payroll">Payroll</option>
+                <option value="card">Card</option>
+              </select>
+            </div>
+            <div>
+              <p style={lStyle}>Category</p>
+              <select value={fCategory} onChange={e=>setFCategory(e.target.value)} style={selStyle}>
+                <option value="">All categories</option>
+                {allCategories.map(c=><option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+            <div>
+              <p style={lStyle}>Date from</p>
+              <input type="date" value={fDateFrom} onChange={e=>setFDateFrom(e.target.value)} style={inpStyle}/>
+            </div>
+            <div>
+              <p style={lStyle}>Date to</p>
+              <input type="date" value={fDateTo} onChange={e=>setFDateTo(e.target.value)} style={inpStyle}/>
+            </div>
+          </div>
+        </div>
+
+        {/* ── 8 metric cards ── */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14, marginBottom: 22 }}>
+          <StatCard icon="📋" label="Bookings"        value={filtered.length}                                     accent={colors.blue}   sub={hasFilters ? `of ${bookings.length} total` : 'all time'}/>
+          <StatCard icon="💷" label="Total GMV"        value={`£${Math.round(totalGmv/1000)}K`}                    accent={colors.green}  sub="confirmed value"/>
+          <StatCard icon="📊" label="Avg booking value" value={`£${Math.round(avgVal).toLocaleString()}`}          accent={colors.orange} sub="per confirmed booking"/>
+          <StatCard icon="👥" label="Total employees"   value={employees.toLocaleString()}                          accent="#7B3FA0"        sub="across all employers"/>
+          <StatCard icon="💳" label="Payroll bookings"  value={payroll} accent={colors.orange}                      sub={`${filtered.length ? Math.round(payroll/filtered.length*100) : 0}% of bookings`}/>
+          <StatCard icon="🏦" label="Card bookings"     value={card}    accent={colors.blue}                        sub={`${filtered.length ? Math.round(card/filtered.length*100) : 0}% of bookings`}/>
+          <StatCard icon="✅" label="Confirmed"         value={confirmed.length} accent={colors.green}              sub={`${filtered.length ? Math.round(confirmed.length/filtered.length*100) : 0}% completion rate`}/>
+          <StatCard icon="⏳" label="Pending"           value={filtered.filter(b=>b.status==='pending').length}     accent={colors.muted}  sub="awaiting HR approval"/>
+        </div>
+
+        {/* ── Monthly GMV trend ── */}
+        <div style={{ background: '#fff', border: '1px solid #eee', borderRadius: 14, padding: '20px 24px', marginBottom: 22 }}>
+          <p style={{ fontSize: 14, fontWeight: 700, color: colors.dark, marginBottom: 4 }}>Monthly GMV trend</p>
+          <p style={{ fontSize: 12.5, color: colors.muted, marginBottom: 20 }}>Confirmed booking value across all employer clients (last 6 months)</p>
+          {monthKeys.length === 0
+            ? <p style={{ fontSize: 13, color: colors.muted }}>No booking data yet</p>
+            : <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12, height: 100 }}>
+                {monthKeys.map((m,i) => {
+                  const val = monthlyGmv[m] || 0;
+                  const maxVal = Math.max(...monthKeys.map(k=>monthlyGmv[k]||0),1);
+                  const pct = (val/maxVal)*100;
+                  const isLast = i === monthKeys.length-1;
+                  const label = new Date(m+'-01').toLocaleDateString('en-GB',{month:'short',year:'2-digit'});
+                  return (
+                    <div key={m} style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', gap:4, height:'100%', justifyContent:'flex-end' }}>
+                      {val > 0 && <span style={{ fontSize:10, fontWeight:700, color:isLast?colors.orange:colors.faint }}>£{Math.round(val/1000)}K</span>}
+                      <div style={{ width:'100%', height:`${Math.max(pct,4)}%`, background:isLast?colors.orange:'#E8E4DF', borderRadius:'4px 4px 0 0', transition:'height 0.3s' }}/>
+                      <span style={{ fontSize:10, color:colors.faint, fontWeight:600 }}>{label}</span>
+                    </div>
+                  );
+                })}
               </div>
-            ))}
+          }
+        </div>
+
+        {/* ── 4 charts row ── */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 22 }}>
+          {/* Top employers */}
+          <div style={{ background: '#fff', border: '1px solid #eee', borderRadius: 14, padding: '20px 22px' }}>
+            <p style={{ fontSize: 14, fontWeight: 700, color: colors.dark, marginBottom: 16 }}>Top employers by bookings</p>
+            {Object.keys(byCompany).length === 0
+              ? <p style={{ fontSize:13,color:colors.muted }}>No data</p>
+              : Object.entries(byCompany).sort((a,b)=>b[1]-a[1]).slice(0,6).map(([name,count],i)=>(
+                  <BarRow key={i} label={name} value={count} max={Math.max(...Object.values(byCompany))} accent={colors.blue}/>
+                ))
+            }
           </div>
           {/* Top vendors */}
-          <div className="card" style={{ padding: '20px 22px' }}>
+          <div style={{ background: '#fff', border: '1px solid #eee', borderRadius: 14, padding: '20px 22px' }}>
             <p style={{ fontSize: 14, fontWeight: 700, color: colors.dark, marginBottom: 16 }}>Top vendors by revenue</p>
-            {Object.entries(byVendor).sort((a,b)=>b[1]-a[1]).slice(0,6).map(([name, rev], i) => (
-              <div key={i} style={{ marginBottom: 10 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: colors.dark }}>{name}</span>
-                  <span style={{ fontSize: 12, color: colors.muted }}>£{Math.round(rev/1000)}K</span>
-                </div>
-                <div style={{ height: 5, background: '#eee', borderRadius: 3 }}>
-                  <div style={{ height: '100%', width: `${(rev/Math.max(...Object.values(byVendor)))*100}%`, background: colors.green, borderRadius: 3 }}/>
-                </div>
-              </div>
-            ))}
+            {Object.keys(byVendor).length === 0
+              ? <p style={{ fontSize:13,color:colors.muted }}>No data</p>
+              : Object.entries(byVendor).sort((a,b)=>b[1]-a[1]).slice(0,6).map(([name,rev],i)=>(
+                  <BarRow key={i} label={name} value={rev} max={Math.max(...Object.values(byVendor))} accent={colors.green} fmt={v=>`£${Math.round(v/1000)}K`}/>
+                ))
+            }
+          </div>
+          {/* By category */}
+          <div style={{ background: '#fff', border: '1px solid #eee', borderRadius: 14, padding: '20px 22px' }}>
+            <p style={{ fontSize: 14, fontWeight: 700, color: colors.dark, marginBottom: 16 }}>Bookings by category</p>
+            {Object.keys(byCategory).length === 0
+              ? <p style={{ fontSize:13,color:colors.muted }}>No data</p>
+              : Object.entries(byCategory).sort((a,b)=>b[1]-a[1]).map(([cat,count],i)=>(
+                  <BarRow key={i} label={cat||'Other'} value={count} max={Math.max(...Object.values(byCategory))} accent={colors.orange}/>
+                ))
+            }
+          </div>
+          {/* By status */}
+          <div style={{ background: '#fff', border: '1px solid #eee', borderRadius: 14, padding: '20px 22px' }}>
+            <p style={{ fontSize: 14, fontWeight: 700, color: colors.dark, marginBottom: 16 }}>Bookings by status</p>
+            {Object.keys(byStatus).length === 0
+              ? <p style={{ fontSize:13,color:colors.muted }}>No data</p>
+              : Object.entries(byStatus).sort((a,b)=>b[1]-a[1]).map(([status,count],i)=>{
+                  const sc = {pending:colors.amber,approved:colors.blue,vendor_confirmed:'#7B3FA0',confirmed:colors.green,cancelled:colors.red}[status]||colors.muted;
+                  return <BarRow key={i} label={status.replace(/_/g,' ')} value={count} max={Math.max(...Object.values(byStatus))} accent={sc}/>;
+                })
+            }
           </div>
         </div>
+
+        {/* ── Filtered bookings table ── */}
+        {hasFilters && (
+          <div style={{ background: '#fff', border: '1px solid #eee', borderRadius: 14, overflow: 'hidden' }}>
+            <div style={{ padding: '16px 22px', borderBottom: '1px solid #eee', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <p style={{ fontSize: 14, fontWeight: 700, color: colors.dark }}>Filtered results — {filtered.length} booking{filtered.length!==1?'s':''}</p>
+              <button onClick={exportCSV} style={{ background: colors.orangeLight, color: colors.orange, border: 'none', borderRadius: 8, padding: '6px 14px', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: font.body }}>⬇ Export</button>
+            </div>
+            <div style={{ maxHeight: 360, overflowY: 'auto' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1.2fr 1.2fr 1fr 0.8fr 0.8fr 0.8fr', padding: '10px 22px', background: '#F7F5F2' }}>
+                {['Employee','Employer','Vendor','Package','Payment','Total','Status'].map(h=>(
+                  <span key={h} style={{ fontSize: 10.5, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{h}</span>
+                ))}
+              </div>
+              {filtered.map((b,i)=>(
+                <div key={b.id} style={{ display:'grid', gridTemplateColumns:'1.5fr 1.2fr 1.2fr 1fr 0.8fr 0.8fr 0.8fr', padding:'10px 22px', borderTop:'1px solid #f5f5f5', alignItems:'center' }}>
+                  <span style={{ fontSize:13, fontWeight:600, color:colors.dark }}>{b.employee_name}</span>
+                  <span style={{ fontSize:12.5, color:colors.mid }}>{b.company_name}</span>
+                  <span style={{ fontSize:12.5, color:colors.mid }}>{b.vendor_name}</span>
+                  <span style={{ fontSize:12.5, color:colors.mid }}>{b.package_title}</span>
+                  <span style={{ fontSize:11.5, fontWeight:700, color:(b.payment_method||'payroll')==='card'?colors.blue:colors.orange, textTransform:'capitalize' }}>{b.payment_method||'payroll'}</span>
+                  <span style={{ fontSize:13, fontWeight:700, color:colors.dark }}>£{Number(b.total_amount||0).toLocaleString()}</span>
+                  <Badge status={b.status}/>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </AdminLayout>
   );
