@@ -105,7 +105,12 @@ export function AdminDashboard() {
       </div>
 
       <div style={{ padding: '28px 36px' }}>
-        {loading ? <Spinner/> : (
+        {loading ? <Spinner/> : !stats ? (
+          <div style={{ background: '#fff', border: '1px solid #eee', borderRadius: 14, padding: 32, textAlign: 'center' }}>
+            <p style={{ fontSize: 15, color: colors.red, fontWeight: 700 }}>⚠ Failed to load platform stats</p>
+            <p style={{ fontSize: 13, color: colors.muted, marginTop: 8 }}>Check backend connectivity and try refreshing.</p>
+          </div>
+        ) : (
           <>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 14, marginBottom: 24 }}>
               <StatCard icon="🏢" label="Employer clients"  value={stats.companies}  sub="active accounts"         accent={colors.blue}/>
