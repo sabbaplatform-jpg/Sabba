@@ -69,6 +69,9 @@ export default function Login() {
                 onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="you@company.com"/>
               <Input label="Password" type="password" value={form.password} required
                 onChange={e => setForm(f => ({ ...f, password: e.target.value }))} placeholder="••••••••"/>
+              <div style={{ textAlign: 'right', marginTop: 8, marginBottom: 4 }}>
+                <Link to="/forgot-password" style={{ fontSize: 13, color: '#D4622A', textDecoration: 'none', fontWeight: 600 }}>Forgot password?</Link>
+              </div>
               {error && <p style={{ color: colors.red, fontSize: 13, fontWeight: 600, textAlign: 'center' }}>{error}</p>}
               <Button type="submit" disabled={loading} style={{ width: '100%', justifyContent: 'center', marginTop: 4, padding: '13px 20px', fontSize: 14 }}>
                 {loading ? 'Signing in…' : 'Sign in'}

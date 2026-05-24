@@ -1,5 +1,6 @@
 // routes/admin.js — Sabba super-admin portal API
 const router = require('express').Router();
+const email  = require('../lib/email');
 const db     = require('../lib/db');
 const jwt    = require('jsonwebtoken');
 const { auth, requireRole } = require('../middleware/auth');
@@ -349,6 +350,13 @@ router.post('/companies/:id/employees/import', auth, requireAdmin, async (req, r
            VALUES ($1,$2,$3,$4) ON CONFLICT (user_id, year) DO NOTHING`,
           [uid, companyId, year, allowance]
         );
+        // Send welcome email (non-blocking)
+        email.sendWelcomeEmployee({
+          to: email_addr,
+          full_name: fullName,
+          company_name: (await db.query('SELECT name FROM companies WHERE id=$1',[companyId]).catch(()=>({rows:[{name:''}]}))).rows[0]?.name || '',
+          temp_password: 'Welcome2Sabba!'
+        }).catch(()=>{});
         results.created++;
       } catch (err) {
         results.errors.push({ email, reason: err.message });
@@ -423,12 +431,22 @@ router.patch('/vendors/:id/reject', auth, requireAdmin, async (req, res) => {
 
     if (!result.rows.length) return res.status(404).json({ error: 'Vendor not found' });
 
-    // Notify vendor
+    // Notify vendor via notification and email
     await db.query(`
       INSERT INTO notifications (user_id, title, message, type)
       VALUES ($1, 'Application update', $2, 'warning')
     `, [result.rows[0].user_id,
         `Your vendor application was not approved. Reason: ${reason}. Please contact support@sabbaplatform.com if you have questions.`]);
+
+    // Get vendor email for sending rejection email
+    const vendorUser = await db.query('SELECT email FROM users WHERE id=$1', [result.rows[0].user_id]).catch(()=>({rows:[]}));
+    if (vendorUser.rows.length) {
+      email.sendVendorRejected({
+        to: vendorUser.rows[0].email,
+        company_name: result.rows[0].company_name,
+        reason,
+      }).catch(() => {});
+    }
 
     res.json(result.rows[0]);
   } catch (err) {

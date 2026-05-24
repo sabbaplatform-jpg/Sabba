@@ -3,6 +3,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
 import Nav, { Footer } from './components/Nav';
 import Login from './pages/Login';
+import { ForgotPassword, ResetPassword } from './pages/PasswordPages';
 import Register from './pages/Register';
 import Marketplace from './pages/Marketplace';
 import PackageDetail from './pages/PackageDetail';
@@ -83,6 +84,8 @@ function AppRoutes() {
               <Routes>
                 {/* Public */}
                 <Route path="/login"              element={<Login/>}/>
+                <Route path="/forgot-password"     element={<ForgotPassword/>}/>
+                <Route path="/reset-password"      element={<ResetPassword/>}/>
                 <Route path="/register"           element={<Register/>}/>
                 <Route path="/contact"            element={<Contact/>}/>
                 <Route path="/faq"                element={<FAQ/>}/>
