@@ -273,11 +273,32 @@ function CreateEmployerWizard({ onClose, onCreated }) {
           {/* ── STEP 1: Company basics ── */}
           {step === 1 && (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-              <F k="name"     label="Company name *"   placeholder="e.g. Barclays PLC"    wide/>
-              <S k="industry" label="Industry *"        opts={INDUSTRIES}/>
-              <S k="size"     label="Company size *"    opts={SIZES}/>
-              <F k="website"  label="Website"           placeholder="https://company.com"/>
-              <F k="address"  label="Registered address" placeholder="1 Churchill Place, London, E14 5HP" wide/>
+              <div style={{ gridColumn: '1 / -1' }}>
+                <label style={lStyle}>Company name *</label>
+                <input value={form.name} onChange={e=>set('name',e.target.value)} placeholder="e.g. Barclays PLC" style={iStyle}/>
+              </div>
+              <div>
+                <label style={lStyle}>Industry *</label>
+                <select value={form.industry} onChange={e=>set('industry',e.target.value)} style={{...iStyle,background:'#fff'}}>
+                  <option value="">Select…</option>
+                  {INDUSTRIES.map(o=><option key={o} value={o}>{o}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={lStyle}>Company size *</label>
+                <select value={form.size} onChange={e=>set('size',e.target.value)} style={{...iStyle,background:'#fff'}}>
+                  <option value="">Select…</option>
+                  {SIZES.map(o=><option key={o} value={o}>{o}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={lStyle}>Website</label>
+                <input value={form.website} onChange={e=>set('website',e.target.value)} placeholder="https://company.com" style={iStyle}/>
+              </div>
+              <div style={{ gridColumn: '1 / -1' }}>
+                <label style={lStyle}>Registered address</label>
+                <input value={form.address} onChange={e=>set('address',e.target.value)} placeholder="1 Churchill Place, London, E14 5HP" style={iStyle}/>
+              </div>
             </div>
           )}
 
@@ -298,9 +319,18 @@ function CreateEmployerWizard({ onClose, onCreated }) {
                 ))}
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-                <F k="billing_name"    label="Billing contact name *" placeholder="Jane Smith"/>
-                <F k="billing_email"   label="Billing email *"         placeholder="finance@company.com" type="email"/>
-                <F k="billing_address" label="Billing address"         placeholder="Same as registered address" wide/>
+                <div>
+                  <label style={lStyle}>Billing contact name *</label>
+                  <input value={form.billing_name} onChange={e=>set('billing_name',e.target.value)} placeholder="Jane Smith" style={iStyle}/>
+                </div>
+                <div>
+                  <label style={lStyle}>Billing email *</label>
+                  <input type="email" value={form.billing_email} onChange={e=>set('billing_email',e.target.value)} placeholder="finance@company.com" style={iStyle}/>
+                </div>
+                <div style={{ gridColumn: '1 / -1' }}>
+                  <label style={lStyle}>Billing address</label>
+                  <input value={form.billing_address} onChange={e=>set('billing_address',e.target.value)} placeholder="Same as registered address" style={iStyle}/>
+                </div>
               </div>
             </div>
           )}
@@ -312,10 +342,22 @@ function CreateEmployerWizard({ onClose, onCreated }) {
                 This person will be the primary HR admin for the employer account. They'll receive login credentials and can add additional admins once inside.
               </p>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-                <F k="admin_first" label="First name *"  placeholder="Sarah"/>
-                <F k="admin_last"  label="Last name *"   placeholder="Chen"/>
-                <F k="admin_email" label="Email *"       placeholder="sarah.chen@company.com" type="email"/>
-                <F k="admin_title" label="Job title"     placeholder="HR Director"/>
+                <div>
+                  <label style={lStyle}>First name *</label>
+                  <input value={form.admin_first} onChange={e=>set('admin_first',e.target.value)} placeholder="Sarah" style={iStyle}/>
+                </div>
+                <div>
+                  <label style={lStyle}>Last name *</label>
+                  <input value={form.admin_last} onChange={e=>set('admin_last',e.target.value)} placeholder="Chen" style={iStyle}/>
+                </div>
+                <div>
+                  <label style={lStyle}>Email *</label>
+                  <input type="email" value={form.admin_email} onChange={e=>set('admin_email',e.target.value)} placeholder="sarah.chen@company.com" style={iStyle}/>
+                </div>
+                <div>
+                  <label style={lStyle}>Job title</label>
+                  <input value={form.admin_title} onChange={e=>set('admin_title',e.target.value)} placeholder="HR Director" style={iStyle}/>
+                </div>
               </div>
               <div style={{ background: colors.orangeLight, border: `1px solid rgba(212,98,42,0.2)`, borderRadius: 10, padding: '12px 16px', marginTop: 16 }}>
                 <p style={{ fontSize: 13, color: colors.dark, fontWeight: 700, marginBottom: 3 }}>Temporary password</p>
@@ -331,10 +373,34 @@ function CreateEmployerWizard({ onClose, onCreated }) {
                 Select which HRIS and payroll systems this employer uses. These create integration stubs that can be fully configured in the Integrations tab.
               </p>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
-                <S k="hris"       label="HRIS system"         opts={HRIS_SYSTEMS}/>
-                <S k="hris_conn"  label="HRIS connection type" opts={CONN_TYPES}/>
-                <S k="payroll"    label="Payroll system"       opts={PAYROLL_SYSTEMS}/>
-                <S k="payroll_conn" label="Payroll connection" opts={CONN_TYPES}/>
+                <div>
+                  <label style={lStyle}>HRIS system</label>
+                  <select value={form.hris} onChange={e=>set('hris',e.target.value)} style={{...iStyle,background:'#fff'}}>
+                    <option value="">Select…</option>
+                    {HRIS_SYSTEMS.map(o=><option key={o} value={o}>{o}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label style={lStyle}>HRIS connection type</label>
+                  <select value={form.hris_conn} onChange={e=>set('hris_conn',e.target.value)} style={{...iStyle,background:'#fff'}}>
+                    <option value="">Select…</option>
+                    {CONN_TYPES.map(o=><option key={o} value={o}>{o}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label style={lStyle}>Payroll system</label>
+                  <select value={form.payroll} onChange={e=>set('payroll',e.target.value)} style={{...iStyle,background:'#fff'}}>
+                    <option value="">Select…</option>
+                    {PAYROLL_SYSTEMS.map(o=><option key={o} value={o}>{o}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label style={lStyle}>Payroll connection</label>
+                  <select value={form.payroll_conn} onChange={e=>set('payroll_conn',e.target.value)} style={{...iStyle,background:'#fff'}}>
+                    <option value="">Select…</option>
+                    {CONN_TYPES.map(o=><option key={o} value={o}>{o}</option>)}
+                  </select>
+                </div>
               </div>
               <div>
                 <label style={{ fontSize: 11, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.07em', display: 'block', marginBottom: 5 }}>Integration notes</label>
