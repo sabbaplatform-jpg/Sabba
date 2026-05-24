@@ -72,26 +72,50 @@ router.get('/companies', auth, requireAdmin, async (req, res) => {
 // ── POST /api/admin/companies ─────────────────────────────────
 router.post('/companies', auth, requireAdmin, async (req, res) => {
   try {
-    const { name, plan = 'starter', admin_email, admin_name } = req.body;
-    if (!name || !admin_email || !admin_name) {
-      return res.status(400).json({ error: 'name, admin_email and admin_name are required' });
+    const {
+      name, plan = 'starter',
+      industry, size, website, address,
+      billing_name, billing_email, billing_address,
+      admin_name, admin_email, admin_title,
+      admin_first, admin_last,
+      hris, hris_conn, payroll, payroll_conn, integration_notes,
+    } = req.body;
+
+    const hrName = admin_name || `${admin_first||''} ${admin_last||''}`.trim();
+    if (!name || !admin_email || !hrName) {
+      return res.status(400).json({ error: 'name, admin_email and admin name are required' });
     }
 
-    // Create company
-    const co = await db.query(
-      `INSERT INTO companies (name, plan) VALUES ($1,$2) RETURNING *`,
-      [name, plan]
-    );
+    // Create company with all metadata
+    const co = await db.query(`
+      INSERT INTO companies (name, plan, industry, size, website, address,
+        billing_name, billing_email, billing_address,
+        hris, hris_conn, payroll, payroll_conn, integration_notes,
+        status, plan_started_at, plan_renews_at)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,'active',NOW(),NOW()+INTERVAL '1 year')
+      RETURNING *
+    `, [name, plan,
+        industry||null, size||null, website||null, address||null,
+        billing_name||null, billing_email||null, billing_address||null,
+        hris||null, hris_conn||null, payroll||null, payroll_conn||null, integration_notes||null,
+    ]);
     const company = co.rows[0];
 
     // Create HR admin account
     const bcrypt = require('bcryptjs');
     const pw = await bcrypt.hash('Welcome2Sabba!', 10);
     await db.query(
-      `INSERT INTO users (email, full_name, role, company_id, password_hash)
-       VALUES ($1,$2,'hr',$3,$4)`,
-      [admin_email, admin_name, company.id, pw]
+      `INSERT INTO users (email, full_name, role, company_id, password_hash, job_title)
+       VALUES ($1,$2,'hr',$3,$4,$5)`,
+      [admin_email, hrName, company.id, pw, admin_title||null]
     );
+
+    // Log creation
+    await db.query(
+      `INSERT INTO audit_log (actor_id, action, target_id, target_type, meta)
+       VALUES ($1,'create_employer',$2,'company',$3)`,
+      [req.user.id, company.id, JSON.stringify({ name, plan, admin_email })]
+    ).catch(()=>{});
 
     res.status(201).json(company);
   } catch (err) {

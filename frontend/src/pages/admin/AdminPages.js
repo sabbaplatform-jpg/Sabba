@@ -145,6 +145,320 @@ export function AdminDashboard() {
 
 // ═══════════════════════════════════════════════════════════
 // 2. EMPLOYERS
+// ── Create Employer Wizard ────────────────────────────────────
+const INDUSTRIES = ['Technology','Financial Services','Professional Services','Healthcare','Legal','Retail','Media & Entertainment','Education','Manufacturing','Logistics','Energy','Other'];
+const SIZES      = ['1–50','51–200','201–500','501–1,000','1,001–5,000','5,000+'];
+const PLANS      = [
+  { id:'starter',    label:'Starter',    fee:'£12K–£18K/yr',    desc:'Up to 500 employees · Core portal · Email support' },
+  { id:'growth',     label:'Growth',     fee:'£18K–£36K/yr',    desc:'Up to 2,000 employees · Analytics · Priority support' },
+  { id:'enterprise', label:'Enterprise', fee:'£36K–£96K/yr',    desc:'Up to 10,000 employees · HRIS + dedicated AM' },
+  { id:'global',     label:'Global',     fee:'£100K+ (custom)', desc:'Unlimited · White-label · Multi-jurisdiction' },
+];
+const HRIS_SYSTEMS = ['Workday','BambooHR','Rippling','SAP SuccessFactors','Oracle HCM','Personio','HiBob','Other','None'];
+const PAYROLL_SYSTEMS = ['ADP','Sage Payroll','Xero','QuickBooks','Moorepay','Zellis','Custom','None'];
+const CONN_TYPES = ['REST API','SFTP scheduled sync','SSL Postback','Webhook','Manual import','TBD'];
+
+function CreateEmployerWizard({ onClose, onCreated }) {
+  const [step, setStep] = useState(1);
+  const TOTAL = 5;
+  const [form, setForm] = useState({
+    // Step 1
+    name: '', industry: '', size: '', website: '', address: '',
+    // Step 2
+    plan: 'starter', billing_name: '', billing_email: '', billing_address: '',
+    // Step 3
+    admin_first: '', admin_last: '', admin_email: '', admin_title: '',
+    // Step 4
+    hris: '', hris_conn: '', payroll: '', payroll_conn: '', integration_notes: '',
+    // Generated
+    temp_password: 'Welcome2Sabba!',
+  });
+  const [creating, setCreating] = useState(false);
+  const [created,  setCreated]  = useState(null);
+  const [error,    setError]    = useState('');
+
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+
+  const canNext = () => {
+    if (step === 1) return form.name && form.industry && form.size;
+    if (step === 2) return form.plan && form.billing_name && form.billing_email;
+    if (step === 3) return form.admin_first && form.admin_last && form.admin_email;
+    return true;
+  };
+
+  const submit = async () => {
+    setCreating(true); setError('');
+    try {
+      const { data } = await api.post('/admin/companies', {
+        name:            form.name,
+        industry:        form.industry,
+        size:            form.size,
+        website:         form.website,
+        address:         form.address,
+        plan:            form.plan,
+        billing_name:    form.billing_name,
+        billing_email:   form.billing_email,
+        billing_address: form.billing_address,
+        admin_name:      `${form.admin_first} ${form.admin_last}`.trim(),
+        admin_email:     form.admin_email,
+        admin_title:     form.admin_title,
+        hris:            form.hris,
+        hris_conn:       form.hris_conn,
+        payroll:         form.payroll,
+        payroll_conn:    form.payroll_conn,
+        integration_notes: form.integration_notes,
+      });
+      setCreated(data);
+      onCreated(data);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to create employer');
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const F = ({ label, k, placeholder, type='text', wide=false }) => (
+    <div style={{ gridColumn: wide ? '1 / -1' : undefined }}>
+      <label style={{ fontSize: 11, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.07em', display: 'block', marginBottom: 5 }}>{label}</label>
+      <input type={type} value={form[k]} onChange={e => set(k, e.target.value)} placeholder={placeholder}
+        style={{ width: '100%', border: '1.5px solid #eee', borderRadius: 10, padding: '9px 13px', fontSize: 13.5, color: colors.dark, fontFamily: font.body, outline: 'none' }}/>
+    </div>
+  );
+  const S = ({ label, k, opts }) => (
+    <div>
+      <label style={{ fontSize: 11, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.07em', display: 'block', marginBottom: 5 }}>{label}</label>
+      <select value={form[k]} onChange={e => set(k, e.target.value)}
+        style={{ width: '100%', border: '1.5px solid #eee', borderRadius: 10, padding: '9px 13px', fontSize: 13.5, color: colors.dark, fontFamily: font.body, outline: 'none', background: '#fff' }}>
+        <option value="">Select…</option>
+        {opts.map(o => <option key={o} value={o}>{o}</option>)}
+      </select>
+    </div>
+  );
+
+  const STEP_LABELS = ['Company basics','Subscription','HR admin','Integrations','Review'];
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 600, backdropFilter: 'blur(4px)' }}>
+      <div style={{ background: '#fff', borderRadius: 20, width: '100%', maxWidth: 660, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 24px 80px rgba(0,0,0,0.25)', fontFamily: font.body }}>
+
+        {/* Header */}
+        <div style={{ padding: '24px 28px 0' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+            <div>
+              <p style={{ fontSize: 10.5, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 3 }}>
+                {created ? 'Complete' : `Step ${step} of ${TOTAL}`}
+              </p>
+              <h2 style={{ fontFamily: font.display, fontSize: 24, color: colors.dark, fontWeight: 700, fontStyle: 'italic' }}>
+                {created ? 'Employer created!' : STEP_LABELS[step-1]}
+              </h2>
+            </div>
+            <button onClick={onClose} style={{ background: '#F7F5F2', border: 'none', borderRadius: 8, width: 30, height: 30, cursor: 'pointer', fontSize: 16, color: colors.muted }}>✕</button>
+          </div>
+
+          {/* Progress bar */}
+          {!created && (
+            <div style={{ display: 'flex', gap: 4, marginBottom: 24 }}>
+              {STEP_LABELS.map((label, i) => (
+                <div key={i} style={{ flex: 1 }}>
+                  <div style={{ height: 3, borderRadius: 2, background: i < step ? colors.orange : '#eee', transition: 'background 0.3s', marginBottom: 5 }}/>
+                  <p style={{ fontSize: 10, color: i < step ? colors.orange : i === step-1 ? colors.dark : colors.faint, fontWeight: i === step-1 ? 700 : 400, textAlign: 'center' }}>{label}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div style={{ padding: '0 28px 28px' }}>
+
+          {/* ── STEP 1: Company basics ── */}
+          {step === 1 && (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+              <F k="name"     label="Company name *"   placeholder="e.g. Barclays PLC"    wide/>
+              <S k="industry" label="Industry *"        opts={INDUSTRIES}/>
+              <S k="size"     label="Company size *"    opts={SIZES}/>
+              <F k="website"  label="Website"           placeholder="https://company.com"/>
+              <F k="address"  label="Registered address" placeholder="1 Churchill Place, London, E14 5HP" wide/>
+            </div>
+          )}
+
+          {/* ── STEP 2: Subscription plan ── */}
+          {step === 2 && (
+            <div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
+                {PLANS.map(p => (
+                  <div key={p.id} onClick={() => set('plan', p.id)}
+                    style={{ padding: '14px 16px', border: `2px solid ${form.plan === p.id ? colors.orange : '#eee'}`, borderRadius: 12, cursor: 'pointer', background: form.plan === p.id ? colors.orangeLight : '#fff', transition: 'all 0.15s' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
+                      <p style={{ fontSize: 14, fontWeight: 700, color: form.plan === p.id ? colors.orange : colors.dark }}>{p.label}</p>
+                      {form.plan === p.id && <span style={{ fontSize: 12, color: colors.orange }}>✓</span>}
+                    </div>
+                    <p style={{ fontSize: 12.5, fontWeight: 700, color: form.plan === p.id ? colors.orange : colors.mid, marginBottom: 4 }}>{p.fee}</p>
+                    <p style={{ fontSize: 11.5, color: colors.muted }}>{p.desc}</p>
+                  </div>
+                ))}
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                <F k="billing_name"    label="Billing contact name *" placeholder="Jane Smith"/>
+                <F k="billing_email"   label="Billing email *"         placeholder="finance@company.com" type="email"/>
+                <F k="billing_address" label="Billing address"         placeholder="Same as registered address" wide/>
+              </div>
+            </div>
+          )}
+
+          {/* ── STEP 3: HR admin ── */}
+          {step === 3 && (
+            <div>
+              <p style={{ fontSize: 13.5, color: colors.muted, marginBottom: 20, lineHeight: 1.6 }}>
+                This person will be the primary HR admin for the employer account. They'll receive login credentials and can add additional admins once inside.
+              </p>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                <F k="admin_first" label="First name *"  placeholder="Sarah"/>
+                <F k="admin_last"  label="Last name *"   placeholder="Chen"/>
+                <F k="admin_email" label="Email *"       placeholder="sarah.chen@company.com" type="email"/>
+                <F k="admin_title" label="Job title"     placeholder="HR Director"/>
+              </div>
+              <div style={{ background: colors.orangeLight, border: `1px solid rgba(212,98,42,0.2)`, borderRadius: 10, padding: '12px 16px', marginTop: 16 }}>
+                <p style={{ fontSize: 13, color: colors.dark, fontWeight: 700, marginBottom: 3 }}>Temporary password</p>
+                <p style={{ fontSize: 13, color: colors.muted }}>The HR admin will log in with <strong style={{ color: colors.dark, fontFamily: 'monospace' }}>Welcome2Sabba!</strong> and will be prompted to change it on first login.</p>
+              </div>
+            </div>
+          )}
+
+          {/* ── STEP 4: Integrations ── */}
+          {step === 4 && (
+            <div>
+              <p style={{ fontSize: 13.5, color: colors.muted, marginBottom: 20, lineHeight: 1.6 }}>
+                Select which HRIS and payroll systems this employer uses. These create integration stubs that can be fully configured in the Integrations tab.
+              </p>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
+                <S k="hris"       label="HRIS system"         opts={HRIS_SYSTEMS}/>
+                <S k="hris_conn"  label="HRIS connection type" opts={CONN_TYPES}/>
+                <S k="payroll"    label="Payroll system"       opts={PAYROLL_SYSTEMS}/>
+                <S k="payroll_conn" label="Payroll connection" opts={CONN_TYPES}/>
+              </div>
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.07em', display: 'block', marginBottom: 5 }}>Integration notes</label>
+                <textarea value={form.integration_notes} onChange={e => set('integration_notes', e.target.value)}
+                  placeholder="Any specific requirements, existing API keys, data format preferences, or timeline notes…"
+                  style={{ width: '100%', border: '1.5px solid #eee', borderRadius: 10, padding: '10px 13px', fontSize: 13.5, color: colors.dark, fontFamily: font.body, outline: 'none', resize: 'vertical', minHeight: 90 }}/>
+              </div>
+              <div style={{ background: '#F7F5F2', borderRadius: 10, padding: '10px 14px', marginTop: 14 }}>
+                <p style={{ fontSize: 12, color: colors.muted }}>
+                  Integration credentials and full configuration happen after account creation in the <strong style={{ color: colors.dark }}>Integrations tab</strong>. These selections just record what's planned.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* ── STEP 5: Review ── */}
+          {step === 5 && !created && (
+            <div>
+              <p style={{ fontSize: 13.5, color: colors.muted, marginBottom: 20, lineHeight: 1.6 }}>
+                Review all details before creating the employer account. A Company ID will be auto-generated on creation.
+              </p>
+              {[
+                { title: 'Company', icon: '🏢', rows: [
+                  ['Name',       form.name],
+                  ['Industry',   form.industry],
+                  ['Size',       form.size],
+                  ['Website',    form.website || '—'],
+                  ['Address',    form.address || '—'],
+                ]},
+                { title: 'Subscription', icon: '💳', rows: [
+                  ['Plan',            PLANS.find(p=>p.id===form.plan)?.label],
+                  ['Annual fee',      PLANS.find(p=>p.id===form.plan)?.fee],
+                  ['Billing contact', form.billing_name],
+                  ['Billing email',   form.billing_email],
+                ]},
+                { title: 'HR Admin', icon: '👤', rows: [
+                  ['Name',      `${form.admin_first} ${form.admin_last}`],
+                  ['Email',     form.admin_email],
+                  ['Job title', form.admin_title || '—'],
+                  ['Password',  'Welcome2Sabba! (temporary)'],
+                ]},
+                { title: 'Integrations', icon: '🔌', rows: [
+                  ['HRIS',        form.hris || 'Not specified'],
+                  ['HRIS conn.',  form.hris_conn || '—'],
+                  ['Payroll',     form.payroll || 'Not specified'],
+                  ['Payroll conn.', form.payroll_conn || '—'],
+                ]},
+              ].map((section, si) => (
+                <div key={si} style={{ marginBottom: 14, background: '#F7F5F2', borderRadius: 12, overflow: 'hidden' }}>
+                  <div style={{ background: colors.dark, padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 16 }}>{section.icon}</span>
+                    <p style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>{section.title}</p>
+                  </div>
+                  {section.rows.map(([label, value], ri) => (
+                    <div key={ri} style={{ display: 'flex', justifyContent: 'space-between', padding: '9px 16px', borderBottom: ri < section.rows.length-1 ? '1px solid #eee' : 'none' }}>
+                      <span style={{ fontSize: 13, color: colors.muted }}>{label}</span>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: colors.dark, maxWidth: '55%', textAlign: 'right' }}>{value}</span>
+                    </div>
+                  ))}
+                </div>
+              ))}
+              {error && <p style={{ fontSize: 13, color: colors.red, fontWeight: 700, marginBottom: 14 }}>⚠ {error}</p>}
+            </div>
+          )}
+
+          {/* ── CREATED ── */}
+          {created && (
+            <div style={{ textAlign: 'center', padding: '8px 0 16px' }}>
+              <div style={{ fontSize: 56, marginBottom: 16 }}>🎉</div>
+              <p style={{ fontFamily: font.display, fontSize: 24, color: colors.dark, fontWeight: 700, fontStyle: 'italic', marginBottom: 8 }}>
+                {created.name} is live!
+              </p>
+              <p style={{ fontSize: 13.5, color: colors.muted, marginBottom: 20, lineHeight: 1.7 }}>
+                The employer account has been created. HR admin login details have been set up. Company ID was auto-generated below.
+              </p>
+              <div style={{ background: '#F7F5F2', borderRadius: 12, padding: '14px 20px', marginBottom: 24, textAlign: 'left' }}>
+                {[
+                  ['Company ID',     created.id],
+                  ['Plan',          created.plan?.charAt(0).toUpperCase()+created.plan?.slice(1)],
+                  ['HR admin email', form.admin_email],
+                  ['Temp password', 'Welcome2Sabba!'],
+                ].map(([label, value], i) => (
+                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: i < 3 ? 10 : 0, marginBottom: i < 3 ? 10 : 0, borderBottom: i < 3 ? '1px solid #eee' : 'none' }}>
+                    <span style={{ fontSize: 13, color: colors.muted }}>{label}</span>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: colors.dark, fontFamily: label === 'Company ID' ? 'monospace' : font.body, maxWidth: '60%', textAlign: 'right', wordBreak: 'break-all' }}>{value}</span>
+                  </div>
+                ))}
+              </div>
+              <Button onClick={onClose} style={{ width: '100%', justifyContent: 'center' }}>Done</Button>
+            </div>
+          )}
+
+          {/* Navigation */}
+          {!created && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 24 }}>
+              <button onClick={() => step > 1 ? setStep(s => s-1) : onClose()}
+                style={{ background: '#F7F5F2', border: '1px solid #eee', borderRadius: 10, padding: '10px 20px', fontSize: 13.5, fontWeight: 600, color: colors.mid, cursor: 'pointer', fontFamily: font.body }}>
+                {step === 1 ? 'Cancel' : '← Back'}
+              </button>
+              <div style={{ display: 'flex', gap: 6 }}>
+                {Array.from({ length: TOTAL }).map((_,i) => (
+                  <div key={i} style={{ width: i === step-1 ? 20 : 7, height: 7, borderRadius: 4, background: i < step ? colors.orange : '#eee', transition: 'all 0.3s' }}/>
+                ))}
+              </div>
+              {step < TOTAL
+                ? <button onClick={() => setStep(s => s+1)} disabled={!canNext()}
+                    style={{ background: canNext() ? colors.dark : '#eee', color: canNext() ? '#fff' : '#aaa', border: 'none', borderRadius: 10, padding: '10px 24px', fontSize: 13.5, fontWeight: 700, cursor: canNext() ? 'pointer' : 'default', fontFamily: font.body }}>
+                    Next →
+                  </button>
+                : <button onClick={submit} disabled={creating}
+                    style={{ background: creating ? '#eee' : colors.orange, color: creating ? '#aaa' : '#fff', border: 'none', borderRadius: 10, padding: '10px 24px', fontSize: 13.5, fontWeight: 700, cursor: creating ? 'default' : 'pointer', fontFamily: font.body, boxShadow: creating ? 'none' : `0 4px 14px rgba(212,98,42,0.35)` }}>
+                    {creating ? 'Creating…' : '🚀 Create employer'}
+                  </button>
+              }
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════
+// 2. EMPLOYERS
 // ═══════════════════════════════════════════════════════════
 export function AdminEmployers() {
   const navigate  = useNavigate();
@@ -152,25 +466,12 @@ export function AdminEmployers() {
   const [companies,   setCompanies]   = useState([]);
   const [loading,     setLoading]     = useState(true);
   const [showCreate,  setShowCreate]  = useState(false);
-  const [createForm,  setCreateForm]  = useState({ name: '', admin_name: '', admin_email: '', plan: 'starter' });
-  const [creating,    setCreating]    = useState(false);
   const [search,      setSearch]      = useState('');
   const [impersonating, setImpersonating] = useState(null);
 
   useEffect(() => {
     api.get('/admin/companies').then(r => setCompanies(r.data)).finally(() => setLoading(false));
   }, []);
-
-  const createCompany = async () => {
-    setCreating(true);
-    try {
-      const { data } = await api.post('/admin/companies', createForm);
-      setCompanies(cs => [data, ...cs]);
-      setShowCreate(false);
-      setCreateForm({ name: '', admin_name: '', admin_email: '', plan: 'starter' });
-    } catch (err) { alert(err.response?.data?.error || 'Failed to create'); }
-    finally { setCreating(false); }
-  };
 
   const updateStatus = async (id, status) => {
     await api.patch(`/admin/companies/${id}`, { status });
@@ -180,54 +481,23 @@ export function AdminEmployers() {
   const impersonate = async (company) => {
     setImpersonating(company.id);
     try {
-      // Get the first HR admin for this company
-      const hrs = await api.get('/admin/companies').then(r => r.data);
-      const target = hrs.find(c => c.id === company.id);
-      if (!target) { alert('No HR admin found for this company'); return; }
-      // We'll need to get HR users — for now navigate to their context
-      alert(`Context switching to ${company.name} — full impersonation requires HR user selection. Coming in next build.`);
+      alert(`Context switching to ${company.name} — full impersonation coming in next build.`);
     } catch { alert('Failed to switch context'); }
     finally { setImpersonating(null); }
   };
 
   const filtered = companies.filter(c => !search || c.name?.toLowerCase().includes(search.toLowerCase()));
 
-  const PLAN_COLORS = { starter: colors.muted, growth: colors.blue, enterprise: colors.orange, global: '#7B3FA0' };
+  const PLAN_COLORS   = { starter: colors.muted, growth: colors.blue, enterprise: colors.orange, global: '#7B3FA0' };
   const STATUS_COLORS = { active: colors.green, suspended: colors.red, trial: colors.orange, churned: colors.faint };
 
   return (
     <AdminLayout active="employers">
       {showCreate && (
-        <Modal title="Create employer account" onClose={() => setShowCreate(false)} width={520}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 16 }}>
-            {[
-              { key: 'name',        label: 'Company name',    placeholder: 'e.g. Barclays PLC', wide: true },
-              { key: 'admin_name',  label: 'HR admin name',   placeholder: 'e.g. Sarah Chen' },
-              { key: 'admin_email', label: 'HR admin email',  placeholder: 'sarah@company.com' },
-            ].map(f => (
-              <div key={f.key} style={{ gridColumn: f.wide ? '1 / -1' : undefined }}>
-                <label style={{ fontSize: 11, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.07em', display: 'block', marginBottom: 5 }}>{f.label}</label>
-                <input value={createForm[f.key]} onChange={e => setCreateForm(cf => ({ ...cf, [f.key]: e.target.value }))}
-                  placeholder={f.placeholder}
-                  style={{ width: '100%', border: '1.5px solid #eee', borderRadius: 10, padding: '9px 13px', fontSize: 13.5, color: colors.dark, fontFamily: font.body, outline: 'none' }}/>
-              </div>
-            ))}
-            <div>
-              <label style={{ fontSize: 11, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.07em', display: 'block', marginBottom: 5 }}>Subscription plan</label>
-              <select value={createForm.plan} onChange={e => setCreateForm(cf => ({ ...cf, plan: e.target.value }))}
-                style={{ width: '100%', border: '1.5px solid #eee', borderRadius: 10, padding: '9px 13px', fontSize: 13.5, color: colors.dark, fontFamily: font.body, outline: 'none', background: '#fff' }}>
-                {['starter','growth','enterprise','global'].map(p => <option key={p} value={p}>{p.charAt(0).toUpperCase()+p.slice(1)}</option>)}
-              </select>
-            </div>
-          </div>
-          <div style={{ background: '#F7F5F2', borderRadius: 10, padding: '10px 14px', marginBottom: 20 }}>
-            <p style={{ fontSize: 12, color: colors.muted }}>A HR admin account will be created with temporary password <strong style={{ color: colors.dark }}>Welcome2Sabba!</strong></p>
-          </div>
-          <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-            <Button variant="secondary" onClick={() => setShowCreate(false)}>Cancel</Button>
-            <Button onClick={createCompany} disabled={creating || !createForm.name || !createForm.admin_email}>{creating ? 'Creating…' : 'Create employer'}</Button>
-          </div>
-        </Modal>
+        <CreateEmployerWizard
+          onClose={() => setShowCreate(false)}
+          onCreated={co => setCompanies(cs => [co, ...cs])}
+        />
       )}
 
       <div style={{ background: '#fff', borderBottom: '1px solid #eee', padding: '24px 36px' }}>
@@ -263,11 +533,10 @@ export function AdminEmployers() {
               <div style={{ display: 'flex', gap: 5 }}>
                 <button onClick={() => navigate(`/admin/employers/${co.id}`)} style={{ background: colors.dark, color: '#fff', border: 'none', borderRadius: 6, padding: '4px 10px', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', fontFamily: font.body }}>View →</button>
                 <button onClick={() => impersonate(co)} disabled={impersonating === co.id} style={{ background: colors.orangeLight, color: colors.orange, border: 'none', borderRadius: 6, padding: '4px 9px', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', fontFamily: font.body }}>Login as HR</button>
-                {(co.status === 'active' || !co.status) ? (
-                  <button onClick={() => updateStatus(co.id, 'suspended')} style={{ background: colors.redLight, color: colors.red, border: 'none', borderRadius: 6, padding: '4px 9px', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', fontFamily: font.body }}>Suspend</button>
-                ) : (
-                  <button onClick={() => updateStatus(co.id, 'active')} style={{ background: colors.greenLight, color: colors.green, border: 'none', borderRadius: 6, padding: '4px 9px', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', fontFamily: font.body }}>Activate</button>
-                )}
+                {(co.status === 'active' || !co.status)
+                  ? <button onClick={() => updateStatus(co.id, 'suspended')} style={{ background: colors.redLight, color: colors.red, border: 'none', borderRadius: 6, padding: '4px 9px', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', fontFamily: font.body }}>Suspend</button>
+                  : <button onClick={() => updateStatus(co.id, 'active')}    style={{ background: colors.greenLight, color: colors.green, border: 'none', borderRadius: 6, padding: '4px 9px', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', fontFamily: font.body }}>Activate</button>
+                }
               </div>
             </div>
           ))}
