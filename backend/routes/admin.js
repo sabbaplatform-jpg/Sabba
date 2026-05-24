@@ -487,4 +487,138 @@ router.patch('/packages/:id/access', auth, requireAdmin, async (req, res) => {
   }
 });
 
+
+// ── GET /api/admin/integrations/:companyId ────────────────────
+router.get('/integrations/:companyId', auth, requireAdmin, async (req, res) => {
+  try {
+    const result = await db.query(
+      `SELECT * FROM employer_integrations WHERE company_id=$1 ORDER BY created_at ASC`,
+      [req.params.companyId]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    // Table may not exist yet
+    res.json([]);
+  }
+});
+
+// ── POST /api/admin/integrations/:companyId ───────────────────
+router.post('/integrations/:companyId', auth, requireAdmin, async (req, res) => {
+  try {
+    const { name, type, category, endpoint, api_key, secret, status, notes, postback_url, postback_events } = req.body;
+    const result = await db.query(`
+      INSERT INTO employer_integrations
+        (company_id, name, type, category, endpoint, api_key_hash, secret_hash,
+         status, notes, postback_url, postback_events, created_by)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *
+    `, [
+      req.params.companyId, name, type||'REST API', category||'hris',
+      endpoint||null,
+      api_key ? require('crypto').createHash('sha256').update(api_key).digest('hex') : null,
+      secret   ? require('crypto').createHash('sha256').update(secret).digest('hex')  : null,
+      status||'pending', notes||null,
+      postback_url||null,
+      postback_events ? JSON.stringify(postback_events) : null,
+      req.user.id,
+    ]);
+
+    // Log
+    await db.query(
+      `INSERT INTO audit_log (actor_id, action, target_id, target_type, meta)
+       VALUES ($1,'add_integration',$2,'integration',$3)`,
+      [req.user.id, result.rows[0].id, JSON.stringify({ name, company_id: req.params.companyId })]
+    ).catch(()=>{});
+
+    res.status(201).json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── PATCH /api/admin/integrations/:companyId/:integrationId ───
+router.patch('/integrations/:companyId/:integrationId', auth, requireAdmin, async (req, res) => {
+  try {
+    const { name, type, category, endpoint, api_key, secret, status, notes, postback_url, postback_events } = req.body;
+    const fields = []; const vals = []; let i = 1;
+    if (name     !== undefined) { fields.push(`name=$${i++}`);     vals.push(name); }
+    if (type     !== undefined) { fields.push(`type=$${i++}`);     vals.push(type); }
+    if (category !== undefined) { fields.push(`category=$${i++}`); vals.push(category); }
+    if (endpoint !== undefined) { fields.push(`endpoint=$${i++}`); vals.push(endpoint); }
+    if (status   !== undefined) { fields.push(`status=$${i++}`);   vals.push(status); }
+    if (notes    !== undefined) { fields.push(`notes=$${i++}`);    vals.push(notes); }
+    if (postback_url !== undefined) { fields.push(`postback_url=$${i++}`); vals.push(postback_url); }
+    if (postback_events !== undefined) { fields.push(`postback_events=$${i++}`); vals.push(JSON.stringify(postback_events)); }
+    if (api_key && api_key.trim()) {
+      fields.push(`api_key_hash=$${i++}`);
+      vals.push(require('crypto').createHash('sha256').update(api_key).digest('hex'));
+    }
+    if (secret && secret.trim()) {
+      fields.push(`secret_hash=$${i++}`);
+      vals.push(require('crypto').createHash('sha256').update(secret).digest('hex'));
+    }
+    fields.push(`updated_at=NOW()`);
+    if (!fields.length) return res.status(400).json({ error: 'Nothing to update' });
+    vals.push(req.params.integrationId);
+    const result = await db.query(
+      `UPDATE employer_integrations SET ${fields.join(',')} WHERE id=$${i} RETURNING *`, vals
+    );
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── DELETE /api/admin/integrations/:companyId/:integrationId ──
+router.delete('/integrations/:companyId/:integrationId', auth, requireAdmin, async (req, res) => {
+  try {
+    await db.query(
+      `DELETE FROM employer_integrations WHERE id=$1 AND company_id=$2`,
+      [req.params.integrationId, req.params.companyId]
+    );
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── POST /api/admin/integrations/:companyId/:integrationId/test
+router.post('/integrations/:companyId/:integrationId/test', auth, requireAdmin, async (req, res) => {
+  try {
+    const integ = await db.query(
+      `SELECT * FROM employer_integrations WHERE id=$1 AND company_id=$2`,
+      [req.params.integrationId, req.params.companyId]
+    );
+    if (!integ.rows.length) return res.status(404).json({ error: 'Integration not found' });
+    const { endpoint, type } = integ.rows[0];
+
+    if (!endpoint) return res.json({ success: false, message: 'No endpoint configured — add an API URL first' });
+
+    // For REST API, attempt a HEAD request to the endpoint
+    if (type === 'REST API' || type === 'Webhook') {
+      try {
+        const https = require('https');
+        const url = new URL(endpoint);
+        const result = await new Promise((resolve) => {
+          const req2 = https.request({ hostname: url.hostname, port: 443, path: url.pathname, method: 'HEAD', timeout: 5000 }, (r) => {
+            resolve({ success: r.statusCode < 500, message: `HTTP ${r.statusCode} — ${r.statusCode < 400 ? 'endpoint reachable' : 'endpoint returned error'}` });
+          });
+          req2.on('error', () => resolve({ success: false, message: 'Endpoint unreachable — check URL and firewall settings' }));
+          req2.on('timeout', () => { req2.destroy(); resolve({ success: false, message: 'Connection timed out after 5 seconds' }); });
+          req2.end();
+        });
+        // Update last_tested
+        await db.query(`UPDATE employer_integrations SET last_sync=NOW() WHERE id=$1`, [req.params.integrationId]).catch(()=>{});
+        return res.json(result);
+      } catch {
+        return res.json({ success: false, message: 'Invalid URL — check the endpoint format' });
+      }
+    }
+
+    // For non-HTTP types just acknowledge
+    res.json({ success: true, message: `${type} integration acknowledged — manual verification required` });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;

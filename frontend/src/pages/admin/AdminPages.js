@@ -14,6 +14,7 @@ function AdminNav({ active }) {
     { id: 'employers',  label: 'Employers',      icon: '🏢', path: '/admin/employers' },
     { id: 'vendors',    label: 'Vendors',         icon: '🏪', path: '/admin/vendors' },
     { id: 'packages',   label: 'Packages',         icon: '📦', path: '/admin/packages' },
+    { id: 'integrations', label: 'Integrations',   icon: '🔌', path: '/admin/integrations' },
     { id: 'analytics',  label: 'Analytics',       icon: '📊', path: '/admin/analytics' },
     { id: 'billing',    label: 'Billing',          icon: '💳', path: '/admin/billing' },
     { id: 'flags',      label: 'Feature flags',   icon: '🚩', path: '/admin/flags' },
@@ -1591,6 +1592,336 @@ export function AdminAuditLog() {
                 <span style={{ fontSize: 12, color: colors.muted }}>{log.meta ? JSON.stringify(log.meta).slice(0,60) : '—'}</span>
               </div>
             ))}
+          </div>
+        )}
+      </div>
+    </AdminLayout>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════
+// INTEGRATIONS TAB
+// ═══════════════════════════════════════════════════════════
+const CONN_STATUS = {
+  connected:    { label: 'Connected',     color: '#1D9E75', bg: '#EAF3EE' },
+  pending:      { label: 'Pending',       color: '#B45309', bg: '#FEF3C7' },
+  error:        { label: 'Error',         color: '#C0392B', bg: '#FDECEA' },
+  disconnected: { label: 'Disconnected',  color: '#9E8E7E', bg: '#F7F5F2' },
+  not_set:      { label: 'Not configured',color: '#9E8E7E', bg: '#F7F5F2' },
+};
+
+function IntegrationCard({ name, type, status, lastSync, endpoint, notes, onEdit, onTest, onDelete }) {
+  const st = CONN_STATUS[status] || CONN_STATUS.not_set;
+  return (
+    <div style={{ background: '#fff', border: '1px solid #eee', borderRadius: 14, padding: '18px 20px', position: 'relative' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
+        <div style={{ flex: 1 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+            <p style={{ fontSize: 14.5, fontWeight: 700, color: colors.dark }}>{name}</p>
+            <span style={{ fontSize: 11, fontWeight: 700, color: st.color, background: st.bg, borderRadius: 6, padding: '2px 8px' }}>{st.label}</span>
+          </div>
+          <p style={{ fontSize: 12.5, color: colors.muted }}>{type}</p>
+        </div>
+        <div style={{ display: 'flex', gap: 6 }}>
+          <button onClick={onTest} style={{ background: '#F7F5F2', color: colors.mid, border: '1px solid #eee', borderRadius: 6, padding: '4px 10px', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', fontFamily: font.body }}>Test</button>
+          <button onClick={onEdit} style={{ background: colors.dark, color: '#fff', border: 'none', borderRadius: 6, padding: '4px 10px', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', fontFamily: font.body }}>Edit</button>
+          <button onClick={onDelete} style={{ background: colors.redLight, color: colors.red, border: 'none', borderRadius: 6, padding: '4px 10px', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', fontFamily: font.body }}>Remove</button>
+        </div>
+      </div>
+      {endpoint && (
+        <div style={{ background: '#F7F5F2', borderRadius: 8, padding: '7px 12px', marginBottom: 8, fontFamily: 'monospace', fontSize: 12, color: colors.mid, wordBreak: 'break-all' }}>
+          {endpoint}
+        </div>
+      )}
+      <div style={{ display: 'flex', gap: 16 }}>
+        {lastSync && <p style={{ fontSize: 12, color: colors.faint }}>Last sync: {new Date(lastSync).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>}
+        {notes && <p style={{ fontSize: 12, color: colors.faint, fontStyle: 'italic' }}>{notes}</p>}
+      </div>
+    </div>
+  );
+}
+
+function EditIntegrationModal({ integration, onClose, onSave }) {
+  const isNew = !integration.id;
+  const [form, setForm] = useState({
+    name:        integration.name || '',
+    type:        integration.type || 'REST API',
+    category:    integration.category || 'hris',
+    endpoint:    integration.endpoint || '',
+    api_key:     '',
+    secret:      '',
+    status:      integration.status || 'pending',
+    notes:       integration.notes || '',
+    postback_url: integration.postback_url || '',
+    postback_events: integration.postback_events || [],
+  });
+  const [saving, setSaving] = useState(false);
+  const f = (k, v) => setForm(prev => ({ ...prev, [k]: v }));
+
+  const EVENTS = ['booking.created','booking.approved','booking.confirmed','booking.cancelled','employee.created','employee.updated'];
+
+  const save = async () => {
+    setSaving(true);
+    await onSave(form);
+    setSaving(false);
+    onClose();
+  };
+
+  return (
+    <Modal title={isNew ? 'Add integration' : `Edit — ${integration.name}`} onClose={onClose} width={580}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
+        <div style={{ gridColumn: '1 / -1' }}>
+          <label style={lStyle}>Integration name</label>
+          <input value={form.name} onChange={e=>f('name',e.target.value)} placeholder="e.g. Workday Production" style={iStyle}/>
+        </div>
+        <div>
+          <label style={lStyle}>Category</label>
+          <select value={form.category} onChange={e=>f('category',e.target.value)} style={{...iStyle, background:'#fff'}}>
+            <option value="hris">HRIS</option>
+            <option value="payroll">Payroll</option>
+            <option value="sso">SSO</option>
+            <option value="postback">SSL Postback</option>
+            <option value="webhook">Webhook</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div>
+          <label style={lStyle}>Connection type</label>
+          <select value={form.type} onChange={e=>f('type',e.target.value)} style={{...iStyle, background:'#fff'}}>
+            {['REST API','SFTP','SSL Postback','Webhook','OAuth 2.0','SAML','Manual'].map(t=><option key={t} value={t}>{t}</option>)}
+          </select>
+        </div>
+        <div style={{ gridColumn: '1 / -1' }}>
+          <label style={lStyle}>API endpoint / URL</label>
+          <input value={form.endpoint} onChange={e=>f('endpoint',e.target.value)} placeholder="https://api.workday.com/v1/..." style={iStyle}/>
+        </div>
+        {form.category === 'postback' && (
+          <div style={{ gridColumn: '1 / -1' }}>
+            <label style={lStyle}>Postback URL</label>
+            <input value={form.postback_url} onChange={e=>f('postback_url',e.target.value)} placeholder="https://partner.com/webhook/sabba" style={iStyle}/>
+          </div>
+        )}
+        <div>
+          <label style={lStyle}>API key</label>
+          <input value={form.api_key} onChange={e=>f('api_key',e.target.value)} placeholder="sk-…  (leave blank to keep existing)" type="password" style={iStyle}/>
+        </div>
+        <div>
+          <label style={lStyle}>Secret / token</label>
+          <input value={form.secret} onChange={e=>f('secret',e.target.value)} placeholder="Leave blank to keep existing" type="password" style={iStyle}/>
+        </div>
+        <div>
+          <label style={lStyle}>Status</label>
+          <select value={form.status} onChange={e=>f('status',e.target.value)} style={{...iStyle, background:'#fff'}}>
+            {Object.keys(CONN_STATUS).map(s=><option key={s} value={s}>{CONN_STATUS[s].label}</option>)}
+          </select>
+        </div>
+        <div>
+          <label style={lStyle}>Notes</label>
+          <input value={form.notes} onChange={e=>f('notes',e.target.value)} placeholder="Any context or requirements" style={iStyle}/>
+        </div>
+        {form.category === 'postback' && (
+          <div style={{ gridColumn: '1 / -1' }}>
+            <label style={lStyle}>Postback events</label>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 4 }}>
+              {EVENTS.map(ev => {
+                const checked = form.postback_events.includes(ev);
+                return (
+                  <div key={ev} onClick={() => f('postback_events', checked ? form.postback_events.filter(e=>e!==ev) : [...form.postback_events, ev])}
+                    style={{ padding: '5px 12px', borderRadius: 20, border: `1.5px solid ${checked?colors.orange:'#eee'}`, background: checked?colors.orangeLight:'#fff', fontSize: 12.5, fontWeight: 600, color: checked?colors.orange:colors.mid, cursor: 'pointer', userSelect: 'none' }}>
+                    {ev}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+      <div style={{ background: '#F7F5F2', borderRadius: 10, padding: '10px 14px', marginBottom: 16 }}>
+        <p style={{ fontSize: 12, color: colors.muted }}>API keys and secrets are stored encrypted. They are never displayed after saving.</p>
+      </div>
+      <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+        <button onClick={onClose} style={{ background: '#F7F5F2', color: colors.mid, border: '1px solid #eee', borderRadius: 10, padding: '10px 18px', fontSize: 13.5, fontWeight: 700, cursor: 'pointer', fontFamily: font.body }}>Cancel</button>
+        <button onClick={save} disabled={saving || !form.name}
+          style={{ background: form.name ? colors.dark : '#eee', color: form.name ? '#fff' : '#aaa', border: 'none', borderRadius: 10, padding: '10px 22px', fontSize: 13.5, fontWeight: 700, cursor: form.name ? 'pointer' : 'default', fontFamily: font.body }}>
+          {saving ? 'Saving…' : isNew ? 'Add integration' : 'Save changes'}
+        </button>
+      </div>
+    </Modal>
+  );
+}
+
+export function AdminIntegrations() {
+  const [companies,    setCompanies]    = useState([]);
+  const [integrations, setIntegrations] = useState([]);
+  const [loading,      setLoading]      = useState(true);
+  const [selCompany,   setSelCompany]   = useState('');
+  const [editing,      setEditing]      = useState(null);
+  const [testResult,   setTestResult]   = useState(null);
+  const [testing,      setTesting]      = useState(null);
+
+  useEffect(() => {
+    api.get('/admin/companies').then(r => {
+      setCompanies(r.data);
+      if (r.data.length > 0) setSelCompany(r.data[0].id);
+    }).finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    if (!selCompany) return;
+    api.get(`/admin/integrations/${selCompany}`).then(r => setIntegrations(r.data)).catch(() => setIntegrations([]));
+  }, [selCompany]);
+
+  const saveIntegration = async (form) => {
+    if (editing?.id) {
+      const { data } = await api.patch(`/admin/integrations/${selCompany}/${editing.id}`, form);
+      setIntegrations(is => is.map(i => i.id === editing.id ? data : i));
+    } else {
+      const { data } = await api.post(`/admin/integrations/${selCompany}`, form);
+      setIntegrations(is => [...is, data]);
+    }
+  };
+
+  const deleteIntegration = async (id) => {
+    if (!window.confirm('Remove this integration?')) return;
+    await api.delete(`/admin/integrations/${selCompany}/${id}`).catch(() => {});
+    setIntegrations(is => is.filter(i => i.id !== id));
+  };
+
+  const testIntegration = async (integration) => {
+    setTesting(integration.id); setTestResult(null);
+    try {
+      const { data } = await api.post(`/admin/integrations/${selCompany}/${integration.id}/test`);
+      setTestResult({ id: integration.id, success: data.success, message: data.message || (data.success ? 'Connection successful' : 'Connection failed') });
+    } catch (err) {
+      setTestResult({ id: integration.id, success: false, message: err.response?.data?.error || 'Test failed — check endpoint and credentials' });
+    } finally {
+      setTesting(null);
+    }
+  };
+
+  const company = companies.find(c => c.id === selCompany);
+
+  // Group by category
+  const grouped = integrations.reduce((a, i) => {
+    const k = i.category || 'other';
+    a[k] = [...(a[k]||[]), i];
+    return a;
+  }, {});
+
+  const CATEGORY_LABELS = { hris: 'HRIS Systems', payroll: 'Payroll', sso: 'SSO & Authentication', postback: 'SSL Postbacks', webhook: 'Webhooks', other: 'Other' };
+  const CATEGORY_ICONS  = { hris: '🏗', payroll: '💷', sso: '🔐', postback: '🔄', webhook: '⚡', other: '🔌' };
+
+  return (
+    <AdminLayout active="integrations">
+      {editing && (
+        <EditIntegrationModal
+          integration={editing}
+          onClose={() => setEditing(null)}
+          onSave={saveIntegration}
+        />
+      )}
+      <div style={{ background: '#fff', borderBottom: '1px solid #eee', padding: '24px 36px' }}>
+        <p style={{ fontSize: 10.5, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 3 }}>Super Admin</p>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 16 }}>
+          <h1 style={{ fontFamily: font.display, fontSize: 30, color: colors.dark, fontWeight: 700, fontStyle: 'italic' }}>Integrations</h1>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+            <select value={selCompany} onChange={e => setSelCompany(e.target.value)}
+              style={{ border: '1.5px solid #eee', borderRadius: 10, padding: '8px 14px', fontSize: 13.5, color: colors.dark, fontFamily: font.body, outline: 'none', background: '#fff' }}>
+              {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+            <button onClick={() => setEditing({ category: 'hris' })}
+              style={{ background: colors.dark, color: '#fff', border: 'none', borderRadius: 10, padding: '9px 18px', fontSize: 13.5, fontWeight: 700, cursor: 'pointer', fontFamily: font.body }}>
+              + Add integration
+            </button>
+          </div>
+        </div>
+
+        {/* Summary strip */}
+        {company && (
+          <div style={{ display: 'flex', gap: 20, alignItems: 'center', padding: '10px 0', borderTop: '1px solid #eee' }}>
+            <p style={{ fontSize: 13, fontWeight: 700, color: colors.dark }}>{company.name}</p>
+            <p style={{ fontSize: 12.5, color: colors.muted }}>Plan: <strong style={{ color: colors.orange, textTransform: 'capitalize' }}>{company.plan || 'starter'}</strong></p>
+            <p style={{ fontSize: 12.5, color: colors.muted }}>HRIS: <strong style={{ color: colors.dark }}>{company.hris || 'Not set'}</strong></p>
+            <p style={{ fontSize: 12.5, color: colors.muted }}>Payroll: <strong style={{ color: colors.dark }}>{company.payroll || 'Not set'}</strong></p>
+            <span style={{ fontSize: 12, fontWeight: 700, color: integrations.filter(i=>i.status==='connected').length > 0 ? colors.green : colors.muted, background: integrations.filter(i=>i.status==='connected').length > 0 ? colors.greenLight : '#F7F5F2', borderRadius: 6, padding: '2px 10px' }}>
+              {integrations.filter(i=>i.status==='connected').length} connected · {integrations.length} total
+            </span>
+          </div>
+        )}
+      </div>
+
+      <div style={{ padding: '24px 36px' }}>
+        {loading ? <Spinner/> : integrations.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '48px 0' }}>
+            <div style={{ fontSize: 48, marginBottom: 16 }}>🔌</div>
+            <p style={{ fontSize: 17, fontWeight: 700, color: colors.dark, marginBottom: 8 }}>No integrations configured</p>
+            <p style={{ fontSize: 13.5, color: colors.muted, marginBottom: 24 }}>
+              {company?.hris ? `${company.hris} was noted during onboarding — add the connection details below.` : 'Add HRIS, payroll, SSO or postback integrations for this employer.'}
+            </p>
+            <button onClick={() => setEditing({ category: company?.hris ? 'hris' : 'other', name: company?.hris || '' })}
+              style={{ background: colors.dark, color: '#fff', border: 'none', borderRadius: 12, padding: '12px 28px', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: font.body }}>
+              + Add first integration
+            </button>
+          </div>
+        ) : (
+          <>
+            {testResult && (
+              <div style={{ marginBottom: 16, padding: '12px 18px', background: testResult.success ? colors.greenLight : colors.redLight, border: `1px solid ${testResult.success ? colors.green : colors.red}`, borderRadius: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <p style={{ fontSize: 13.5, fontWeight: 700, color: testResult.success ? colors.green : colors.red }}>
+                  {testResult.success ? '✓' : '⚠'} {testResult.message}
+                </p>
+                <button onClick={() => setTestResult(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, color: colors.muted }}>✕</button>
+              </div>
+            )}
+            {Object.entries(grouped).map(([cat, items]) => (
+              <div key={cat} style={{ marginBottom: 24 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                  <span style={{ fontSize: 16 }}>{CATEGORY_ICONS[cat] || '🔌'}</span>
+                  <p style={{ fontSize: 13, fontWeight: 700, color: colors.dark, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{CATEGORY_LABELS[cat] || cat}</p>
+                  <span style={{ fontSize: 11.5, color: colors.muted, fontWeight: 600 }}>{items.length} integration{items.length !== 1 ? 's' : ''}</span>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {items.map(integ => (
+                    <IntegrationCard
+                      key={integ.id}
+                      {...integ}
+                      onEdit={() => setEditing(integ)}
+                      onTest={() => testIntegration(integ)}
+                      onDelete={() => deleteIntegration(integ.id)}
+                    />
+                  ))}
+                </div>
+              </div>
+            ))}
+          </>
+        )}
+
+        {/* Planned integrations from onboarding */}
+        {company && (company.hris || company.payroll) && integrations.length === 0 && (
+          <div style={{ marginTop: 24, background: '#F7F5F2', borderRadius: 14, padding: '18px 22px' }}>
+            <p style={{ fontSize: 13, fontWeight: 700, color: colors.dark, marginBottom: 10 }}>Planned from onboarding</p>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              {company.hris && (
+                <div onClick={() => setEditing({ name: company.hris, category: 'hris', type: company.hris_conn || 'REST API' })}
+                  style={{ background: '#fff', border: '1.5px dashed #ddd', borderRadius: 10, padding: '10px 16px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 18 }}>🏗</span>
+                  <div>
+                    <p style={{ fontSize: 13.5, fontWeight: 700, color: colors.dark }}>{company.hris}</p>
+                    <p style={{ fontSize: 12, color: colors.muted }}>{company.hris_conn || 'Connection type TBC'} · Click to configure</p>
+                  </div>
+                </div>
+              )}
+              {company.payroll && (
+                <div onClick={() => setEditing({ name: company.payroll, category: 'payroll', type: company.payroll_conn || 'REST API' })}
+                  style={{ background: '#fff', border: '1.5px dashed #ddd', borderRadius: 10, padding: '10px 16px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 18 }}>💷</span>
+                  <div>
+                    <p style={{ fontSize: 13.5, fontWeight: 700, color: colors.dark }}>{company.payroll}</p>
+                    <p style={{ fontSize: 12, color: colors.muted }}>{company.payroll_conn || 'Connection type TBC'} · Click to configure</p>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>
