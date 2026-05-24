@@ -158,6 +158,10 @@ const HRIS_SYSTEMS = ['Workday','BambooHR','Rippling','SAP SuccessFactors','Orac
 const PAYROLL_SYSTEMS = ['ADP','Sage Payroll','Xero','QuickBooks','Moorepay','Zellis','Custom','None'];
 const CONN_TYPES = ['REST API','SFTP scheduled sync','SSL Postback','Webhook','Manual import','TBD'];
 
+// Shared input/label styles used across wizard — module level so they're never recreated on render
+const iStyle = { width: '100%', border: '1.5px solid #eee', borderRadius: 10, padding: '9px 13px', fontSize: 13.5, color: '#4A4440', fontFamily: 'Inter, DM Sans, sans-serif', outline: 'none', boxSizing: 'border-box' };
+const lStyle = { fontSize: 11, fontWeight: 700, color: '#9E8E7E', textTransform: 'uppercase', letterSpacing: '0.07em', display: 'block', marginBottom: 5 };
+
 function CreateEmployerWizard({ onClose, onCreated }) {
   const [step, setStep] = useState(1);
   const TOTAL = 5;
