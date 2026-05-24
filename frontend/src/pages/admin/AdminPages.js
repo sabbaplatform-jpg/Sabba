@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
@@ -16,6 +16,7 @@ function AdminNav({ active }) {
     { id: 'packages',   label: 'Packages',         icon: '📦', path: '/admin/packages' },
     { id: 'integrations', label: 'Integrations',   icon: '🔌', path: '/admin/integrations' },
     { id: 'settings',     label: 'Settings & team', icon: '⚙️', path: '/admin/settings' },
+    { id: 'email-templates', label: 'Email templates', icon: '✉️', path: '/admin/email-templates' },
     { id: 'analytics',  label: 'Analytics',       icon: '📊', path: '/admin/analytics' },
     { id: 'billing',    label: 'Billing',          icon: '💳', path: '/admin/billing' },
     { id: 'flags',      label: 'Feature flags',   icon: '🚩', path: '/admin/flags' },
@@ -1934,6 +1935,7 @@ export function AdminIntegrations() {
 // SETTINGS & TEAM — Add super admins + impersonate HR
 // ═══════════════════════════════════════════════════════════
 export function AdminSettings() {
+  // AdminProfile is rendered inline at the top of this page
   const { user: currentUser } = useAuth();
 
   // Super admin team state
@@ -2027,7 +2029,14 @@ export function AdminSettings() {
         <h1 style={{ fontFamily: font.display, fontSize: 30, color: colors.dark, fontWeight: 700, fontStyle: 'italic' }}>Settings & team</h1>
       </div>
 
-      <div style={{ padding: '28px 36px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, alignItems: 'start' }}>
+      {/* Super admin profile */}
+      <div style={{ padding: '28px 36px 0' }}>
+        <h2 style={{ fontSize: 16, fontWeight: 700, color: colors.dark, marginBottom: 16 }}>My profile</h2>
+        <AdminProfile/>
+        <div style={{ height: 1, background: '#eee', margin: '28px 0' }}/>
+      </div>
+
+      <div style={{ padding: '0 36px 28px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, alignItems: 'start' }}>
 
         {/* ── Super admin team ── */}
         <div>
@@ -2183,5 +2192,394 @@ export function AdminSettings() {
         </div>
       </div>
     </AdminLayout>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════
+// EMAIL TEMPLATES PAGE
+// ═══════════════════════════════════════════════════════════
+const EMAIL_TYPES = [
+  { id: 'welcome_employee',    label: 'Welcome — Employee',     icon: '👋', globalOnly: false, desc: 'Sent when an employee is imported via CSV or created' },
+  { id: 'welcome_hr',          label: 'Welcome — HR Admin',     icon: '🏢', globalOnly: false, desc: 'Sent when a new employer account is created' },
+  { id: 'booking_submitted',   label: 'Booking submitted',      icon: '📋', globalOnly: false, desc: 'Sent to employee when they submit a booking' },
+  { id: 'booking_approved',    label: 'Booking approved',       icon: '✅', globalOnly: false, desc: 'Sent to employee when HR approves their booking' },
+  { id: 'hr_approval_request', label: 'HR approval request',    icon: '⏳', globalOnly: false, desc: 'Sent to HR admin when an employee submits a booking' },
+  { id: 'vendor_rejected',     label: 'Vendor rejected',        icon: '🚫', globalOnly: false, desc: 'Sent to vendor when their application is rejected' },
+  { id: 'password_reset',      label: 'Password reset',         icon: '🔑', globalOnly: true,  desc: 'Sent when any user requests a password reset — global only' },
+];
+
+const VAR_CHIPS = {
+  welcome_employee:    ['{{first_name}}','{{full_name}}','{{email}}','{{company_name}}','{{temp_password}}'],
+  welcome_hr:          ['{{first_name}}','{{full_name}}','{{email}}','{{company_name}}','{{temp_password}}'],
+  booking_submitted:   ['{{first_name}}','{{full_name}}','{{package_title}}','{{destination}}'],
+  booking_approved:    ['{{first_name}}','{{full_name}}','{{package_title}}','{{destination}}','{{departure_date}}','{{total_amount}}','{{payment_method}}'],
+  hr_approval_request: ['{{first_name}}','{{hr_name}}','{{employee_name}}','{{package_title}}','{{destination}}','{{total_amount}}'],
+  vendor_rejected:     ['{{company_name}}','{{reason}}'],
+  password_reset:      ['{{first_name}}','{{full_name}}','{{reset_url}}'],
+};
+
+export function AdminEmailTemplates() {
+  const [companies,    setCompanies]    = useState([]);
+  const [templates,    setTemplates]    = useState([]);
+  const [loading,      setLoading]      = useState(true);
+  const [selCompany,   setSelCompany]   = useState('global');
+  const [selType,      setSelType]      = useState('welcome_employee');
+  const [form,         setForm]         = useState({ subject: '', body_html: '' });
+  const [saving,       setSaving]       = useState(false);
+  const [saved,        setSaved]        = useState(false);
+  const [deleting,     setDeleting]     = useState(false);
+  const [preview,      setPreview]      = useState('');
+  const [showPreview,  setShowPreview]  = useState(false);
+  const [previewLoading, setPreviewLoading] = useState(false);
+
+  useEffect(() => {
+    api.get('/admin/companies').then(r => setCompanies(r.data)).finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    const cid = selCompany === 'global' ? '' : selCompany;
+    api.get(`/admin/email-templates${cid ? `?company_id=${cid}` : ''}`)
+      .then(r => setTemplates(r.data))
+      .catch(() => setTemplates([]));
+  }, [selCompany]);
+
+  // Load template when type/company changes
+  useEffect(() => {
+    const existing = templates.find(t => t.email_type === selType);
+    if (existing) {
+      setForm({ subject: existing.subject, body_html: existing.body_html });
+    } else {
+      // Load default from DEFAULTS via API or set placeholder
+      setForm({ subject: '', body_html: '' });
+    }
+    setShowPreview(false); setPreview('');
+  }, [selType, templates]);
+
+  const currentType = EMAIL_TYPES.find(t => t.id === selType);
+  const existingTemplate = templates.find(t => t.email_type === selType);
+  const isGlobalOnly = currentType?.globalOnly;
+  const isCustomised = !!existingTemplate;
+
+  const save = async () => {
+    if (!form.subject || !form.body_html) return;
+    setSaving(true); setSaved(false);
+    try {
+      const cid = selCompany === 'global' ? null : selCompany;
+      const { data } = await api.put('/admin/email-templates', {
+        email_type: selType,
+        subject:    form.subject,
+        body_html:  form.body_html,
+        company_id: cid,
+      });
+      setTemplates(ts => {
+        const idx = ts.findIndex(t => t.email_type === selType);
+        return idx >= 0 ? ts.map((t,i) => i===idx ? data : t) : [...ts, data];
+      });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } catch (err) {
+      alert(err.response?.data?.error || 'Failed to save');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const revertToDefault = async () => {
+    if (!existingTemplate) return;
+    if (!window.confirm('Revert to default template? This will delete the custom version.')) return;
+    setDeleting(true);
+    try {
+      await api.delete(`/admin/email-templates/${existingTemplate.id}`);
+      setTemplates(ts => ts.filter(t => t.email_type !== selType));
+      setForm({ subject: '', body_html: '' });
+    } catch {}
+    finally { setDeleting(false); }
+  };
+
+  const loadPreview = async () => {
+    if (!form.body_html) return;
+    setPreviewLoading(true);
+    try {
+      const { data } = await api.post('/admin/email-templates/preview', { body_html: form.body_html, subject: form.subject });
+      setPreview(data.html);
+      setShowPreview(true);
+    } catch {}
+    finally { setPreviewLoading(false); }
+  };
+
+  const insertVar = (v) => {
+    setForm(f => ({ ...f, body_html: f.body_html + v }));
+  };
+
+  return (
+    <AdminLayout active="email-templates">
+      <div style={{ background: '#fff', borderBottom: '1px solid #eee', padding: '24px 36px' }}>
+        <p style={{ fontSize: 10.5, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 3 }}>Super Admin</p>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+          <h1 style={{ fontFamily: font.display, fontSize: 30, color: colors.dark, fontWeight: 700, fontStyle: 'italic' }}>Email templates</h1>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+            <span style={{ fontSize: 13, color: colors.muted }}>Scope:</span>
+            <select value={selCompany} onChange={e => setSelCompany(e.target.value)}
+              style={{ border: '1.5px solid #eee', borderRadius: 10, padding: '8px 14px', fontSize: 13.5, color: colors.dark, fontFamily: font.body, outline: 'none', background: '#fff' }}>
+              <option value="global">Global (all employers)</option>
+              {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '280px 1fr', height: 'calc(100vh - 100px)' }}>
+
+        {/* ── Left: email type list ── */}
+        <div style={{ borderRight: '1px solid #eee', overflowY: 'auto', background: '#fff' }}>
+          {EMAIL_TYPES.map(type => {
+            const isCustom = templates.some(t => t.email_type === type.id);
+            const isSelected = selType === type.id;
+            const disabled = type.globalOnly && selCompany !== 'global';
+            return (
+              <div key={type.id} onClick={() => !disabled && setSelType(type.id)}
+                style={{ padding: '14px 20px', borderBottom: '1px solid #f5f5f5', cursor: disabled ? 'default' : 'pointer', background: isSelected ? colors.orangeLight : 'transparent', opacity: disabled ? 0.4 : 1, transition: 'background 0.15s' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                  <span style={{ fontSize: 16 }}>{type.icon}</span>
+                  <p style={{ fontSize: 13.5, fontWeight: 700, color: isSelected ? colors.orange : colors.dark, flex: 1 }}>{type.label}</p>
+                  {isCustom && <span style={{ fontSize: 10, fontWeight: 700, color: colors.orange, background: colors.orangeLight, borderRadius: 5, padding: '1px 6px' }}>Custom</span>}
+                  {type.globalOnly && <span style={{ fontSize: 10, fontWeight: 700, color: colors.muted, background: '#F7F5F2', borderRadius: 5, padding: '1px 6px' }}>Global</span>}
+                </div>
+                <p style={{ fontSize: 12, color: colors.muted, lineHeight: 1.4, paddingLeft: 24 }}>{type.desc}</p>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* ── Right: editor ── */}
+        <div style={{ overflowY: 'auto', padding: '24px 28px' }}>
+          {/* Scope info */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, padding: '10px 14px', background: isCustomised ? colors.orangeLight : '#F7F5F2', borderRadius: 10 }}>
+            <span style={{ fontSize: 14 }}>{isCustomised ? '✏️' : '📄'}</span>
+            <p style={{ fontSize: 13, color: isCustomised ? colors.orange : colors.muted, flex: 1 }}>
+              {isCustomised
+                ? `Custom template for ${selCompany === 'global' ? 'all employers' : companies.find(c=>c.id===selCompany)?.name}. Changes are live immediately.`
+                : `Using ${selCompany === 'global' ? 'hardcoded default' : 'global or default'} template. Save to create a custom version.`
+              }
+            </p>
+            {isCustomised && (
+              <button onClick={revertToDefault} disabled={deleting}
+                style={{ background: 'none', border: `1px solid ${colors.orange}`, borderRadius: 8, padding: '5px 12px', fontSize: 12, color: colors.orange, cursor: 'pointer', fontWeight: 700, fontFamily: font.body }}>
+                {deleting ? 'Reverting…' : 'Revert to default'}
+              </button>
+            )}
+          </div>
+
+          {isGlobalOnly && selCompany !== 'global' && (
+            <div style={{ background: '#FEF3C7', border: '1px solid #fbbf24', borderRadius: 10, padding: '12px 16px', marginBottom: 16 }}>
+              <p style={{ fontSize: 13, color: '#92400E' }}>Password reset emails are global only — switch scope to Global to edit this template.</p>
+            </div>
+          )}
+
+          {/* Subject */}
+          <div style={{ marginBottom: 16 }}>
+            <label style={lStyle}>Subject line</label>
+            <input value={form.subject} onChange={e => setForm(f => ({ ...f, subject: e.target.value }))}
+              placeholder="Enter email subject…"
+              style={{ ...iStyle }}/>
+          </div>
+
+          {/* Variable chips */}
+          <div style={{ marginBottom: 12 }}>
+            <p style={{ ...lStyle, marginBottom: 8 }}>Available variables — click to insert</p>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {(VAR_CHIPS[selType] || []).map(v => (
+                <button key={v} onClick={() => insertVar(v)}
+                  style={{ background: '#F7F5F2', border: '1px solid #eee', borderRadius: 6, padding: '4px 10px', fontSize: 12, fontWeight: 700, color: colors.dark, cursor: 'pointer', fontFamily: 'monospace' }}>
+                  {v}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Body HTML editor */}
+          <div style={{ marginBottom: 16 }}>
+            <label style={lStyle}>Email body (HTML)</label>
+            <textarea value={form.body_html}
+              onChange={e => setForm(f => ({ ...f, body_html: e.target.value }))}
+              placeholder="Enter HTML content… Use variables like {{first_name}} and basic HTML tags like <h1>, <p>, <strong>, <a>."
+              style={{ ...iStyle, minHeight: 280, resize: 'vertical', fontFamily: 'monospace', fontSize: 13, lineHeight: 1.6 }}/>
+            <p style={{ fontSize: 12, color: colors.muted, marginTop: 6 }}>Use the <code style={{ background: '#F7F5F2', padding: '1px 5px', borderRadius: 3 }}>.info-box</code> class for the grey info boxes. Example: <code style={{ background: '#F7F5F2', padding: '1px 5px', borderRadius: 3, fontSize: 11 }}>&lt;div class="info-box"&gt;...&lt;/div&gt;</code></p>
+          </div>
+
+          {/* Actions */}
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 20 }}>
+            <button onClick={loadPreview} disabled={!form.body_html || previewLoading}
+              style={{ background: '#F7F5F2', color: colors.mid, border: '1px solid #eee', borderRadius: 10, padding: '10px 18px', fontSize: 13.5, fontWeight: 700, cursor: 'pointer', fontFamily: font.body }}>
+              {previewLoading ? 'Loading…' : '👁 Preview email'}
+            </button>
+            <button onClick={save} disabled={saving || !form.subject || !form.body_html}
+              style={{ background: form.subject && form.body_html ? colors.dark : '#eee', color: '#fff', border: 'none', borderRadius: 10, padding: '10px 24px', fontSize: 13.5, fontWeight: 700, cursor: 'pointer', fontFamily: font.body }}>
+              {saving ? 'Saving…' : 'Save template'}
+            </button>
+            {saved && <span style={{ fontSize: 13, color: colors.green, fontWeight: 700 }}>✓ Saved</span>}
+          </div>
+
+          {/* Preview iframe */}
+          {showPreview && preview && (
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                <p style={{ fontSize: 13, fontWeight: 700, color: colors.dark }}>Email preview</p>
+                <button onClick={() => setShowPreview(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: colors.muted, fontFamily: font.body }}>✕ Close</button>
+              </div>
+              <div style={{ border: '1px solid #eee', borderRadius: 12, overflow: 'hidden' }}>
+                <iframe
+                  srcDoc={preview}
+                  style={{ width: '100%', height: 600, border: 'none' }}
+                  title="Email preview"
+                />
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </AdminLayout>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════
+// SUPER ADMIN PROFILE (added to Settings page)
+// ═══════════════════════════════════════════════════════════
+export function AdminProfile() {
+  const fileRef  = useRef(null);
+  const [profile,  setProfile]   = useState(null);
+  const [loading,  setLoading]   = useState(true);
+  const [avatar,   setAvatar]    = useState(null);
+  const [avatarFile, setAvatarFile] = useState(null);
+  const [form,     setForm]      = useState({ full_name: '', email: '' });
+  const [pwForm,   setPwForm]    = useState({ current: '', newPw: '', confirm: '' });
+  const [saving,   setSaving]    = useState(false);
+  const [savingPw, setSavingPw]  = useState(false);
+  const [msg,      setMsg]       = useState('');
+  const [err,      setErr]       = useState('');
+  const [pwMsg,    setPwMsg]     = useState('');
+  const [pwErr,    setPwErr]     = useState('');
+
+  useEffect(() => {
+    api.get('/admin/profile').then(r => {
+      setProfile(r.data);
+      setForm({ full_name: r.data.full_name || '', email: r.data.email || '' });
+      if (r.data.avatar_url) setAvatar(r.data.avatar_url);
+    }).finally(() => setLoading(false));
+  }, []);
+
+  const handleAvatarChange = e => {
+    const file = e.target.files[0]; if (!file) return;
+    setAvatarFile(file);
+    setAvatar(URL.createObjectURL(file));
+  };
+
+  const saveAvatar = async () => {
+    if (!avatarFile) return;
+    setSaving(true);
+    try {
+      const fd = new FormData();
+      fd.append('file', avatarFile);
+      const { data } = await api.post('/upload/avatar', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+      await api.patch('/admin/profile/avatar', { avatar_url: data.url });
+      setMsg('Photo updated'); setAvatarFile(null);
+    } catch { setErr('Upload failed'); }
+    finally { setSaving(false); }
+  };
+
+  const saveProfile = async () => {
+    setSaving(true); setMsg(''); setErr('');
+    try {
+      const { data } = await api.patch('/admin/profile', { full_name: form.full_name, email: form.email });
+      setProfile(p => ({ ...p, ...data }));
+      setMsg('Profile updated successfully');
+    } catch (e) { setErr(e.response?.data?.error || 'Failed to save'); }
+    finally { setSaving(false); }
+  };
+
+  const changePassword = async () => {
+    if (pwForm.newPw !== pwForm.confirm) { setPwErr('New passwords do not match'); return; }
+    if (pwForm.newPw.length < 8) { setPwErr('Password must be at least 8 characters'); return; }
+    setSavingPw(true); setPwMsg(''); setPwErr('');
+    try {
+      await api.patch('/admin/profile', { current_password: pwForm.current, new_password: pwForm.newPw });
+      setPwMsg('Password changed successfully');
+      setPwForm({ current: '', newPw: '', confirm: '' });
+    } catch (e) { setPwErr(e.response?.data?.error || 'Failed to change password'); }
+    finally { setSavingPw(false); }
+  };
+
+  const initials = profile?.full_name?.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase() || 'SA';
+
+  if (loading) return <div style={{ padding: 40 }}><Spinner/></div>;
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <div style={{ background: '#fff', border: '1px solid #eee', borderRadius: 14, padding: '22px 24px' }}>
+        <h2 style={{ fontSize: 15, fontWeight: 700, color: colors.dark, marginBottom: 18 }}>Profile details</h2>
+
+        {/* Avatar */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 20 }}>
+          <div style={{ position: 'relative', flexShrink: 0 }}>
+            {avatar
+              ? <img src={avatar} alt="Avatar" style={{ width: 72, height: 72, borderRadius: 16, objectFit: 'cover', border: '3px solid #eee' }}/>
+              : <div style={{ width: 72, height: 72, borderRadius: 16, background: `linear-gradient(135deg, ${colors.orange}, #f5a066)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, fontWeight: 800, color: '#fff' }}>{initials}</div>
+            }
+            <button onClick={() => fileRef.current?.click()}
+              style={{ position: 'absolute', bottom: -4, right: -4, width: 24, height: 24, borderRadius: '50%', background: colors.dark, border: '2px solid #fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11 }}>
+              ✏️
+            </button>
+            <input ref={fileRef} type="file" accept="image/*" onChange={handleAvatarChange} style={{ display: 'none' }}/>
+          </div>
+          <div>
+            <p style={{ fontSize: 15, fontWeight: 700, color: colors.dark }}>{profile?.full_name}</p>
+            <p style={{ fontSize: 13, color: colors.muted }}>Super Admin · {profile?.email}</p>
+          </div>
+          {avatarFile && (
+            <button onClick={saveAvatar} disabled={saving}
+              style={{ marginLeft: 'auto', background: colors.dark, color: '#fff', border: 'none', borderRadius: 10, padding: '8px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: font.body }}>
+              {saving ? 'Uploading…' : 'Save photo'}
+            </button>
+          )}
+        </div>
+
+        {/* Profile fields */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 16 }}>
+          <div>
+            <label style={lStyle}>Full name</label>
+            <input value={form.full_name} onChange={e => setForm(f=>({...f,full_name:e.target.value}))} style={iStyle}/>
+          </div>
+          <div>
+            <label style={lStyle}>Email address</label>
+            <input type="email" value={form.email} onChange={e => setForm(f=>({...f,email:e.target.value}))} style={iStyle}/>
+          </div>
+        </div>
+        {msg && <p style={{ fontSize: 13, color: colors.green, fontWeight: 700, marginBottom: 10 }}>✓ {msg}</p>}
+        {err && <p style={{ fontSize: 13, color: colors.red,   fontWeight: 700, marginBottom: 10 }}>⚠ {err}</p>}
+        <button onClick={saveProfile} disabled={saving}
+          style={{ background: colors.dark, color: '#fff', border: 'none', borderRadius: 10, padding: '10px 22px', fontSize: 13.5, fontWeight: 700, cursor: 'pointer', fontFamily: font.body }}>
+          {saving ? 'Saving…' : 'Save profile'}
+        </button>
+      </div>
+
+      {/* Password change */}
+      <div style={{ background: '#fff', border: '1px solid #eee', borderRadius: 14, padding: '22px 24px' }}>
+        <h2 style={{ fontSize: 15, fontWeight: 700, color: colors.dark, marginBottom: 18 }}>Change password</h2>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14, marginBottom: 16 }}>
+          {[['current','Current password'],['newPw','New password'],['confirm','Confirm new password']].map(([k,label])=>(
+            <div key={k}>
+              <label style={lStyle}>{label}</label>
+              <input type="password" value={pwForm[k]} onChange={e=>setPwForm(f=>({...f,[k]:e.target.value}))} style={iStyle}/>
+            </div>
+          ))}
+        </div>
+        {pwMsg && <p style={{ fontSize: 13, color: colors.green, fontWeight: 700, marginBottom: 10 }}>✓ {pwMsg}</p>}
+        {pwErr && <p style={{ fontSize: 13, color: colors.red,   fontWeight: 700, marginBottom: 10 }}>⚠ {pwErr}</p>}
+        <button onClick={changePassword} disabled={savingPw || !pwForm.current || !pwForm.newPw || !pwForm.confirm}
+          style={{ background: pwForm.current && pwForm.newPw ? colors.dark : '#eee', color: '#fff', border: 'none', borderRadius: 10, padding: '10px 22px', fontSize: 13.5, fontWeight: 700, cursor: 'pointer', fontFamily: font.body }}>
+          {savingPw ? 'Updating…' : 'Change password'}
+        </button>
+      </div>
+    </div>
   );
 }

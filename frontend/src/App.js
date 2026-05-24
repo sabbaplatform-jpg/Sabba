@@ -23,7 +23,7 @@ import { HRAdventures, HRMarketplace, HRAnalytics, HRIntegrations } from './page
 import { EmployeeHome } from './pages/employee/EmployeeHome';
 import MyBooking from './pages/employee/MyBooking';
 import { EmployeeProfile } from './pages/employee/EmployeeProfile';
-import { AdminDashboard, AdminEmployers, AdminVendors, AdminPackages, AdminAnalytics, AdminBilling, AdminFeatureFlags, AdminAuditLog, AdminIntegrations, AdminSettings } from './pages/admin/AdminPages';
+import { AdminDashboard, AdminEmployers, AdminVendors, AdminPackages, AdminAnalytics, AdminBilling, AdminFeatureFlags, AdminAuditLog, AdminIntegrations, AdminSettings, AdminEmailTemplates } from './pages/admin/AdminPages';
 import { AdminEmployerDetail } from './pages/admin/AdminEmployerDetail';
 import { Cart, CheckoutSuccess } from './pages/employee/Cart';
 import Allowance from './pages/employee/Allowance';
@@ -69,7 +69,8 @@ function AppRoutes() {
         <Route path="/admin/vendors"       element={<RequireAdmin><AdminVendors/></RequireAdmin>}/>
         <Route path="/admin/packages"      element={<RequireAdmin><AdminPackages/></RequireAdmin>}/>
         <Route path="/admin/integrations" element={<RequireAdmin><AdminIntegrations/></RequireAdmin>}/>
-        <Route path="/admin/settings"     element={<RequireAdmin><AdminSettings/></RequireAdmin>}/>
+        <Route path="/admin/settings"          element={<RequireAdmin><AdminSettings/></RequireAdmin>}/>
+        <Route path="/admin/email-templates"  element={<RequireAdmin><AdminEmailTemplates/></RequireAdmin>}/>
         <Route path="/admin/analytics"     element={<RequireAdmin><AdminAnalytics/></RequireAdmin>}/>
         <Route path="/admin/billing"       element={<RequireAdmin><AdminBilling/></RequireAdmin>}/>
         <Route path="/admin/flags"         element={<RequireAdmin><AdminFeatureFlags/></RequireAdmin>}/>

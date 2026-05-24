@@ -722,4 +722,135 @@ router.get('/companies/:id/hr-users', auth, requireAdmin, async (req, res) => {
   }
 });
 
+
+// ══════════════════════════════════════════════════════════
+// EMAIL TEMPLATE ROUTES
+// ══════════════════════════════════════════════════════════
+
+// ── GET /api/admin/email-templates ───────────────────────────
+// List all templates — global + per company
+router.get('/email-templates', auth, requireAdmin, async (req, res) => {
+  try {
+    const { company_id } = req.query;
+    const result = await db.query(`
+      SELECT * FROM email_templates
+      WHERE company_id ${company_id ? '= $1' : 'IS NULL'}
+      ORDER BY email_type
+    `, company_id ? [company_id] : []).catch(() => ({ rows: [] }));
+    res.json(result.rows);
+  } catch (err) {
+    res.json([]);
+  }
+});
+
+// ── PUT /api/admin/email-templates ───────────────────────────
+// Create or update a template (upsert)
+router.put('/email-templates', auth, requireAdmin, async (req, res) => {
+  try {
+    const { email_type, subject, body_html, company_id, is_active } = req.body;
+    if (!email_type || !subject || !body_html) {
+      return res.status(400).json({ error: 'email_type, subject and body_html required' });
+    }
+    const result = await db.query(`
+      INSERT INTO email_templates (email_type, subject, body_html, company_id, is_active, updated_by, updated_at)
+      VALUES ($1, $2, $3, $4, $5, $6, NOW())
+      ON CONFLICT (email_type, company_id)
+        DO UPDATE SET subject=$2, body_html=$3, is_active=$5, updated_by=$6, updated_at=NOW()
+      RETURNING *
+    `, [email_type, subject, body_html, company_id || null, is_active !== false, req.user.id]);
+
+    await db.query(
+      `INSERT INTO audit_log (actor_id, action, target_id, target_type, meta)
+       VALUES ($1,'update_email_template',$2,'email_template',$3)`,
+      [req.user.id, result.rows[0].id, JSON.stringify({ email_type, company_id })]
+    ).catch(() => {});
+
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── DELETE /api/admin/email-templates/:id ─────────────────────
+// Delete a custom template (reverts to global/default)
+router.delete('/email-templates/:id', auth, requireAdmin, async (req, res) => {
+  try {
+    await db.query('DELETE FROM email_templates WHERE id=$1', [req.params.id]);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── POST /api/admin/email-templates/preview ───────────────────
+router.post('/email-templates/preview', auth, requireAdmin, async (req, res) => {
+  try {
+    const { body_html, subject } = req.body;
+    const email = require('../lib/email');
+    const html  = await email.renderPreview('preview', body_html, subject);
+    res.json({ html, subject });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ══════════════════════════════════════════════════════════
+// SUPER ADMIN PROFILE ROUTES
+// ══════════════════════════════════════════════════════════
+
+// ── GET /api/admin/profile ────────────────────────────────────
+router.get('/profile', auth, requireAdmin, async (req, res) => {
+  try {
+    const result = await db.query(
+      'SELECT id, email, full_name, avatar_url, created_at FROM users WHERE id=$1',
+      [req.user.id]
+    );
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── PATCH /api/admin/profile ──────────────────────────────────
+router.patch('/profile', auth, requireAdmin, async (req, res) => {
+  try {
+    const { full_name, email, current_password, new_password } = req.body;
+    const user = await db.query('SELECT * FROM users WHERE id=$1', [req.user.id]);
+    if (!user.rows.length) return res.status(404).json({ error: 'User not found' });
+
+    const updates = []; const vals = []; let i = 1;
+    if (full_name) { updates.push(`full_name=$${i++}`); vals.push(full_name); }
+    if (email)     { updates.push(`email=$${i++}`);     vals.push(email.toLowerCase().trim()); }
+    if (new_password) {
+      if (!current_password) return res.status(400).json({ error: 'Current password required' });
+      const bcrypt = require('bcryptjs');
+      const valid  = await bcrypt.compare(current_password, user.rows[0].password_hash);
+      if (!valid) return res.status(401).json({ error: 'Current password is incorrect' });
+      if (new_password.length < 8) return res.status(400).json({ error: 'New password must be at least 8 characters' });
+      updates.push(`password_hash=$${i++}`);
+      vals.push(await bcrypt.hash(new_password, 10));
+    }
+    if (!updates.length) return res.status(400).json({ error: 'Nothing to update' });
+    vals.push(req.user.id);
+    const result = await db.query(
+      `UPDATE users SET ${updates.join(',')} WHERE id=$${i} RETURNING id, email, full_name, avatar_url`,
+      vals
+    );
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── PATCH /api/admin/profile/avatar ──────────────────────────
+router.patch('/profile/avatar', auth, requireAdmin, async (req, res) => {
+  try {
+    const { avatar_url } = req.body;
+    await db.query('UPDATE users SET avatar_url=$1 WHERE id=$2', [avatar_url, req.user.id]);
+    res.json({ success: true, avatar_url });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;
