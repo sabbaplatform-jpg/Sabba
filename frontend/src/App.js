@@ -135,7 +135,6 @@ function AppRoutes() {
 
 
 function ImpersonationBanner() {
-  const navigate = useNavigate();
   const info = sessionStorage.getItem('sabba_impersonating');
   if (!info) return null;
   const { name, email, company } = JSON.parse(info);
@@ -144,8 +143,7 @@ function ImpersonationBanner() {
     if (adminToken) localStorage.setItem('sabba_token', adminToken);
     sessionStorage.removeItem('sabba_admin_token');
     sessionStorage.removeItem('sabba_impersonating');
-    navigate('/admin');
-    window.location.reload();
+    window.location.href = '/admin';
   };
   return (
     <div style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 9999, background: '#B45309', padding: '8px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>

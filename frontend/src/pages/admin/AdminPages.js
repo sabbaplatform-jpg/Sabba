@@ -1935,7 +1935,6 @@ export function AdminIntegrations() {
 // ═══════════════════════════════════════════════════════════
 export function AdminSettings() {
   const { user: currentUser } = useAuth();
-  const navigate = useNavigate();
 
   // Super admin team state
   const [admins,       setAdmins]       = useState([]);
@@ -2012,13 +2011,11 @@ export function AdminSettings() {
   };
 
   const launchImpersonation = (token, user) => {
-    // Store the impersonation token separately so we can restore the admin session
     const adminToken = localStorage.getItem('sabba_token');
     sessionStorage.setItem('sabba_admin_token', adminToken);
-    sessionStorage.setItem('sabba_impersonating', JSON.stringify({ name: user.full_name, email: user.email, company: user.company_name }));
+    sessionStorage.setItem('sabba_impersonating', JSON.stringify({ name: user.full_name, email: user.email, company: user.company_name || '' }));
     localStorage.setItem('sabba_token', token);
-    navigate('/hr');
-    window.location.reload();
+    window.location.href = '/hr';
   };
 
   const company = companies.find(c => c.id === impersSelCompany);
