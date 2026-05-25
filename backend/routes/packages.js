@@ -132,4 +132,70 @@ router.delete('/:id', auth, requireRole('vendor'), async (req, res) => {
   }
 });
 
+
+// -- POST /api/packages/import (CSV parsed client-side, sent as JSON array) --
+router.post('/import', auth, requireRole('vendor'), async (req, res) => {
+  try {
+    const { packages: rows } = req.body;
+    if (!Array.isArray(rows) || !rows.length) {
+      return res.status(400).json({ error: 'No package data provided' });
+    }
+    if (rows.length > 200) {
+      return res.status(400).json({ error: 'Maximum 200 packages per import' });
+    }
+
+    const vendor = await db.query('SELECT id FROM vendors WHERE user_id=$1', [req.user.id]);
+    if (!vendor.rows.length) return res.status(403).json({ error: 'Vendor not found' });
+    const vendorId = vendor.rows[0].id;
+
+    const VALID_CATEGORIES = ['travel','volunteering','courses','work_abroad','accommodation','airlines'];
+    const REQUIRED = ['title','description','category','destination','duration','price_gbp'];
+
+    let created = 0; let skipped = 0; const errors = [];
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+
+      // Validate required fields
+      const missingFields = REQUIRED.filter(f => !row[f]?.toString().trim());
+      if (missingFields.length) {
+        skipped++;
+        errors.push({ row: i + 2, message: `Missing: ${missingFields.join(', ')}` });
+        continue;
+      }
+
+      // Validate category
+      const category = row.category.toLowerCase().trim();
+      if (!VALID_CATEGORIES.includes(category)) {
+        skipped++;
+        errors.push({ row: i + 2, message: `Invalid category "${row.category}"` });
+        continue;
+      }
+
+      const price = parseFloat(row.price_gbp);
+      if (isNaN(price) || price <= 0) {
+        skipped++;
+        errors.push({ row: i + 2, message: `Invalid price "${row.price_gbp}"` });
+        continue;
+      }
+
+      const status = ['live','draft'].includes(row.status?.toLowerCase()) ? row.status.toLowerCase() : 'draft';
+
+      await db.query(
+        `INSERT INTO packages (vendor_id, title, description, category, destination, duration, price_gbp, emoji, image_url, status)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+        [vendorId, row.title.trim(), row.description.trim(), category,
+         row.destination.trim(), row.duration.trim(), price,
+         row.emoji?.trim() || null, row.image_url?.trim() || null, status]
+      );
+      created++;
+    }
+
+    res.json({ created, skipped, errors: errors.slice(0, 10), total: rows.length });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;

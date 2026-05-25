@@ -193,10 +193,14 @@ export function VendorDashboard() {
 
 // ── Vendor Packages ──────────────────────────────────────────
 export function VendorPackages() {
-  const [packages, setPackages] = useState([]);
-  const [loading, setLoading]   = useState(true);
-  const [showForm, setShowForm] = useState(false);
-  const [editPkg, setEditPkg]   = useState(null);
+  const [packages,     setPackages]     = useState([]);
+  const [loading,      setLoading]      = useState(true);
+  const [showForm,     setShowForm]     = useState(false);
+  const [editPkg,      setEditPkg]      = useState(null);
+  const [showImport,   setShowImport]   = useState(false);
+  const [importFile,   setImportFile]   = useState(null);
+  const [importing,    setImporting]    = useState(false);
+  const [importResult, setImportResult] = useState(null);
 
   const fetchPackages = () => {
     api.get('/packages/vendor/mine').then(r => setPackages(r.data)).finally(() => setLoading(false));
@@ -213,6 +217,61 @@ export function VendorPackages() {
     fetchPackages();
   };
 
+  const downloadTemplate = () => {
+    const rows = [
+      'title,description,category,destination,duration,price_gbp,emoji,image_url,status',
+      '"Japan Cultural Immersion","Explore Tokyo and Kyoto with guided cultural experiences.","travel","Japan","3 weeks",2800,"🗼","https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=800","live"',
+      '# COLUMN GUIDE:',
+      '# category: travel | volunteering | courses | work_abroad | accommodation | airlines',
+      '# status: live | draft (default: draft)',
+      '# price_gbp: number only e.g. 2800',
+      '# image_url: full https:// URL (optional)',
+      '# Required: title, description, category, destination, duration, price_gbp',
+    ];
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([rows.join('\n')], { type: 'text/csv' }));
+    a.download = 'sabba_packages_template.csv';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  };
+
+  const handleImport = async () => {
+    if (!importFile) return;
+    setImporting(true); setImportResult(null);
+    try {
+      // Parse CSV client-side
+      const text = await importFile.text();
+      const lines = text.split('\n').map(l => l.trim()).filter(l => l && !l.startsWith('#'));
+      if (lines.length < 2) { setImportResult({ error: 'CSV must have a header row and at least one data row' }); setImporting(false); return; }
+
+      const parseRow = (line) => {
+        const cols = []; let cur = ''; let inQuote = false;
+        for (const ch of line) {
+          if (ch === '"') inQuote = !inQuote;
+          else if (ch === ',' && !inQuote) { cols.push(cur.trim()); cur = ''; }
+          else cur += ch;
+        }
+        cols.push(cur.trim());
+        return cols.map(v => v.replace(/^"|"$/g,'').trim());
+      };
+
+      const headers = parseRow(lines[0]).map(h => h.toLowerCase().trim());
+      const packages = lines.slice(1).map(line => {
+        const vals = parseRow(line);
+        const row = {};
+        headers.forEach((h, i) => { row[h] = vals[i] || ''; });
+        return row;
+      }).filter(r => Object.values(r).some(v => v)); // skip empty rows
+
+      const { data } = await api.post('/packages/import', { packages });
+      setImportResult(data);
+      if (data.created > 0) fetchPackages();
+    } catch (err) {
+      setImportResult({ error: err.response?.data?.error || 'Import failed' });
+    } finally {
+      setImporting(false);
+    }
+  };
+
   return (
     <div style={{ fontFamily: font.body, background: '#F7F5F2', minHeight: '100vh', paddingBottom: 80 }}>
       <div style={{ background: '#fff', borderBottom: '1px solid #eee', padding: '28px 40px 24px' }}>
@@ -222,11 +281,92 @@ export function VendorPackages() {
             <h1 style={{ fontFamily: font.display, fontSize: 34, color: colors.dark, fontWeight: 700, fontStyle: 'italic' }}>My Packages</h1>
             <p style={{ color: colors.muted, fontSize: 14, marginTop: 4, fontWeight: 500 }}>Manage your listings on the Sabba marketplace</p>
           </div>
-          <Button onClick={() => { setEditPkg(null); setShowForm(true); }}>+ Add Package</Button>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button onClick={() => { setShowImport(s => !s); setImportResult(null); setImportFile(null); }}
+              style={{ background: showImport ? colors.orangeLight : '#F7F5F2', color: showImport ? colors.orange : colors.mid, border: `1.5px solid ${showImport ? colors.orange : '#eee'}`, borderRadius: 10, padding: '10px 18px', fontSize: 13.5, fontWeight: 700, cursor: 'pointer', fontFamily: font.body }}>
+              ⬆ Import CSV
+            </button>
+            <Button onClick={() => { setEditPkg(null); setShowForm(true); }}>+ Add Package</Button>
+          </div>
         </div>
       </div>
 
       <div style={{ maxWidth: 1100, margin: '0 auto', padding: '28px 40px' }}>
+
+        {/* CSV Import Panel */}
+        {showImport && (
+          <div style={{ background: '#fff', border: '1px solid #eee', borderRadius: 14, padding: '24px 28px', marginBottom: 24 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+              <div>
+                <h3 style={{ fontSize: 16, fontWeight: 700, color: colors.dark, marginBottom: 4 }}>Import packages from CSV</h3>
+                <p style={{ fontSize: 13.5, color: colors.muted }}>Upload multiple packages at once. Max 200 packages per file.</p>
+              </div>
+              <button onClick={() => { setShowImport(false); setImportFile(null); setImportResult(null); }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: colors.muted }}>✕</button>
+            </div>
+
+            <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
+              <div style={{ flex: 1, background: '#F7F5F2', borderRadius: 10, padding: '14px 18px', display: 'flex', gap: 12, alignItems: 'center' }}>
+                <span style={{ fontSize: 22, flexShrink: 0 }}>1️⃣</span>
+                <div style={{ flex: 1 }}>
+                  <p style={{ fontSize: 13.5, fontWeight: 700, color: colors.dark, marginBottom: 3 }}>Download the template</p>
+                  <p style={{ fontSize: 12, color: colors.muted }}>Fill in your packages using the correct column format.</p>
+                </div>
+                <button onClick={downloadTemplate}
+                  style={{ background: colors.dark, color: '#fff', border: 'none', borderRadius: 8, padding: '8px 14px', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: font.body, flexShrink: 0 }}>
+                  ⬇ Template
+                </button>
+              </div>
+              <div style={{ flex: 1, background: '#F7F5F2', borderRadius: 10, padding: '14px 18px', display: 'flex', gap: 12, alignItems: 'center' }}>
+                <span style={{ fontSize: 22, flexShrink: 0 }}>2️⃣</span>
+                <div style={{ flex: 1 }}>
+                  <p style={{ fontSize: 13.5, fontWeight: 700, color: colors.dark, marginBottom: 3 }}>Upload your CSV</p>
+                  <p style={{ fontSize: 12, color: colors.muted }}>{importFile ? importFile.name : 'Choose a completed CSV file.'}</p>
+                </div>
+                <label style={{ flexShrink: 0, cursor: 'pointer' }}>
+                  <span style={{ background: importFile ? colors.greenLight : '#fff', color: importFile ? colors.green : colors.mid, border: `1.5px solid ${importFile ? colors.green : '#eee'}`, borderRadius: 8, padding: '8px 14px', fontSize: 12.5, fontWeight: 700, fontFamily: font.body }}>
+                    {importFile ? '✓ Ready' : 'Choose file'}
+                  </span>
+                  <input type="file" accept=".csv" style={{ display: 'none' }} onChange={e => { setImportFile(e.target.files[0]); setImportResult(null); }}/>
+                </label>
+              </div>
+            </div>
+
+            {importFile && !importResult && (
+              <button onClick={handleImport} disabled={importing}
+                style={{ width: '100%', background: importing ? '#eee' : colors.orange, color: '#fff', border: 'none', borderRadius: 10, padding: '13px', fontSize: 14, fontWeight: 700, cursor: importing ? 'default' : 'pointer', fontFamily: font.body, marginBottom: 12 }}>
+                {importing ? 'Importing…' : `Import packages from ${importFile.name}`}
+              </button>
+            )}
+
+            {importResult && (
+              <div style={{ borderRadius: 10, padding: '14px 18px', background: importResult.error ? colors.redLight : colors.greenLight, border: `1px solid ${importResult.error ? colors.red : colors.green}`, marginBottom: 12 }}>
+                {importResult.error
+                  ? <p style={{ fontSize: 13.5, color: colors.red, fontWeight: 700 }}>⚠ {importResult.error}</p>
+                  : <div>
+                      <p style={{ fontSize: 14, fontWeight: 700, color: colors.green, marginBottom: importResult.skipped > 0 ? 6 : 0 }}>
+                        ✓ {importResult.created} package{importResult.created !== 1 ? 's' : ''} imported successfully
+                      </p>
+                      {importResult.skipped > 0 && <p style={{ fontSize: 13, color: '#b45309' }}>⚠ {importResult.skipped} row{importResult.skipped !== 1 ? 's' : ''} skipped — missing required fields</p>}
+                      {importResult.errors?.slice(0,3).map((e,i) => <p key={i} style={{ fontSize: 12, color: colors.red, marginTop: 4 }}>Row {e.row}: {e.message}</p>)}
+                    </div>
+                }
+              </div>
+            )}
+
+            <div style={{ padding: '10px 14px', background: '#F7F5F2', borderRadius: 8 }}>
+              <p style={{ fontSize: 11, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>Required columns</p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 20px' }}>
+                {[['title','*'],['description','*'],['category','travel / volunteering / courses / work_abroad / accommodation / airlines *'],['destination','*'],['duration','e.g. 3 weeks *'],['price_gbp','number *'],['emoji','optional'],['image_url','https:// optional'],['status','live or draft']].map(([c,d])=>(
+                  <span key={c} style={{ fontSize: 11, color: colors.muted }}>
+                    <strong style={{ color: colors.orange, fontFamily: 'monospace' }}>{c}</strong> {d}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
         {showForm && <PackageForm initial={editPkg} onClose={() => { setShowForm(false); setEditPkg(null); }} onSaved={() => { setShowForm(false); setEditPkg(null); fetchPackages(); }}/>}
 
         {loading ? <Spinner/> : packages.length === 0 ? (
