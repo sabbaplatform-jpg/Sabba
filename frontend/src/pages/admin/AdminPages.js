@@ -917,12 +917,12 @@ export function AdminPackages() {
   }, []);
 
   const updatePkg = async (id, fields) => {
-    await api.patch(`/packages/${id}`, fields);
+    await api.patch(`/admin/packages/${id}`, fields);
     setPackages(ps => ps.map(p => p.id === id ? { ...p, ...fields } : p));
   };
 
   const rejectPkg = async (id, reason) => {
-    await api.patch(`/packages/${id}`, { admin_status: 'rejected', admin_rejection_reason: reason });
+    await api.patch(`/admin/packages/${id}`, { admin_status: 'rejected', admin_rejection_reason: reason });
     setPackages(ps => ps.map(p => p.id === id ? { ...p, admin_status: 'rejected', admin_rejection_reason: reason } : p));
     setReviewing(null); setRejectMode(false); setRejectReason('');
   };
@@ -1102,7 +1102,7 @@ export function AdminPackages() {
                 <span style={{ fontSize: 11.5, fontWeight: 700, color: sb.c, background: sb.bg, borderRadius: 6, padding: '2px 8px', display: 'inline-block', textTransform: 'capitalize' }}>{p.admin_status||'pending'}</span>
                 <div style={{ display: 'flex', gap: 5 }}>
                   <button onClick={() => setReviewing(p)} style={{ background: colors.dark, color: '#fff', border: 'none', borderRadius: 6, padding: '4px 10px', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', fontFamily: font.body }}>Review</button>
-                  {(p.admin_status||'pending') !== 'approved' && <button onClick={() => updatePkg(p.id, { admin_status: 'approved' })} style={{ background: colors.greenLight, color: colors.green, border: 'none', borderRadius: 6, padding: '4px 9px', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', fontFamily: font.body }}>Approve</button>}
+                  {(p.admin_status||'pending') !== 'approved' && <button onClick={() => { updatePkg(p.id, { admin_status: 'approved' }); }} style={{ background: colors.greenLight, color: colors.green, border: 'none', borderRadius: 6, padding: '4px 9px', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', fontFamily: font.body }}>Approve</button>}
                   {(p.admin_status||'pending') !== 'rejected' && <button onClick={() => { setReviewing(p); setRejectMode(true); }} style={{ background: colors.redLight, color: colors.red, border: 'none', borderRadius: 6, padding: '4px 9px', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', fontFamily: font.body }}>Reject</button>}
                 </div>
               </div>
@@ -2593,6 +2593,7 @@ export function AdminProfile() {
 
 // ── Admin Sponsored Listings ─────────────────────────────────
 export function AdminSponsored() {
+  const navigate = useNavigate();
   const [listings, setListings] = useState([]);
   const [packages, setPackages] = useState([]);
   const [vendors,  setVendors]  = useState([]);
@@ -2648,6 +2649,11 @@ export function AdminSponsored() {
 
   return (
     <div style={{ fontFamily: font.body, background: '#F7F5F2', minHeight: '100vh', padding: '32px 36px', paddingBottom: 80 }}>
+      <div style={{ marginBottom: 20 }}>
+        <button onClick={() => navigate('/admin')} style={{ background: 'none', border: 'none', color: colors.orange, fontWeight: 700, fontSize: 13, cursor: 'pointer', fontFamily: font.body, display: 'flex', alignItems: 'center', gap: 6, padding: 0 }}>
+          ← Back to dashboard
+        </button>
+      </div>
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 28 }}>
         <div>
           <h1 style={{ fontFamily: font.display, fontSize: 30, color: colors.dark, fontWeight: 700, fontStyle: 'italic', marginBottom: 6 }}>Sponsored listings</h1>

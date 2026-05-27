@@ -191,14 +191,34 @@ router.get('/bookings', auth, requireAdmin, async (req, res) => {
 // Issue a short-lived JWT scoped to a specific HR admin
 router.post('/impersonate', auth, requireAdmin, async (req, res) => {
   try {
-    const { user_id } = req.body;
-    if (!user_id) return res.status(400).json({ error: 'user_id required' });
+    const { user_id, company_id } = req.body;
 
-    const user = await db.query(
-      `SELECT id, email, role, full_name, company_id FROM users WHERE id=$1`,
-      [user_id]
-    );
-    if (!user.rows.length) return res.status(404).json({ error: 'User not found' });
+    let targetUser;
+    if (user_id) {
+      // Direct user impersonation
+      const result = await db.query(
+        `SELECT id, email, role, full_name, company_id FROM users WHERE id=$1`,
+        [user_id]
+      );
+      if (!result.rows.length) return res.status(404).json({ error: 'User not found' });
+      if (result.rows[0].role !== 'hr') return res.status(403).json({ error: 'Can only impersonate HR admins' });
+      targetUser = result.rows[0];
+    } else if (company_id) {
+      // Find first HR admin for this company
+      const result = await db.query(
+        `SELECT u.id, u.email, u.role, u.full_name, u.company_id
+         FROM users u
+         WHERE u.company_id = $1 AND u.role = 'hr'
+         ORDER BY u.created_at ASC LIMIT 1`,
+        [company_id]
+      );
+      if (!result.rows.length) return res.status(404).json({ error: 'No HR admin found for this company' });
+      targetUser = result.rows[0];
+    } else {
+      return res.status(400).json({ error: 'user_id or company_id required' });
+    }
+
+    const user = { rows: [targetUser] };
     if (user.rows[0].role !== 'hr') return res.status(403).json({ error: 'Can only impersonate HR admins' });
 
     // Log the impersonation
@@ -484,6 +504,55 @@ router.get('/packages', auth, requireAdmin, async (req, res) => {
       ORDER BY p.created_at DESC
     `);
     res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── PATCH /api/admin/packages/:id ──────────────────────────────
+// Admin approve/reject packages
+router.patch('/packages/:id', auth, requireAdmin, async (req, res) => {
+  try {
+    const { admin_status, admin_rejection_reason } = req.body;
+    if (!admin_status) return res.status(400).json({ error: 'admin_status required' });
+
+    const result = await db.query(
+      `UPDATE packages SET
+        admin_status = $1,
+        admin_rejection_reason = $2,
+        approved_by = $3,
+        approved_at = NOW()
+       WHERE id = $4 RETURNING *`,
+      [admin_status, admin_rejection_reason || null, req.user.id, req.params.id]
+    );
+    if (!result.rows.length) return res.status(404).json({ error: 'Package not found' });
+
+    // If approved, also set status to live so it appears on marketplace
+    if (admin_status === 'approved') {
+      await db.query(
+        `UPDATE packages SET status = 'live' WHERE id = $1`,
+        [req.params.id]
+      );
+    }
+
+    // Notify vendor
+    const pkg = result.rows[0];
+    const vendor = await db.query('SELECT user_id FROM vendors WHERE id=$1', [pkg.vendor_id]);
+    if (vendor.rows.length) {
+      const msg = admin_status === 'approved'
+        ? `Your package "${pkg.title}" has been approved and is now live on the marketplace.`
+        : `Your package "${pkg.title}" was not approved. Reason: ${admin_rejection_reason || 'No reason provided.'}`;
+      await db.query(
+        `INSERT INTO notifications (user_id, title, message, type)
+         VALUES ($1, $2, $3, $4)`,
+        [vendor.rows[0].user_id,
+         admin_status === 'approved' ? 'Package approved ✓' : 'Package not approved',
+         msg,
+         admin_status === 'approved' ? 'success' : 'warning']
+      ).catch(() => {});
+    }
+
+    res.json(result.rows[0]);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

@@ -2,159 +2,216 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../lib/api';
 import { useAuth } from '../context/AuthContext';
-import { Button, Spinner, Input, Select } from '../components/UI';
-import { colors, font } from '../lib/styles';
+import { useCart } from '../context/CartContext';
+import { Spinner } from '../components/UI';
+import { colors, font, gradients } from '../lib/styles';
+
+const GOLD = "#C9882A";
 
 export default function PackageDetail() {
   const { id } = useParams();
   const { user } = useAuth();
+  const { addToCart } = useCart();
   const navigate = useNavigate();
-  const [pkg, setPkg]         = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [booking, setBooking] = useState({ departure_date: '', payroll_months: 6 });
-  const [submitting, setSubmitting] = useState(false);
-  const [success, setSuccess] = useState(false);
-  const [error, setError]     = useState('');
+  const [pkg, setPkg]           = useState(null);
+  const [loading, setLoading]   = useState(true);
+  const [added, setAdded]       = useState(false);
 
   useEffect(() => {
     api.get(`/packages/${id}`).then(r => setPkg(r.data)).finally(() => setLoading(false));
   }, [id]);
 
-  const monthly = pkg ? (Number(pkg.price_gbp) / booking.payroll_months).toFixed(2) : 0;
-
-  // Expiry countdown — strip timestamp if present
+  // Expiry countdown
   const endDateStr = pkg?.end_date ? String(pkg.end_date).split('T')[0] : null;
-  const daysUntilExpiry = endDateStr && endDateStr !== '2099-12-31' ? (() => {
-    const diff = Math.ceil((new Date(endDateStr) - new Date()) / (1000 * 60 * 60 * 24));
-    return diff;
-  })() : null;
+  const daysUntilExpiry = endDateStr && endDateStr !== '2099-12-31'
+    ? Math.ceil((new Date(endDateStr) - new Date()) / (1000 * 60 * 60 * 24))
+    : null;
   const isExpiringSoon = daysUntilExpiry !== null && daysUntilExpiry >= 0 && daysUntilExpiry <= 14;
   const isExpired      = daysUntilExpiry !== null && daysUntilExpiry < 0;
 
-  const handleBook = async (e) => {
-    e.preventDefault();
-    setSubmitting(true); setError('');
-    try {
-      await api.post('/bookings', { package_id: id, ...booking, payroll_months: Number(booking.payroll_months) });
-      setSuccess(true);
-    } catch (err) {
-      setError(err.response?.data?.error || 'Booking failed');
-    } finally {
-      setSubmitting(false);
-    }
+  const handleAddToCart = () => {
+    addToCart(pkg);
+    setAdded(true);
+    setTimeout(() => navigate('/cart'), 800);
   };
 
+  const gradient = gradients?.[pkg?.category] || 'linear-gradient(135deg, #1A2E44, #2d4a6e)';
+
   if (loading) return <Spinner/>;
-  if (!pkg) return <div style={{ padding: 40, textAlign: 'center', color: colors.muted }}>Package not found</div>;
+  if (!pkg) return (
+    <div style={{ padding: 60, textAlign: 'center', color: colors.muted, fontFamily: font.body }}>
+      Package not found
+    </div>
+  );
 
   return (
-    <div style={{ fontFamily: font.body, background: colors.bg, minHeight: '100vh', padding: '36px 40px', maxWidth: 1000, margin: '0 auto' }}>
-      <button onClick={() => navigate(-1)} style={{ background: 'none', border: 'none', color: colors.orange,
-        fontWeight: 600, fontSize: 13.5, cursor: 'pointer', marginBottom: 24, fontFamily: font.body }}>
-        ← Back
-      </button>
+    <div style={{ fontFamily: font.body, background: '#F7F5F2', minHeight: '100vh' }}>
+      {/* Back button */}
+      <div style={{ background: '#fff', borderBottom: '1px solid #eee', padding: '14px 40px' }}>
+        <button onClick={() => navigate(-1)} style={{
+          background: 'none', border: 'none', color: colors.orange,
+          fontWeight: 700, fontSize: 13.5, cursor: 'pointer', fontFamily: font.body,
+          display: 'flex', alignItems: 'center', gap: 6
+        }}>
+          ← Back to marketplace
+        </button>
+      </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 24 }}>
-        {/* Left: package detail */}
-        <div style={{ background: '#fff', border: `1px solid ${colors.border}`, borderRadius: 16, padding: 32 }}>
-          <div style={{ fontSize: 48, marginBottom: 16 }}>{pkg.emoji || '🌍'}</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-            <h1 style={{ fontFamily: font.display, fontSize: 26, color: colors.dark, fontWeight: 400 }}>{pkg.title}</h1>
-            {pkg.verified && <span style={{ fontSize: 10, fontWeight: 700, color: colors.green, background: colors.greenLight, borderRadius: 4, padding: '2px 7px' }}>✓ VERIFIED</span>}
+      {/* Hero image — full width, image driven */}
+      <div style={{ height: 340, background: gradient, position: 'relative', overflow: 'hidden' }}>
+        {pkg.image_url
+          ? <img src={pkg.image_url} alt={pkg.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }}/>
+          : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 100 }}>{pkg.emoji || '🌍'}</div>
+        }
+        {/* Dark overlay for text legibility */}
+        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0.1) 60%, transparent 100%)' }}/>
+
+        {/* Badges */}
+        <div style={{ position: 'absolute', top: 16, left: 20, display: 'flex', gap: 8 }}>
+          <span style={{ fontSize: 11, fontWeight: 700, color: '#fff', background: 'rgba(0,0,0,0.45)', borderRadius: 6, padding: '4px 10px', backdropFilter: 'blur(8px)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+            {pkg.category?.replace('_', ' ')}
+          </span>
+          {pkg.verified && (
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#fff', background: 'rgba(26,158,117,0.75)', borderRadius: 6, padding: '4px 10px', backdropFilter: 'blur(8px)' }}>
+              ✓ Verified vendor
+            </span>
+          )}
+          {pkg.is_sponsored && (
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#fff', background: GOLD, borderRadius: 6, padding: '4px 10px' }}>
+              ⭐ Featured
+            </span>
+          )}
+        </div>
+
+        {/* Expiry badge on hero */}
+        {isExpiringSoon && !isExpired && (
+          <div style={{ position: 'absolute', top: 16, right: 20 }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#fff', background: 'rgba(217,119,6,0.85)', borderRadius: 6, padding: '4px 10px', backdropFilter: 'blur(8px)' }}>
+              ⏳ {daysUntilExpiry === 0 ? 'Expires today' : `${daysUntilExpiry}d left`}
+            </span>
           </div>
-          <p style={{ fontSize: 13.5, color: colors.muted, marginBottom: isExpiringSoon || isExpired ? 12 : 24 }}>
+        )}
+
+        {/* Title overlay on image */}
+        <div style={{ position: 'absolute', bottom: 24, left: 24, right: 24 }}>
+          <h1 style={{ fontFamily: font.display, fontSize: 32, fontWeight: 700, fontStyle: 'italic', color: '#fff', marginBottom: 6, textShadow: '0 2px 8px rgba(0,0,0,0.3)' }}>
+            {pkg.title}
+          </h1>
+          <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.85)', fontWeight: 500 }}>
             {pkg.vendor_name} · {pkg.destination} · {pkg.duration}
           </p>
+        </div>
+      </div>
 
-          {/* Expiry countdown banner */}
+      {/* Content */}
+      <div style={{ maxWidth: 1040, margin: '0 auto', padding: '32px 40px 80px', display: 'grid', gridTemplateColumns: '1fr 340px', gap: 28, alignItems: 'start' }}>
+
+        {/* Left — details */}
+        <div>
+          {/* Expiry banners */}
           {isExpired && (
-            <div style={{ background: '#FEE2E2', border: '1px solid #FECACA', borderRadius: 10, padding: '12px 16px', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span style={{ fontSize: 18 }}>🚫</span>
+            <div style={{ background: '#FEE2E2', border: '1px solid #FECACA', borderRadius: 12, padding: '14px 18px', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 12 }}>
+              <span style={{ fontSize: 20 }}>🚫</span>
               <div>
-                <p style={{ fontSize: 13, fontWeight: 700, color: '#DC2626', marginBottom: 2 }}>This package is no longer available</p>
+                <p style={{ fontSize: 13.5, fontWeight: 700, color: '#DC2626', marginBottom: 2 }}>This package is no longer available</p>
                 <p style={{ fontSize: 12, color: '#B91C1C' }}>The vendor has closed bookings for this adventure.</p>
               </div>
             </div>
           )}
           {isExpiringSoon && !isExpired && (
-            <div style={{ background: '#FEF3C7', border: '1px solid #FDE68A', borderRadius: 10, padding: '12px 16px', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span style={{ fontSize: 18 }}>⏳</span>
+            <div style={{ background: '#FEF3C7', border: '1px solid #FDE68A', borderRadius: 12, padding: '14px 18px', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 12 }}>
+              <span style={{ fontSize: 20 }}>⏳</span>
               <div>
-                <p style={{ fontSize: 13, fontWeight: 700, color: '#D97706', marginBottom: 2 }}>
-                  This package expires in {daysUntilExpiry === 0 ? 'less than 24 hours' : `${daysUntilExpiry} day${daysUntilExpiry === 1 ? '' : 's'}`}
+                <p style={{ fontSize: 13.5, fontWeight: 700, color: '#D97706', marginBottom: 2 }}>
+                  Expires in {daysUntilExpiry === 0 ? 'less than 24 hours' : `${daysUntilExpiry} day${daysUntilExpiry === 1 ? '' : 's'}`}
                 </p>
-                <p style={{ fontSize: 12, color: '#B45309' }}>Book before it's gone — the vendor will stop accepting bookings on {new Date(endDateStr).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}.</p>
+                <p style={{ fontSize: 12, color: '#B45309' }}>
+                  Book before it's gone — bookings close on {new Date(endDateStr).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}.
+                </p>
               </div>
             </div>
           )}
+
+          {/* About */}
           {pkg.description && (
-            <p style={{ fontSize: 14, color: colors.mid, lineHeight: 1.7, marginBottom: 24 }}>{pkg.description}</p>
+            <div style={{ background: '#fff', border: '1px solid #eee', borderRadius: 14, padding: '22px 24px', marginBottom: 20 }}>
+              <p style={{ fontSize: 11, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 10 }}>About this adventure</p>
+              <p style={{ fontSize: 14.5, color: colors.mid, lineHeight: 1.75 }}>{pkg.description}</p>
+            </div>
           )}
+
+          {/* Stats grid */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12 }}>
-            {[{ label: 'Destination', value: pkg.destination }, { label: 'Duration', value: pkg.duration },
-              { label: 'Category', value: pkg.category?.replace('_',' ') }, { label: 'Vendor', value: pkg.vendor_name },
-              { label: 'Rating', value: pkg.vendor_rating > 0 ? `★ ${pkg.vendor_rating}` : 'New' },
-              { label: 'Price', value: `£${Number(pkg.price_gbp).toLocaleString()}` }
+            {[
+              { label: 'Destination', value: pkg.destination },
+              { label: 'Duration',    value: pkg.duration },
+              { label: 'Category',    value: pkg.category?.replace(/_/g,' ') },
+              { label: 'Vendor',      value: pkg.vendor_name },
+              { label: 'Rating',      value: pkg.vendor_rating > 0 ? `★ ${pkg.vendor_rating}` : 'New listing' },
+              { label: 'Status',      value: pkg.verified ? '✓ Verified' : 'Unverified' },
             ].map((item, i) => (
-              <div key={i} style={{ background: colors.bg, borderRadius: 8, padding: '12px 14px' }}>
-                <p style={{ fontSize: 10, color: colors.faint, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>{item.label}</p>
-                <p style={{ fontSize: 13.5, fontWeight: 500, color: colors.dark }}>{item.value}</p>
+              <div key={i} style={{ background: '#fff', border: '1px solid #eee', borderRadius: 10, padding: '14px 16px' }}>
+                <p style={{ fontSize: 10, color: colors.faint, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>{item.label}</p>
+                <p style={{ fontSize: 13.5, fontWeight: 600, color: colors.dark, textTransform: 'capitalize' }}>{item.value || '—'}</p>
               </div>
             ))}
           </div>
         </div>
 
-        {/* Right: booking form */}
-        <div>
-          {success ? (
-            <div style={{ background: '#fff', border: `1px solid ${colors.border}`, borderRadius: 16, padding: 32, textAlign: 'center' }}>
-              <div style={{ fontSize: 40, marginBottom: 16 }}>🎉</div>
-              <h2 style={{ fontFamily: font.display, fontSize: 22, color: colors.dark, marginBottom: 8 }}>Booking submitted!</h2>
-              <p style={{ color: colors.muted, fontSize: 13.5, marginBottom: 24 }}>Your HR team will review and approve your adventure request.</p>
-              <Button onClick={() => navigate('/my-booking')}>View my booking</Button>
-            </div>
-          ) : (
-            <div style={{ background: '#fff', border: `1px solid ${colors.border}`, borderRadius: 16, padding: 28 }}>
-              <h2 style={{ fontSize: 16, fontWeight: 600, color: colors.dark, marginBottom: 4 }}>Book this adventure</h2>
-              <p style={{ fontSize: 12, color: colors.muted, marginBottom: 22 }}>Cost spread via your employer payroll</p>
+        {/* Right — add to cart panel */}
+        <div style={{ position: 'sticky', top: 24 }}>
+          <div style={{ background: '#fff', border: '1px solid #eee', borderRadius: 16, padding: '24px 22px' }}>
+            {/* Price */}
+            <p style={{ fontSize: 34, fontFamily: font.display, fontWeight: 700, color: colors.dark, marginBottom: 2 }}>
+              £{Number(pkg.price_gbp).toLocaleString()}
+            </p>
+            <p style={{ fontSize: 12.5, color: colors.muted, marginBottom: 20 }}>
+              from £{Math.ceil(pkg.price_gbp / 12)}/mo via payroll
+            </p>
 
-              {user?.role !== 'employee' ? (
-                <p style={{ color: colors.muted, fontSize: 13.5 }}>Only employees can book packages.</p>
-              ) : (
-                <form onSubmit={handleBook} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                  <Input label="Departure date" type="date" required
-                    value={booking.departure_date}
-                    onChange={e => setBooking(b => ({ ...b, departure_date: e.target.value }))}/>
-                  <Select label="Payroll spread" value={booking.payroll_months}
-                    onChange={e => setBooking(b => ({ ...b, payroll_months: e.target.value }))}>
-                    <option value={3}>3 months</option>
-                    <option value={6}>6 months</option>
-                    <option value={12}>12 months</option>
-                  </Select>
-
-                  {/* Summary */}
-                  <div style={{ background: colors.bg, borderRadius: 10, padding: '16px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                      <span style={{ fontSize: 13, color: colors.muted }}>Total</span>
-                      <span style={{ fontSize: 13, fontWeight: 600, color: colors.dark }}>£{Number(pkg.price_gbp).toLocaleString()}</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: 8, borderTop: `1px solid ${colors.border}` }}>
-                      <span style={{ fontSize: 13, color: colors.muted }}>Monthly via payroll</span>
-                      <span style={{ fontFamily: font.display, fontSize: 20, color: colors.orange }}>£{monthly}</span>
-                    </div>
+            {/* Payroll spread preview */}
+            <div style={{ background: '#F7F5F2', borderRadius: 10, padding: '14px 16px', marginBottom: 20 }}>
+              <p style={{ fontSize: 11, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>Payroll spread</p>
+              <div style={{ display: 'flex', gap: 8 }}>
+                {[3, 6, 12].map(mo => (
+                  <div key={mo} style={{ flex: 1, textAlign: 'center', background: mo === 6 ? colors.dark : '#fff', borderRadius: 8, padding: '8px 4px', border: `1px solid ${mo === 6 ? colors.dark : '#eee'}` }}>
+                    <p style={{ fontSize: 12, fontWeight: 700, color: mo === 6 ? '#fff' : colors.dark }}>{mo}mo</p>
+                    <p style={{ fontSize: 11, color: mo === 6 ? 'rgba(255,255,255,0.7)' : colors.muted, marginTop: 2 }}>£{Math.ceil(pkg.price_gbp / mo)}/mo</p>
                   </div>
-
-                  {error && <p style={{ color: '#b91c1c', fontSize: 13 }}>{error}</p>}
-                  <Button type="submit" disabled={submitting} style={{ width: '100%', justifyContent: 'center' }}>
-                    {submitting ? 'Submitting…' : 'Request booking'}
-                  </Button>
-                  <p style={{ fontSize: 11.5, color: colors.faint, textAlign: 'center', lineHeight: 1.5 }}>
-                    Your request goes to HR for approval before it's confirmed.
-                  </p>
-                </form>
-              )}
+                ))}
+              </div>
+              <p style={{ fontSize: 11, color: colors.faint, marginTop: 8, textAlign: 'center' }}>Choose your spread in the cart</p>
             </div>
-          )}
+
+            {user?.role === 'employee' ? (
+              isExpired ? (
+                <div style={{ background: '#FEE2E2', borderRadius: 10, padding: '14px 16px', textAlign: 'center' }}>
+                  <p style={{ fontSize: 13, fontWeight: 700, color: '#DC2626' }}>Bookings closed</p>
+                </div>
+              ) : (
+                <>
+                  <button
+                    onClick={handleAddToCart}
+                    disabled={added}
+                    style={{
+                      width: '100%', background: added ? colors.green : colors.orange,
+                      color: '#fff', border: 'none', borderRadius: 12, padding: '14px',
+                      fontSize: 15, fontWeight: 700, cursor: added ? 'default' : 'pointer',
+                      fontFamily: font.body, transition: 'background 0.2s', marginBottom: 10
+                    }}>
+                    {added ? '✓ Added to cart — going to cart…' : '🛒 Add to cart'}
+                  </button>
+                  <p style={{ fontSize: 11.5, color: colors.faint, textAlign: 'center', lineHeight: 1.5 }}>
+                    Your cart is reviewed by HR before payroll deductions begin.
+                  </p>
+                </>
+              )
+            ) : (
+              <p style={{ color: colors.muted, fontSize: 13, textAlign: 'center' }}>
+                Log in as an employee to book this package.
+              </p>
+            )}
+          </div>
         </div>
       </div>
     </div>
