@@ -1,10 +1,51 @@
+// Sabba Backend v3
 require('dotenv').config();
-const express = require('express');
-const cors = require('cors');
-const { apiLimiter, securityHeaders } = require('./middleware/security');
+const express    = require('express');
+const cors       = require('cors');
+const rateLimit  = require('express-rate-limit');
 
 const app = express();
 
+// ── Security headers ────────────────────────────────────────
+app.use((req, res, next) => {
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  next();
+});
+
+// ── Rate limiters ───────────────────────────────────────────
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: { error: 'Too many login attempts. Please try again in 15 minutes.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const apiLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 200,
+  message: { error: 'Too many requests. Please slow down.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const passwordResetLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 5,
+  message: { error: 'Too many password reset requests. Please try again in an hour.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Expose limiters for use in routes
+app.set('loginLimiter', loginLimiter);
+app.set('passwordResetLimiter', passwordResetLimiter);
+
+// ── CORS ────────────────────────────────────────────────────
 app.use(cors({
   origin: (origin, callback) => {
     const allowed = [
@@ -16,19 +57,17 @@ app.use(cors({
     if (!origin || allowed.includes(origin)) {
       callback(null, true);
     } else {
-      callback(null, true); // allow all origins in production — restrict after custom domain
+      callback(null, true);
     }
   },
   credentials: true,
 }));
+
 app.use(express.json());
-app.use(securityHeaders);
 app.use('/api', apiLimiter);
 
-// Auth
+// ── Routes ──────────────────────────────────────────────────
 app.use('/api/auth',          require('./routes/auth'));
-
-// Core
 app.use('/api/packages',      require('./routes/packages'));
 app.use('/api/bookings',      require('./routes/bookings'));
 app.use('/api/employees',     require('./routes/employees'));
@@ -37,8 +76,6 @@ app.use('/api/notifications', require('./routes/notifications'));
 app.use('/api/ratings',       require('./routes/ratings'));
 app.use('/api/profile',       require('./routes/profile'));
 app.use('/api/policies',      require('./routes/policies'));
-
-// V3
 app.use('/api/cart',          require('./routes/cart'));
 app.use('/api/quiz',          require('./routes/quiz'));
 app.use('/api/allowance',     require('./routes/allowance'));
@@ -60,4 +97,3 @@ app.get('/api/dbtest', async (_, res) => {
 
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => console.log(`Sabba V3 API running on port ${PORT}`));
-

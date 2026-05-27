@@ -1,5 +1,10 @@
 const router  = require('express').Router();
-const { loginLimiter, passwordResetLimiter } = require('../middleware/security');
+
+// Rate limiters injected from app (set in server.js)
+const getLoginLimiter = (req) => req.app.get('loginLimiter') || ((r,s,n)=>n());
+const getResetLimiter = (req) => req.app.get('passwordResetLimiter') || ((r,s,n)=>n());
+const applyLoginLimit = (req, res, next) => getLoginLimiter(req)(req, res, next);
+const applyResetLimit = (req, res, next) => getResetLimiter(req)(req, res, next);
 const bcrypt  = require('bcryptjs');
 const jwt     = require('jsonwebtoken');
 const crypto  = require('crypto');
@@ -41,7 +46,7 @@ router.post('/register', [
 });
 
 // ── POST /api/auth/login ──────────────────────────────────────
-router.post('/login', loginLimiter, [
+router.post('/login', applyLoginLimit, [
   body('email').isEmail(),
   body('password').notEmpty(),
 ], async (req, res) => {
@@ -116,7 +121,7 @@ router.patch('/profile', auth, async (req, res) => {
 
 // ── POST /api/auth/forgot-password ───────────────────────────
 // Request a password reset — sends email with token link
-router.post('/forgot-password', passwordResetLimiter, [
+router.post('/forgot-password', applyResetLimit, [
   body('email').isEmail().normalizeEmail(),
 ], async (req, res) => {
   const errors = validationResult(req);
