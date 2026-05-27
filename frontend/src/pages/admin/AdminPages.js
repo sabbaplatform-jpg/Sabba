@@ -2630,7 +2630,7 @@ export function AdminSponsored() {
 
   const handleDelete = async (id) => {
     if (!window.confirm('Remove this sponsored listing?')) return;
-    await api.delete(\`/packages/sponsored/\${id}\`);
+    await api.delete(`/packages/sponsored/${id}`);
     fetch_all();
   };
 
@@ -2659,7 +2659,7 @@ export function AdminSponsored() {
         {[1, 2, 3].map(slot => {
           const active = activeListings.find(l => l.slot_number === slot);
           return (
-            <div key={slot} style={{ background: active ? '#FDF3E3' : '#fff', border: \`1px solid \${active ? '#F59E0B' : '#eee'}\`, borderRadius: 14, padding: '18px 20px' }}>
+            <div key={slot} style={{ background: active ? '#FDF3E3' : '#fff', border: `1px solid ${active ? '#F59E0B' : '#eee'}`, borderRadius: 14, padding: '18px 20px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                 <p style={{ fontSize: 11, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Slot {slot}</p>
                 <span style={{ fontSize: 10, fontWeight: 700, background: active ? '#FEF3C7' : '#F3F4F6', color: active ? '#D97706' : colors.faint, borderRadius: 6, padding: '3px 8px' }}>
