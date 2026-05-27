@@ -84,10 +84,23 @@ router.patch('/:id/status', auth, async (req, res) => {
   try {
     const { status } = req.body;
 
-    await db.query(
-      'UPDATE bookings SET status=$1 WHERE id=$2',
-      [status, req.params.id]
-    );
+    // When approving, capture commission rate from vendor at point of approval
+    if (status === 'approved') {
+      await db.query(`
+        UPDATE bookings b SET
+          status = 'approved',
+          commission_rate   = COALESCE(v.commission_rate, 0.10),
+          commission_amount = ROUND(b.total_amount * COALESCE(v.commission_rate, 0.10), 2)
+        FROM packages p
+        JOIN vendors v ON p.vendor_id = v.id
+        WHERE b.id = $1 AND b.package_id = p.id
+      `, [req.params.id]);
+    } else {
+      await db.query(
+        'UPDATE bookings SET status=$1 WHERE id=$2',
+        [status, req.params.id]
+      );
+    }
 
     if (status === 'approved') {
       // FIX: use employee_id (not user_id) — bookings table uses employee_id

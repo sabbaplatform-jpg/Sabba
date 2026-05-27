@@ -73,12 +73,15 @@ export function VendorDashboard() {
     }).finally(() => setLoading(false));
   }, []);
 
-  const earnings = bookings.filter(b => b.status === 'confirmed').reduce((s, b) => s + Number(b.total_amount), 0);
+  const confirmedBookings = bookings.filter(b => b.status === 'confirmed');
+  const grossEarnings   = confirmedBookings.reduce((s, b) => s + Number(b.total_amount), 0);
+  const commissionTotal = confirmedBookings.reduce((s, b) => s + Number(b.commission_amount || 0), 0);
+  const netEarnings     = grossEarnings - commissionTotal;
 
   const stats = [
     { label: 'Active Packages',   value: packages.filter(p => p.status === 'live').length, sub: `${packages.length} total`,                                  icon: '📦' },
-    { label: 'Total Bookings',    value: bookings.length,                                   sub: `${bookings.filter(b=>b.status==='confirmed').length} confirmed`, icon: '📅', up: true },
-    { label: 'Confirmed Revenue', value: `£${earnings.toLocaleString()}`,                  sub: 'from confirmed bookings',                                    icon: '💷', up: true },
+    { label: 'Total Bookings',    value: bookings.length,                                   sub: `${confirmedBookings.length} confirmed`, icon: '📅', up: true },
+    { label: 'Net Revenue',       value: `£${netEarnings.toLocaleString()}`,                sub: `after ${Math.round((commissionTotal/grossEarnings||0)*100)}% commission`,  icon: '💷', up: true },
     { label: 'Avg Rating',        value: profile?.rating > 0 ? `${profile.rating} ★` : '—', sub: `${profile?.total_reviews || 0} reviews`,                  icon: '⭐' },
   ];
 
@@ -219,13 +222,15 @@ export function VendorPackages() {
 
   const downloadTemplate = () => {
     const rows = [
-      'title,description,category,destination,duration,price_gbp,emoji,image_url,status',
+      'title,description,category,destination,duration,price_gbp,emoji,image_url,status,start_date,end_date',
       '"Japan Cultural Immersion","Explore Tokyo and Kyoto with guided cultural experiences.","travel","Japan","3 weeks",2800,"🗼","https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=800","live"',
       '# COLUMN GUIDE:',
       '# category: travel | volunteering | courses | work_abroad | accommodation | airlines',
       '# status: live | draft (default: draft)',
       '# price_gbp: number only e.g. 2800',
       '# image_url: full https:// URL (optional)',
+      '# start_date: YYYY-MM-DD format (default: 2026-01-01)',
+      '# end_date: YYYY-MM-DD format (default: 2099-12-31 for ongoing)',
       '# Required: title, description, category, destination, duration, price_gbp',
     ];
     const a = document.createElement('a');
@@ -404,9 +409,19 @@ export function VendorPackages() {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <p style={{ fontFamily: font.display, fontSize: 22, fontWeight: 700, color: colors.dark }}>£{Number(pkg.price_gbp).toLocaleString()}</p>
                       <div style={{ display: 'flex', gap: 8 }}>
+                        {pkg.display_status === 'expired' ? (
+                        <span style={{ background: '#FEE2E2', color: '#DC2626', borderRadius: 7, padding: '6px 12px', fontSize: 12, fontWeight: 700, fontFamily: font.body }}>
+                          Expired
+                        </span>
+                      ) : pkg.display_status === 'expiring_soon' ? (
+                        <span style={{ background: '#FEF3C7', color: '#D97706', borderRadius: 7, padding: '6px 12px', fontSize: 12, fontWeight: 700, fontFamily: font.body }}>
+                          ⏳ Expires in {pkg.days_until_expiry}d
+                        </span>
+                      ) : (
                         <button onClick={() => toggleStatus(pkg)} style={{ background: pkg.status === 'live' ? colors.redLight : colors.greenLight, color: pkg.status === 'live' ? colors.red : colors.green, border: 'none', borderRadius: 7, padding: '6px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: font.body }}>
                           {pkg.status === 'live' ? 'Unpublish' : 'Publish'}
                         </button>
+                      )}
                         <button onClick={() => { setEditPkg(pkg); setShowForm(true); }} style={{ background: '#F7F5F2', color: colors.mid, border: '1px solid #eee', borderRadius: 7, padding: '6px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: font.body }}>Edit</button>
                         <button onClick={() => deletePackage(pkg.id)} style={{ background: colors.redLight, color: colors.red, border: 'none', borderRadius: 7, padding: '6px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: font.body }}>Delete</button>
                       </div>
@@ -852,7 +867,7 @@ export function VendorProfile() {
 
 // ── Package Form Modal ───────────────────────────────────────
 function PackageForm({ initial, onClose, onSaved }) {
-  const [form, setForm]   = useState(initial || { title: '', description: '', category: 'travel', destination: '', duration: '', price_gbp: '', emoji: '🌍', image_url: '' });
+  const [form, setForm]   = useState(initial || { title: '', description: '', category: 'travel', destination: '', duration: '', price_gbp: '', emoji: '🌍', image_url: '', start_date: '2026-01-01', end_date: '2099-12-31' });
   const [saving, setSaving] = useState(false);
   const [error, setError]   = useState('');
   const set = k => e => setForm(f => ({ ...f, [k]: e.target.value }));
@@ -898,6 +913,19 @@ function PackageForm({ initial, onClose, onSaved }) {
           <Input label="Duration" required value={form.duration} onChange={set('duration')} placeholder="3 weeks"/>
         </div>
         <Input label="Price (£)" type="number" required min="1" value={form.price_gbp} onChange={set('price_gbp')} placeholder="3200"/>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div>
+            <label style={{ fontSize: 11.5, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.08em', display: 'block', marginBottom: 6 }}>Availability start date</label>
+            <input type="date" value={form.start_date || '2026-01-01'} onChange={set('start_date')}
+              style={{ width: '100%', border: '1.5px solid #eee', borderRadius: 10, padding: '10px 14px', fontSize: 13.5, color: colors.dark, background: '#fff', outline: 'none', fontFamily: font.body, fontWeight: 500 }}/>
+          </div>
+          <div>
+            <label style={{ fontSize: 11.5, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.08em', display: 'block', marginBottom: 6 }}>Availability end date <span style={{ fontWeight: 400, color: colors.orange }}>*</span></label>
+            <input type="date" value={form.end_date || '2099-12-31'} onChange={set('end_date')}
+              style={{ width: '100%', border: '1.5px solid #eee', borderRadius: 10, padding: '10px 14px', fontSize: 13.5, color: colors.dark, background: '#fff', outline: 'none', fontFamily: font.body, fontWeight: 500 }}/>
+            <p style={{ fontSize: 11, color: colors.faint, marginTop: 4 }}>Leave as-is for an ongoing package. Set a specific date if the package has a fixed end.</p>
+          </div>
+        </div>
         <div>
           <label style={{ fontSize: 11.5, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.08em', display: 'block', marginBottom: 6 }}>Package image URL <span style={{ fontWeight: 400, color: colors.faint }}>(optional)</span></label>
           <input value={form.image_url || ''} onChange={set('image_url')} placeholder="https://… (a great photo of the destination)"

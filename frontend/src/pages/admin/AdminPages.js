@@ -18,6 +18,7 @@ function AdminNav({ active }) {
     { id: 'settings',     label: 'Settings & team', icon: '⚙️', path: '/admin/settings' },
     { id: 'email-templates', label: 'Email templates', icon: '✉️', path: '/admin/email-templates' },
     { id: 'analytics',  label: 'Analytics',       icon: '📊', path: '/admin/analytics' },
+    { id: 'sponsored',  label: 'Sponsored listings', icon: '⭐', path: '/admin/sponsored' },
     { id: 'billing',    label: 'Billing',          icon: '💳', path: '/admin/billing' },
     { id: 'flags',      label: 'Feature flags',   icon: '🚩', path: '/admin/flags' },
     { id: 'audit',      label: 'Audit log',        icon: '📋', path: '/admin/audit' },
@@ -2585,6 +2586,227 @@ export function AdminProfile() {
           {savingPw ? 'Updating…' : 'Change password'}
         </button>
       </div>
+    </div>
+  );
+}
+
+
+// ── Admin Sponsored Listings ─────────────────────────────────
+export function AdminSponsored() {
+  const [listings, setListings] = useState([]);
+  const [packages, setPackages] = useState([]);
+  const [vendors,  setVendors]  = useState([]);
+  const [loading,  setLoading]  = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState({ package_id: '', vendor_id: '', slot_number: 1, monthly_fee_gbp: 2000, start_date: new Date().toISOString().split('T')[0], end_date: '', notes: '' });
+  const [saving, setSaving] = useState(false);
+  const [error, setError]   = useState('');
+
+  const fetch_all = () => {
+    Promise.all([
+      api.get('/packages/sponsored/all'),
+      api.get('/packages'),
+      api.get('/vendors/all'),
+    ]).then(([l, p, v]) => {
+      setListings(l.data || []);
+      setPackages(p.data || []);
+      setVendors(v.data || []);
+    }).catch(() => {}).finally(() => setLoading(false));
+  };
+
+  useEffect(() => { fetch_all(); }, []);
+
+  const handleCreate = async (e) => {
+    e.preventDefault(); setSaving(true); setError('');
+    try {
+      await api.post('/packages/sponsored', form);
+      setShowForm(false);
+      setForm({ package_id: '', vendor_id: '', slot_number: 1, monthly_fee_gbp: 2000, start_date: new Date().toISOString().split('T')[0], end_date: '', notes: '' });
+      fetch_all();
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to create sponsored listing');
+    } finally { setSaving(false); }
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm('Remove this sponsored listing?')) return;
+    await api.delete(\`/packages/sponsored/\${id}\`);
+    fetch_all();
+  };
+
+  const today = new Date().toISOString().split('T')[0];
+
+  const activeListings  = listings.filter(l => l.end_date >= today);
+  const expiredListings = listings.filter(l => l.end_date < today);
+
+  const lStyle = { fontSize: 11.5, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.08em', display: 'block', marginBottom: 6 };
+  const iStyle = { width: '100%', border: '1.5px solid #eee', borderRadius: 10, padding: '10px 14px', fontSize: 13.5, color: colors.dark, background: '#fff', outline: 'none', fontFamily: font.body, fontWeight: 500 };
+
+  if (loading) return <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'60vh' }}><Spinner/></div>;
+
+  return (
+    <div style={{ fontFamily: font.body, background: '#F7F5F2', minHeight: '100vh', padding: '32px 36px', paddingBottom: 80 }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 28 }}>
+        <div>
+          <h1 style={{ fontFamily: font.display, fontSize: 30, color: colors.dark, fontWeight: 700, fontStyle: 'italic', marginBottom: 6 }}>Sponsored listings</h1>
+          <p style={{ fontSize: 13.5, color: colors.muted }}>Manage the 3 featured package slots that appear at the top of the employee marketplace.</p>
+        </div>
+        <Button onClick={() => setShowForm(true)}>+ Add sponsored listing</Button>
+      </div>
+
+      {/* Slot status overview */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 28 }}>
+        {[1, 2, 3].map(slot => {
+          const active = activeListings.find(l => l.slot_number === slot);
+          return (
+            <div key={slot} style={{ background: active ? '#FDF3E3' : '#fff', border: \`1px solid \${active ? '#F59E0B' : '#eee'}\`, borderRadius: 14, padding: '18px 20px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                <p style={{ fontSize: 11, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Slot {slot}</p>
+                <span style={{ fontSize: 10, fontWeight: 700, background: active ? '#FEF3C7' : '#F3F4F6', color: active ? '#D97706' : colors.faint, borderRadius: 6, padding: '3px 8px' }}>
+                  {active ? '⭐ OCCUPIED' : 'AVAILABLE'}
+                </span>
+              </div>
+              {active ? (
+                <>
+                  <p style={{ fontSize: 14, fontWeight: 700, color: colors.dark, marginBottom: 4 }}>{active.package_title}</p>
+                  <p style={{ fontSize: 12, color: colors.muted, marginBottom: 4 }}>{active.vendor_name}</p>
+                  <p style={{ fontSize: 12, color: colors.orange, fontWeight: 600 }}>£{Number(active.monthly_fee_gbp).toLocaleString()}/mo · until {new Date(active.end_date).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' })}</p>
+                  <button onClick={() => handleDelete(active.id)} style={{ marginTop: 10, background: 'none', border: 'none', color: colors.red, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: font.body, padding: 0 }}>
+                    Remove listing
+                  </button>
+                </>
+              ) : (
+                <p style={{ fontSize: 13, color: colors.faint, marginTop: 4 }}>No active sponsorship. Click '+ Add' to assign a vendor package to this slot.</p>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Revenue summary */}
+      {activeListings.length > 0 && (
+        <div style={{ background: '#fff', border: '1px solid #eee', borderRadius: 14, padding: '16px 20px', marginBottom: 28, display: 'flex', gap: 32, alignItems: 'center' }}>
+          <div>
+            <p style={{ fontSize: 11, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>Monthly sponsorship revenue</p>
+            <p style={{ fontSize: 26, fontWeight: 700, fontFamily: font.display, color: colors.dark }}>£{activeListings.reduce((s, l) => s + Number(l.monthly_fee_gbp), 0).toLocaleString()}</p>
+          </div>
+          <div>
+            <p style={{ fontSize: 11, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>Active slots</p>
+            <p style={{ fontSize: 26, fontWeight: 700, fontFamily: font.display, color: colors.dark }}>{activeListings.length} / 3</p>
+          </div>
+          <div>
+            <p style={{ fontSize: 11, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>Annual run rate</p>
+            <p style={{ fontSize: 26, fontWeight: 700, fontFamily: font.display, color: colors.orange }}>£{(activeListings.reduce((s, l) => s + Number(l.monthly_fee_gbp), 0) * 12).toLocaleString()}</p>
+          </div>
+        </div>
+      )}
+
+      {/* All listings table */}
+      {listings.length > 0 && (
+        <div style={{ background: '#fff', border: '1px solid #eee', borderRadius: 14, overflow: 'hidden', marginBottom: 28 }}>
+          <div style={{ padding: '16px 20px', borderBottom: '1px solid #eee' }}>
+            <p style={{ fontSize: 14, fontWeight: 700, color: colors.dark }}>All sponsored listings</p>
+          </div>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ background: '#F7F5F2' }}>
+                {['Slot','Package','Vendor','Fee/mo','Start','End','Status',''].map(h => (
+                  <th key={h} style={{ padding: '10px 16px', fontSize: 11, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.08em', textAlign: 'left' }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {listings.map(l => {
+                const isActive = l.end_date >= today;
+                return (
+                  <tr key={l.id} style={{ borderTop: '1px solid #F7F5F2' }}>
+                    <td style={{ padding: '12px 16px' }}>
+                      <span style={{ background: isActive ? '#FEF3C7' : '#F3F4F6', color: isActive ? '#D97706' : colors.faint, borderRadius: 6, padding: '3px 8px', fontSize: 12, fontWeight: 700 }}>⭐ {l.slot_number}</span>
+                    </td>
+                    <td style={{ padding: '12px 16px', fontSize: 13.5, color: colors.dark, fontWeight: 500 }}>{l.package_title}</td>
+                    <td style={{ padding: '12px 16px', fontSize: 13, color: colors.muted }}>{l.vendor_name}</td>
+                    <td style={{ padding: '12px 16px', fontSize: 13, color: colors.dark, fontWeight: 600 }}>£{Number(l.monthly_fee_gbp).toLocaleString()}</td>
+                    <td style={{ padding: '12px 16px', fontSize: 12.5, color: colors.muted }}>{new Date(l.start_date).toLocaleDateString('en-GB')}</td>
+                    <td style={{ padding: '12px 16px', fontSize: 12.5, color: colors.muted }}>{new Date(l.end_date).toLocaleDateString('en-GB')}</td>
+                    <td style={{ padding: '12px 16px' }}>
+                      <span style={{ fontSize: 11, fontWeight: 700, background: isActive ? '#DCFCE7' : '#F3F4F6', color: isActive ? colors.green : colors.faint, borderRadius: 6, padding: '3px 8px' }}>
+                        {isActive ? 'Active' : 'Expired'}
+                      </span>
+                    </td>
+                    <td style={{ padding: '12px 16px' }}>
+                      {isActive && (
+                        <button onClick={() => handleDelete(l.id)} style={{ background: 'none', border: 'none', color: colors.red, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: font.body }}>Remove</button>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {listings.length === 0 && (
+        <div style={{ background: '#fff', border: '1px solid #eee', borderRadius: 14, padding: 40, textAlign: 'center' }}>
+          <p style={{ fontSize: 32, marginBottom: 12 }}>⭐</p>
+          <p style={{ fontSize: 15, fontWeight: 600, color: colors.dark, marginBottom: 8 }}>No sponsored listings yet</p>
+          <p style={{ fontSize: 13, color: colors.muted, marginBottom: 20 }}>Assign vendor packages to the 3 featured slots at the top of the marketplace.</p>
+          <Button onClick={() => setShowForm(true)}>Add first sponsored listing</Button>
+        </div>
+      )}
+
+      {/* Add form modal */}
+      {showForm && (
+        <Modal title="Add sponsored listing" onClose={() => { setShowForm(false); setError(''); }}>
+          <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div>
+              <label style={lStyle}>Slot number <span style={{ color: colors.orange }}>*</span></label>
+              <select value={form.slot_number} onChange={e => setForm(f => ({...f, slot_number: Number(e.target.value)}))} style={iStyle} required>
+                <option value={1}>Slot 1 — first featured position</option>
+                <option value={2}>Slot 2 — second featured position</option>
+                <option value={3}>Slot 3 — third featured position</option>
+              </select>
+            </div>
+            <div>
+              <label style={lStyle}>Package <span style={{ color: colors.orange }}>*</span></label>
+              <select value={form.package_id} onChange={e => {
+                const pkg = packages.find(p => p.id === e.target.value);
+                setForm(f => ({...f, package_id: e.target.value, vendor_id: pkg?.vendor_id || f.vendor_id}));
+              }} style={iStyle} required>
+                <option value="">Select a package…</option>
+                {packages.filter(p => p.status === 'live').map(p => (
+                  <option key={p.id} value={p.id}>{p.title} — {p.vendor_name} (£{Number(p.price_gbp).toLocaleString()})</option>
+                ))}
+              </select>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div>
+                <label style={lStyle}>Start date <span style={{ color: colors.orange }}>*</span></label>
+                <input type="date" value={form.start_date} onChange={e => setForm(f => ({...f, start_date: e.target.value}))} style={iStyle} required/>
+              </div>
+              <div>
+                <label style={lStyle}>End date <span style={{ color: colors.orange }}>*</span></label>
+                <input type="date" value={form.end_date} onChange={e => setForm(f => ({...f, end_date: e.target.value}))} style={iStyle} required/>
+              </div>
+            </div>
+            <div>
+              <label style={lStyle}>Monthly fee (£) <span style={{ color: colors.orange }}>*</span></label>
+              <input type="number" value={form.monthly_fee_gbp} onChange={e => setForm(f => ({...f, monthly_fee_gbp: e.target.value}))} style={iStyle} min="500" required/>
+              <p style={{ fontSize: 11, color: colors.faint, marginTop: 4 }}>Standard range: £500–£5,000 per month depending on slot position and vendor size.</p>
+            </div>
+            <div>
+              <label style={lStyle}>Notes (optional)</label>
+              <textarea value={form.notes} onChange={e => setForm(f => ({...f, notes: e.target.value}))} placeholder="Any internal notes about this sponsorship arrangement…"
+                style={{ ...iStyle, resize: 'vertical', minHeight: 60 }}/>
+            </div>
+            {error && <p style={{ color: colors.red, fontSize: 13, fontWeight: 600 }}>{error}</p>}
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 4 }}>
+              <Button variant="secondary" onClick={() => { setShowForm(false); setError(''); }}>Cancel</Button>
+              <Button type="submit" disabled={saving}>{saving ? 'Saving…' : 'Create sponsored listing'}</Button>
+            </div>
+          </form>
+        </Modal>
+      )}
     </div>
   );
 }

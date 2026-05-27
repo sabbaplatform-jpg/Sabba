@@ -1,168 +1,188 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import api from '../lib/api';
-import { useCart } from '../context/CartContext';
-import { PackageCard, Spinner, EmptyState, Input } from '../components/UI';
-import { colors, font, gradients } from '../lib/styles';
+import { colors, font } from '../lib/styles';
+import { Spinner, EmptyState, Input } from '../components/UI';
 
-const CATS = ['all','travel','volunteering','courses','jobs_abroad','accommodation','airlines'];
-const CAT_LABELS = { all:'All', travel:'Travel', volunteering:'Volunteering', courses:'Courses', jobs_abroad:'Work Abroad', accommodation:'Stays', airlines:'Airlines' };
-const CAT_ICONS  = { all:'🔍', travel:'🌍', volunteering:'🤝', courses:'🎓', jobs_abroad:'💼', accommodation:'🏠', airlines:'✈️' };
+const CATEGORIES = ['all','travel','volunteering','courses','jobs_abroad','accommodation','airlines'];
+const CATEGORY_ICONS = { travel:'🌍', volunteering:'🤝', courses:'🎓', jobs_abroad:'💼', accommodation:'🏠', airlines:'✈️', all:'🔍' };
 
-// ── Add to Cart popup ────────────────────────────────────────
-function AddToCartPopup({ pkg, onClose, onConfirm }) {
-  const [departureDate,  setDepartureDate]  = useState('');
-  const [payrollMonths,  setPayrollMonths]  = useState(6);
-  const [error,          setError]          = useState('');
+const GOLD   = "#C9882A";
+const GOLDLT = "#FDF3E3";
 
-  const monthly = pkg ? (Number(pkg.price_gbp) / payrollMonths).toFixed(2) : 0;
-  const minDate  = new Date(); minDate.setDate(minDate.getDate() + 14);
-  const minStr   = minDate.toISOString().split('T')[0];
+export default function Marketplace() {
+  const [packages, setPackages] = useState([]);
+  const [loading, setLoading]   = useState(true);
+  const [category, setCategory] = useState('all');
+  const [search, setSearch]     = useState('');
+  const navigate = useNavigate();
 
-  const handleConfirm = () => {
-    if (!departureDate) { setError('Please select a departure date'); return; }
-    onConfirm({ departure_date: departureDate, payroll_months: payrollMonths });
-  };
+  useEffect(() => {
+    setLoading(true);
+    const params = {};
+    if (category !== 'all') params.category = category;
+    if (search) params.search = search;
+    api.get('/packages', { params })
+      .then(r => setPackages(r.data))
+      .finally(() => setLoading(false));
+  }, [category, search]);
+
+  const sponsored = packages.filter(p => p.is_sponsored);
+  const regular   = packages.filter(p => !p.is_sponsored);
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 500, backdropFilter: 'blur(4px)' }}>
-      <div style={{ background: '#fff', borderRadius: 20, padding: 28, width: '100%', maxWidth: 420, boxShadow: '0 24px 80px rgba(0,0,0,0.2)', fontFamily: font.body }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
-          <div>
-            <p style={{ fontSize: 11, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>Add to cart</p>
-            <p style={{ fontFamily: font.display, fontSize: 20, fontWeight: 700, fontStyle: 'italic', color: colors.dark }}>{pkg.title}</p>
-            <p style={{ fontSize: 13, color: colors.muted, marginTop: 2 }}>{pkg.destination} · {pkg.duration}</p>
-          </div>
-          <button onClick={onClose} style={{ background: '#F7F5F2', border: 'none', borderRadius: 8, width: 30, height: 30, cursor: 'pointer', fontSize: 16, color: colors.muted, flexShrink: 0 }}>✕</button>
-        </div>
-
-        {/* Departure date */}
-        <div style={{ marginBottom: 18 }}>
-          <label style={{ fontSize: 11.5, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.07em', display: 'block', marginBottom: 6 }}>Departure date <span style={{ color: colors.orange }}>*</span></label>
-          <input type="date" value={departureDate} min={minStr} onChange={e => { setDepartureDate(e.target.value); setError(''); }}
-            style={{ width: '100%', border: `1.5px solid ${error ? colors.red : '#eee'}`, borderRadius: 10, padding: '10px 14px', fontSize: 14, color: colors.dark, fontFamily: font.body, outline: 'none' }}/>
-          {error && <p style={{ fontSize: 12, color: colors.red, marginTop: 4, fontWeight: 600 }}>{error}</p>}
-        </div>
-
-        {/* Payroll spread */}
-        <div style={{ marginBottom: 20 }}>
-          <label style={{ fontSize: 11.5, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.07em', display: 'block', marginBottom: 8 }}>Pay via payroll over</label>
-          <div style={{ display: 'flex', gap: 8 }}>
-            {[3, 6, 12].map(mo => (
-              <div key={mo} onClick={() => setPayrollMonths(mo)} style={{ flex: 1, padding: '10px 8px', border: `2px solid ${payrollMonths === mo ? colors.orange : '#eee'}`, borderRadius: 10, background: payrollMonths === mo ? colors.orangeLight : '#fff', cursor: 'pointer', textAlign: 'center', transition: 'all 0.15s' }}>
-                <p style={{ fontSize: 13, fontWeight: 700, color: payrollMonths === mo ? colors.orange : colors.mid }}>{mo} months</p>
-                <p style={{ fontSize: 12, color: payrollMonths === mo ? colors.dark : colors.muted, marginTop: 2 }}>£{(pkg.price_gbp / mo).toFixed(0)}/mo</p>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Summary */}
-        <div style={{ background: '#F7F5F2', borderRadius: 12, padding: '12px 16px', marginBottom: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div>
-            <p style={{ fontSize: 12, color: colors.muted }}>Total cost</p>
-            <p style={{ fontSize: 13.5, fontWeight: 700, color: colors.dark }}>£{Number(pkg.price_gbp).toLocaleString()}</p>
-          </div>
-          <div style={{ textAlign: 'right' }}>
-            <p style={{ fontSize: 12, color: colors.muted }}>Monthly payment</p>
-            <p style={{ fontFamily: font.display, fontSize: 22, fontWeight: 700, color: colors.orange }}>£{monthly}</p>
-          </div>
-        </div>
-
-        <button onClick={handleConfirm} style={{ width: '100%', background: colors.dark, color: '#fff', border: 'none', borderRadius: 12, padding: '13px', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: font.body }}>
-          🛒 Add to cart
-        </button>
+    <div style={{ fontFamily: font.body, background: colors.bg, minHeight: '100vh', padding: '36px 40px', maxWidth: 1280, margin: '0 auto' }}>
+      {/* Header */}
+      <div style={{ marginBottom: 32 }}>
+        <p style={{ fontSize: 11, fontWeight: 600, color: colors.faint, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 4 }}>Marketplace</p>
+        <h1 style={{ fontFamily: font.display, fontSize: 30, color: colors.dark, fontWeight: 400, marginBottom: 8 }}>Find your adventure</h1>
+        <p style={{ color: colors.muted, fontSize: 14 }}>Curated packages from verified vendors, paid via your employer payroll.</p>
       </div>
+
+      {/* Search + filter */}
+      <div style={{ display: 'flex', gap: 12, marginBottom: 28, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+        <div style={{ flex: 1, minWidth: 200 }}>
+          <Input placeholder="Search destinations or packages…" value={search} onChange={e => setSearch(e.target.value)}/>
+        </div>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {CATEGORIES.map(c => (
+            <button key={c} onClick={() => setCategory(c)} style={{
+              padding: '8px 14px', borderRadius: 20, border: `1px solid ${category === c ? colors.orange : colors.border}`,
+              background: category === c ? colors.orangeLight : '#fff',
+              color: category === c ? colors.orange : colors.mid,
+              fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: font.body,
+              display: 'flex', alignItems: 'center', gap: 5,
+            }}>
+              {CATEGORY_ICONS[c]} {c.replace('_',' ').replace(/\b\w/g,l=>l.toUpperCase())}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {loading ? <Spinner/> : packages.length === 0 ? (
+        <EmptyState emoji="🔍" title="No packages found" subtitle="Try a different search or category"/>
+      ) : (
+        <>
+          {/* ── Featured / Sponsored ── */}
+          {sponsored.length > 0 && (
+            <div style={{ marginBottom: 40 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+                <span style={{ fontSize: 16 }}>⭐</span>
+                <p style={{ fontSize: 12, fontWeight: 700, color: GOLD, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Featured adventures</p>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px,1fr))', gap: 20 }}>
+                {sponsored.map(pkg => (
+                  <PackageCard key={pkg.id} pkg={pkg} onClick={() => navigate(`/package/${pkg.id}`)} featured/>
+                ))}
+              </div>
+              {regular.length > 0 && (
+                <div style={{ borderBottom: '1px solid #eee', marginTop: 36, marginBottom: 0 }}/>
+              )}
+            </div>
+          )}
+
+          {/* ── All / regular packages ── */}
+          {regular.length > 0 && (
+            <div>
+              {sponsored.length > 0 && (
+                <p style={{ fontSize: 12, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 16, marginTop: 24 }}>
+                  All adventures
+                </p>
+              )}
+              <p style={{ fontSize: 13, color: colors.muted, fontWeight: 500, marginBottom: 20 }}>
+                {packages.length} package{packages.length !== 1 ? 's' : ''} available
+              </p>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px,1fr))', gap: 20 }}>
+                {regular.map(pkg => (
+                  <PackageCard key={pkg.id} pkg={pkg} onClick={() => navigate(`/package/${pkg.id}`)}/>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 }
 
-export default function Marketplace() {
-  const { addToCart }   = useCart();
-  const navigate        = useNavigate();
-  const [params]        = useSearchParams();
-  const [packages, setPkgs]   = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [category, setCat]    = useState(params.get('category') || 'all');
-  const [search, setSearch]   = useState('');
-  const [cartPopup, setCartPopup] = useState(null); // pkg to add
+function PackageCard({ pkg, onClick, featured }) {
+  const [hovered, setHovered] = useState(false);
 
-  useEffect(() => {
-    setLoading(true);
-    const p = {};
-    if (category !== 'all') p.category = category;
-    if (search) p.search = search;
-    api.get('/packages', { params: p }).then(r => setPkgs(r.data)).finally(() => setLoading(false));
-  }, [category, search]);
+  // Expiry countdown
+  const daysUntilExpiry = pkg.end_date && pkg.end_date !== '2099-12-31' ? (() => {
+    return Math.ceil((new Date(pkg.end_date) - new Date()) / (1000 * 60 * 60 * 24));
+  })() : null;
+  const isExpiringSoon = daysUntilExpiry !== null && daysUntilExpiry >= 0 && daysUntilExpiry <= 14;
 
-  const handleAddToCart = (pkg) => {
-    setCartPopup(pkg);
-  };
-
-  const confirmAddToCart = async ({ departure_date, payroll_months }) => {
-    if (cartPopup) {
-      await addToCart(cartPopup.id, { departure_date, payroll_months });
-      setCartPopup(null);
-    }
-  };
+  const borderColor = featured
+    ? (hovered ? GOLD : "#F0C060")
+    : (hovered ? colors.orange : colors.border);
 
   return (
-    <div style={{ fontFamily: font.body, background: '#F7F5F2', minHeight: '100vh', paddingBottom: 80 }}>
-      {cartPopup && (
-        <AddToCartPopup
-          pkg={cartPopup}
-          onClose={() => setCartPopup(null)}
-          onConfirm={confirmAddToCart}
-        />
+    <div onClick={onClick} onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}
+      style={{
+        background: featured ? GOLDLT : '#fff',
+        border: `1.5px solid ${borderColor}`,
+        borderRadius: 12, padding: 20, cursor: 'pointer', transition: 'all 0.15s',
+        boxShadow: hovered
+          ? (featured ? '0 6px 24px rgba(201,136,42,0.18)' : '0 4px 20px rgba(224,108,42,0.12)')
+          : '0 1px 4px rgba(0,0,0,0.04)',
+        position: 'relative',
+      }}>
+
+      {/* Featured badge */}
+      {featured && (
+        <div style={{ position: 'absolute', top: 12, right: 12, background: GOLD, color: '#fff', borderRadius: 6, padding: '3px 9px', fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', display: 'flex', alignItems: 'center', gap: 4 }}>
+          ⭐ FEATURED
+        </div>
       )}
 
-      {/* Header */}
-      <div style={{ background: '#fff', borderBottom: '1px solid #eee', padding: '32px 40px 24px' }}>
-        <div style={{ maxWidth: 1280, margin: '0 auto' }}>
-          <p style={{ fontSize: 10.5, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>Marketplace</p>
-          <h1 style={{ fontFamily: font.display, fontSize: 34, color: colors.dark, fontWeight: 700, fontStyle: 'italic', marginBottom: 20 }}>Find your adventure</h1>
-          <div style={{ maxWidth: 480, marginBottom: 20 }}>
-            <Input placeholder="Search destinations, packages, vendors…" value={search} onChange={e => setSearch(e.target.value)}/>
-          </div>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            {CATS.map(c => (
-              <button key={c} onClick={() => setCat(c)} style={{ padding: '8px 16px', borderRadius: 20, border: `1.5px solid ${category === c ? colors.orange : '#eee'}`, background: category === c ? colors.orangeLight : '#fff', color: category === c ? colors.orange : colors.mid, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: font.body, transition: 'all 0.15s', display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span>{CAT_ICONS[c]}</span> {CAT_LABELS[c]}
-              </button>
-            ))}
-          </div>
+      {/* Expiring soon badge */}
+      {isExpiringSoon && (
+        <div style={{ position: 'absolute', top: featured ? 38 : 12, right: 12, background: '#FEF3C7', color: '#D97706', borderRadius: 6, padding: '3px 9px', fontSize: 10, fontWeight: 700 }}>
+          ⏳ {daysUntilExpiry}d left
         </div>
+      )}
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
+        <span style={{ fontSize: 32 }}>{pkg.emoji || '🌍'}</span>
+        {!featured && (
+          <span style={{ fontSize: 11, fontWeight: 600, color: colors.orange,
+            background: colors.orangeLight, borderRadius: 6, padding: '3px 8px' }}>
+            {pkg.category?.replace('_',' ')}
+          </span>
+        )}
+        {featured && (
+          <span style={{ fontSize: 11, fontWeight: 600, color: GOLD,
+            background: 'rgba(201,136,42,0.12)', borderRadius: 6, padding: '3px 8px', marginTop: 28 }}>
+            {pkg.category?.replace('_',' ')}
+          </span>
+        )}
       </div>
 
-      {/* Results */}
-      <div style={{ maxWidth: 1280, margin: '0 auto', padding: '28px 40px' }}>
-        {loading ? (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px,1fr))', gap: 20 }}>
-            {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} style={{ background: '#fff', border: '1px solid #eee', borderRadius: 16, overflow: 'hidden' }}>
-                <div style={{ height: 160, background: 'linear-gradient(90deg, #f0ede9 25%, #e8e4df 50%, #f0ede9 75%)', backgroundSize: '200% 100%', animation: 'shimmer 1.4s infinite' }}/>
-                <div style={{ padding: '16px 18px' }}>
-                  <div style={{ height: 16, borderRadius: 6, background: 'linear-gradient(90deg, #f0ede9 25%, #e8e4df 50%, #f0ede9 75%)', backgroundSize: '200% 100%', animation: 'shimmer 1.4s infinite', marginBottom: 8 }}/>
-                  <div style={{ height: 12, borderRadius: 6, background: 'linear-gradient(90deg, #f0ede9 25%, #e8e4df 50%, #f0ede9 75%)', backgroundSize: '200% 100%', animation: 'shimmer 1.4s infinite', width: '60%' }}/>
-                </div>
-                <style>{`@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}`}</style>
-              </div>
-            ))}
-          </div>
-        ) : packages.length === 0 ? (
-          <EmptyState emoji="🔍" title="No packages found" subtitle="Try a different search or category"/>
-        ) : (
-          <>
-            <p style={{ fontSize: 13, color: colors.muted, fontWeight: 500, marginBottom: 20 }}>
-              {packages.length} package{packages.length !== 1 ? 's' : ''} available
-            </p>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px,1fr))', gap: 20 }}>
-              {packages.map(pkg => (
-                <PackageCard key={pkg.id} pkg={pkg} onAddToCart={() => handleAddToCart(pkg)} onClick={() => navigate(`/package/${pkg.id}`)}/>
-              ))}
-            </div>
-          </>
-        )}
+      <h3 style={{ fontSize: 15, fontWeight: 600, color: colors.dark, marginBottom: 4 }}>{pkg.title}</h3>
+      <p style={{ fontSize: 12.5, color: colors.muted, marginBottom: 12 }}>
+        {pkg.vendor_name} · {pkg.destination} · {pkg.duration}
+      </p>
+      {pkg.description && (
+        <p style={{ fontSize: 12.5, color: colors.mid, marginBottom: 14, lineHeight: 1.5,
+          display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+          {pkg.description}
+        </p>
+      )}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>
+          <span style={{ fontFamily: font.display, fontSize: 22, color: colors.dark }}>
+            £{Number(pkg.price_gbp).toLocaleString()}
+          </span>
+          <p style={{ fontSize: 11, color: colors.muted, marginTop: 2 }}>
+            from £{Math.round(pkg.price_gbp / 12)}/mo via payroll
+          </p>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          {pkg.verified && <span style={{ fontSize: 10, fontWeight: 700, color: colors.green, background: colors.greenLight, borderRadius: 4, padding: '2px 6px' }}>✓ Verified</span>}
+          {pkg.vendor_rating > 0 && <span style={{ fontSize: 12, color: colors.muted }}>★ {pkg.vendor_rating}</span>}
+        </div>
       </div>
     </div>
   );
