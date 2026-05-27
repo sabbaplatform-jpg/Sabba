@@ -54,6 +54,45 @@ router.get('/vendor/mine', auth, requireRole('vendor'), async (req, res) => {
   }
 });
 
+// Get active sponsored packages (public)
+router.get('/sponsored', async (req, res) => {
+  try {
+    const today = new Date().toISOString().split('T')[0];
+    const result = await db.query(`
+      SELECT p.*, v.company_name as vendor_name, v.rating as vendor_rating, v.verified,
+        sl.slot_number, sl.id as sponsored_listing_id, true as is_sponsored
+      FROM sponsored_listings sl
+      JOIN packages p ON sl.package_id = p.id
+      JOIN vendors v ON p.vendor_id = v.id
+      WHERE sl.start_date <= $1 AND sl.end_date >= $1
+        AND p.status = 'live'
+        AND (p.end_date IS NULL OR p.end_date >= $1)
+      ORDER BY sl.slot_number ASC
+    `, [today]);
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Admin: get all sponsored listings
+router.get('/sponsored/all', auth, requireRole('superadmin'), async (req, res) => {
+  try {
+    const result = await db.query(`
+      SELECT sl.*, p.title as package_title, p.category, p.destination,
+        v.company_name as vendor_name
+      FROM sponsored_listings sl
+      JOIN packages p ON sl.package_id = p.id
+      JOIN vendors v ON sl.vendor_id = v.id
+      ORDER BY sl.end_date DESC
+    `);
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+
 router.get('/:id', async (req, res) => {
   try {
     const result = await db.query(`
@@ -218,43 +257,7 @@ router.post('/import', auth, requireRole('vendor'), async (req, res) => {
 });
 
 // ── Sponsored listings ───────────────────────────────────────
-// Get active sponsored packages (public)
-router.get('/sponsored', async (req, res) => {
-  try {
-    const today = new Date().toISOString().split('T')[0];
-    const result = await db.query(`
-      SELECT p.*, v.company_name as vendor_name, v.rating as vendor_rating, v.verified,
-        sl.slot_number, sl.id as sponsored_listing_id, true as is_sponsored
-      FROM sponsored_listings sl
-      JOIN packages p ON sl.package_id = p.id
-      JOIN vendors v ON p.vendor_id = v.id
-      WHERE sl.start_date <= $1 AND sl.end_date >= $1
-        AND p.status = 'live'
-        AND (p.end_date IS NULL OR p.end_date >= $1)
-      ORDER BY sl.slot_number ASC
-    `, [today]);
-    res.json(result.rows);
-  } catch (err) {
-    res.status(500).json({ error: 'Server error' });
-  }
-});
 
-// Admin: get all sponsored listings
-router.get('/sponsored/all', auth, requireRole('superadmin'), async (req, res) => {
-  try {
-    const result = await db.query(`
-      SELECT sl.*, p.title as package_title, p.category, p.destination,
-        v.company_name as vendor_name
-      FROM sponsored_listings sl
-      JOIN packages p ON sl.package_id = p.id
-      JOIN vendors v ON sl.vendor_id = v.id
-      ORDER BY sl.end_date DESC
-    `);
-    res.json(result.rows);
-  } catch (err) {
-    res.status(500).json({ error: 'Server error' });
-  }
-});
 
 // Admin: create sponsored listing
 router.post('/sponsored', auth, requireRole('superadmin'), async (req, res) => {
