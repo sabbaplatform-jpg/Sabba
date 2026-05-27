@@ -1,4 +1,5 @@
 const router  = require('express').Router();
+const { loginLimiter, passwordResetLimiter } = require('../middleware/security');
 const bcrypt  = require('bcryptjs');
 const jwt     = require('jsonwebtoken');
 const crypto  = require('crypto');
@@ -40,7 +41,7 @@ router.post('/register', [
 });
 
 // ── POST /api/auth/login ──────────────────────────────────────
-router.post('/login', [
+router.post('/login', loginLimiter, [
   body('email').isEmail(),
   body('password').notEmpty(),
 ], async (req, res) => {
@@ -115,7 +116,7 @@ router.patch('/profile', auth, async (req, res) => {
 
 // ── POST /api/auth/forgot-password ───────────────────────────
 // Request a password reset — sends email with token link
-router.post('/forgot-password', [
+router.post('/forgot-password', passwordResetLimiter, [
   body('email').isEmail().normalizeEmail(),
 ], async (req, res) => {
   const errors = validationResult(req);

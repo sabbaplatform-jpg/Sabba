@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const { apiLimiter, securityHeaders } = require('./middleware/security');
 
 const app = express();
 
@@ -21,6 +22,8 @@ app.use(cors({
   credentials: true,
 }));
 app.use(express.json());
+app.use(securityHeaders);
+app.use('/api', apiLimiter);
 
 // Auth
 app.use('/api/auth',          require('./routes/auth'));
