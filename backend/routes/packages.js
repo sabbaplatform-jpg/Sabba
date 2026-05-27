@@ -240,7 +240,7 @@ router.get('/sponsored', async (req, res) => {
 });
 
 // Admin: get all sponsored listings
-router.get('/sponsored/all', auth, requireRole('admin'), async (req, res) => {
+router.get('/sponsored/all', auth, requireRole('superadmin'), async (req, res) => {
   try {
     const result = await db.query(`
       SELECT sl.*, p.title as package_title, p.category, p.destination,
@@ -257,7 +257,7 @@ router.get('/sponsored/all', auth, requireRole('admin'), async (req, res) => {
 });
 
 // Admin: create sponsored listing
-router.post('/sponsored', auth, requireRole('admin'), async (req, res) => {
+router.post('/sponsored', auth, requireRole('superadmin'), async (req, res) => {
   try {
     const { package_id, vendor_id, slot_number, monthly_fee_gbp, start_date, end_date, notes } = req.body;
     if (!package_id || !vendor_id || !slot_number || !end_date) {
@@ -286,7 +286,7 @@ router.post('/sponsored', auth, requireRole('admin'), async (req, res) => {
 });
 
 // Admin: delete sponsored listing
-router.delete('/sponsored/:id', auth, requireRole('admin'), async (req, res) => {
+router.delete('/sponsored/:id', auth, requireRole('superadmin'), async (req, res) => {
   try {
     await db.query('DELETE FROM sponsored_listings WHERE id=$1', [req.params.id]);
     res.json({ success: true });

@@ -867,7 +867,12 @@ export function VendorProfile() {
 
 // ── Package Form Modal ───────────────────────────────────────
 function PackageForm({ initial, onClose, onSaved }) {
-  const [form, setForm]   = useState(initial || { title: '', description: '', category: 'travel', destination: '', duration: '', price_gbp: '', emoji: '🌍', image_url: '', start_date: '2026-01-01', end_date: '2099-12-31' });
+  const stripDate = v => v ? String(v).split('T')[0] : '';
+  const [form, setForm]   = useState(initial ? {
+    ...initial,
+    start_date: stripDate(initial.start_date) || '2026-01-01',
+    end_date:   stripDate(initial.end_date)   || '2099-12-31',
+  } : { title: '', description: '', category: 'travel', destination: '', duration: '', price_gbp: '', emoji: '🌍', image_url: '', start_date: '2026-01-01', end_date: '2099-12-31' });
   const [saving, setSaving] = useState(false);
   const [error, setError]   = useState('');
   const set = k => e => setForm(f => ({ ...f, [k]: e.target.value }));

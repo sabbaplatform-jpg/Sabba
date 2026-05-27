@@ -22,9 +22,10 @@ export default function PackageDetail() {
 
   const monthly = pkg ? (Number(pkg.price_gbp) / booking.payroll_months).toFixed(2) : 0;
 
-  // Expiry countdown
-  const daysUntilExpiry = pkg?.end_date && pkg.end_date !== '2099-12-31' ? (() => {
-    const diff = Math.ceil((new Date(pkg.end_date) - new Date()) / (1000 * 60 * 60 * 24));
+  // Expiry countdown — strip timestamp if present
+  const endDateStr = pkg?.end_date ? String(pkg.end_date).split('T')[0] : null;
+  const daysUntilExpiry = endDateStr && endDateStr !== '2099-12-31' ? (() => {
+    const diff = Math.ceil((new Date(endDateStr) - new Date()) / (1000 * 60 * 60 * 24));
     return diff;
   })() : null;
   const isExpiringSoon = daysUntilExpiry !== null && daysUntilExpiry >= 0 && daysUntilExpiry <= 14;
@@ -82,7 +83,7 @@ export default function PackageDetail() {
                 <p style={{ fontSize: 13, fontWeight: 700, color: '#D97706', marginBottom: 2 }}>
                   This package expires in {daysUntilExpiry === 0 ? 'less than 24 hours' : `${daysUntilExpiry} day${daysUntilExpiry === 1 ? '' : 's'}`}
                 </p>
-                <p style={{ fontSize: 12, color: '#B45309' }}>Book before it's gone — the vendor will stop accepting bookings on {new Date(pkg.end_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}.</p>
+                <p style={{ fontSize: 12, color: '#B45309' }}>Book before it's gone — the vendor will stop accepting bookings on {new Date(endDateStr).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}.</p>
               </div>
             </div>
           )}

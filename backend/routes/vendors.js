@@ -1,4 +1,4 @@
-// routes/vendors.js
+// routes/vendors.js - vendor management for HR admins + vendor self-management
 const router = require('express').Router();
 const db = require('../lib/db');
 const { auth, requireRole } = require('../middleware/auth');
@@ -8,8 +8,8 @@ router.get('/', auth, requireRole('hr'), async (req, res) => {
   try {
     const result = await db.query(`
       SELECT v.*, u.email, u.full_name,
-             COUNT(DISTINCT p.id) as package_count,
-             COUNT(DISTINCT b.id) as total_bookings
+             COUNT(p.id) as package_count,
+             COUNT(b.id) as total_bookings
       FROM vendors v
       JOIN users u ON v.user_id = u.id
       LEFT JOIN packages p ON v.id = p.vendor_id
@@ -28,20 +28,19 @@ router.patch('/:id/verify', auth, requireRole('hr'), async (req, res) => {
   try {
     const { verified } = req.body;
     const result = await db.query(`
-      UPDATE vendors SET verified=$1
-      WHERE id=$2 RETURNING *
-    `, [verified, req.params.id]);
+      UPDATE vendors SET verified=$1, verified_by=$2, verified_at=NOW()
+      WHERE id=$3 RETURNING *
+    `, [verified, req.user.id, req.params.id]);
     if (!result.rows.length) return res.status(404).json({ error: 'Vendor not found' });
 
+    // Notify vendor
     const vendor = result.rows[0];
     await db.query(`
       INSERT INTO notifications (user_id, title, message, type)
       VALUES ($1, $2, $3, $4)
     `, [vendor.user_id,
-        verified ? 'Account verified! 🎉' : 'Verification removed',
-        verified
-          ? 'Congratulations! Your vendor account has been verified. You can now add packages to the Sabba marketplace.'
-          : 'Your verification status has been updated by a Sabba admin.',
+        verified ? 'You are now verified!' : 'Verification removed',
+        verified ? 'Congratulations! Your vendor account has been verified by Sabba admin.' : 'Your verification status has been updated.',
         verified ? 'success' : 'warning']);
 
     res.json(result.rows[0]);
@@ -51,18 +50,15 @@ router.patch('/:id/verify', auth, requireRole('hr'), async (req, res) => {
 });
 
 // GET /api/vendors/profile — vendor gets own profile
-// Returns null (not 404) if no profile yet — new vendors haven't completed onboarding
 router.get('/profile', auth, requireRole('vendor'), async (req, res) => {
   try {
     const result = await db.query(`
       SELECT v.*, u.email, u.full_name
-      FROM vendors v
-      JOIN users u ON v.user_id = u.id
+      FROM vendors v JOIN users u ON v.user_id = u.id
       WHERE v.user_id = $1
     `, [req.user.id]);
-
-    // Return null if no profile row yet — frontend handles this gracefully
-    res.json(result.rows[0] || null);
+    if (!result.rows.length) return res.status(404).json({ error: 'Vendor profile not found' });
+    res.json(result.rows[0]);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -72,18 +68,14 @@ router.get('/profile', auth, requireRole('vendor'), async (req, res) => {
 router.patch('/profile', auth, requireRole('vendor'), async (req, res) => {
   try {
     const { company_name, about, website, avatar_url, banner_url } = req.body;
-
-    // Upsert — create row if it doesn't exist yet
     const result = await db.query(`
-      INSERT INTO vendors (user_id, company_name, about, website, avatar_url, banner_url, verified)
-      VALUES ($6, $1, $2, $3, $4, $5, FALSE)
-      ON CONFLICT (user_id) DO UPDATE SET
-        company_name = COALESCE($1, vendors.company_name),
-        about        = COALESCE($2, vendors.about),
-        website      = COALESCE($3, vendors.website),
-        avatar_url   = COALESCE($4, vendors.avatar_url),
-        banner_url   = COALESCE($5, vendors.banner_url)
-      RETURNING *
+      UPDATE vendors SET
+        company_name=COALESCE($1,company_name),
+        about=COALESCE($2,about),
+        website=COALESCE($3,website),
+        avatar_url=COALESCE($4,avatar_url),
+        banner_url=COALESCE($5,banner_url)
+      WHERE user_id=$6 RETURNING *
     `, [company_name, about, website, avatar_url, banner_url, req.user.id]);
     res.json(result.rows[0]);
   } catch (err) {
@@ -91,53 +83,7 @@ router.patch('/profile', auth, requireRole('vendor'), async (req, res) => {
   }
 });
 
-// POST /api/vendors/onboarding — vendor submits Q&A
-router.post('/onboarding', auth, requireRole('vendor'), async (req, res) => {
-  try {
-    const { business_type, categories, about, standout,
-            website, company_name, contact_name, contact_phone } = req.body;
-
-    if (!about || about.trim().length < 80) {
-      return res.status(400).json({ error: 'About section must be at least 80 characters' });
-    }
-
-    const onboarding_data = JSON.stringify({
-      business_type, categories, standout, contact_name, contact_phone
-    });
-
-    await db.query(`
-      INSERT INTO vendors
-        (user_id, company_name, category, website, about,
-         onboarding_completed, onboarding_data, pending_since, verified)
-      VALUES ($1, $2, $3, $4, $5, TRUE, $6, NOW(), FALSE)
-      ON CONFLICT (user_id) DO UPDATE SET
-        company_name         = COALESCE(EXCLUDED.company_name,  vendors.company_name),
-        category             = COALESCE(EXCLUDED.category,      vendors.category),
-        website              = COALESCE(EXCLUDED.website,        vendors.website),
-        about                = EXCLUDED.about,
-        onboarding_completed = TRUE,
-        onboarding_data      = EXCLUDED.onboarding_data,
-        pending_since        = NOW(),
-        verified             = FALSE
-    `, [req.user.id, company_name, business_type, website, about, onboarding_data]);
-
-    // Notify all HR admins
-    const hrs = await db.query(`SELECT id FROM users WHERE role = 'hr' LIMIT 20`);
-    for (const { id } of hrs.rows) {
-      await db.query(`
-        INSERT INTO notifications (user_id, title, message, type)
-        VALUES ($1, 'New vendor pending review', $2, 'info')
-      `, [id,
-          `${company_name || 'A new vendor'} has completed onboarding and is awaiting verification.`]);
-    }
-
-    res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// POST /api/vendors/packages/:id/media
+// POST /api/vendors/packages/:id/media — add media to a package
 router.post('/packages/:id/media', auth, requireRole('vendor'), async (req, res) => {
   try {
     const { url, media_type, display_order } = req.body;
@@ -151,7 +97,7 @@ router.post('/packages/:id/media', auth, requireRole('vendor'), async (req, res)
   }
 });
 
-// DELETE /api/vendors/packages/media/:id
+// DELETE /api/vendors/packages/media/:id — remove media
 router.delete('/packages/media/:id', auth, requireRole('vendor'), async (req, res) => {
   try {
     await db.query('DELETE FROM package_media WHERE id=$1', [req.params.id]);
@@ -161,20 +107,21 @@ router.delete('/packages/media/:id', auth, requireRole('vendor'), async (req, re
   }
 });
 
-// PATCH /api/vendors/bookings/:id/notes
+// PATCH /api/vendors/bookings/:id/notes — vendor sends notes to employee
 router.patch('/bookings/:id/notes', auth, requireRole('vendor'), async (req, res) => {
   try {
     const { vendor_notes } = req.body;
     const result = await db.query(`
-      UPDATE bookings SET vendor_notes=$1 WHERE id=$2 RETURNING *
+      UPDATE bookings SET vendor_notes=$1
+      WHERE id=$2 RETURNING *
     `, [vendor_notes, req.params.id]);
 
+    // Notify employee
     if (result.rows.length) {
       await db.query(`
-        INSERT INTO notifications (user_id, title, message, type)
-        VALUES ($1, 'Booking details from vendor', $2, 'info')
-      `, [result.rows[0].employee_id,
-          'Your vendor has sent you important details about your upcoming adventure.']);
+        INSERT INTO notifications (user_id, title, message, type, link)
+        VALUES ($1, 'Booking details from vendor', $2, 'info', '/my-booking')
+      `, [result.rows[0].employee_id, `Your vendor has sent you important details about your upcoming adventure.`]);
     }
 
     res.json(result.rows[0]);
@@ -183,11 +130,11 @@ router.patch('/bookings/:id/notes', auth, requireRole('vendor'), async (req, res
   }
 });
 
-// GET /api/vendors/earnings
+// GET /api/vendors/earnings — vendor earnings analytics
 router.get('/earnings', auth, requireRole('vendor'), async (req, res) => {
   try {
     const vendor = await db.query('SELECT id FROM vendors WHERE user_id=$1', [req.user.id]);
-    if (!vendor.rows.length) return res.json({ monthly: [], totals: {} });
+    if (!vendor.rows.length) return res.status(404).json({ error: 'Vendor not found' });
 
     const monthly = await db.query(`
       SELECT DATE_TRUNC('month', b.created_at) as month,
@@ -211,6 +158,23 @@ router.get('/earnings', auth, requireRole('vendor'), async (req, res) => {
     `, [vendor.rows[0].id]);
 
     res.json({ monthly: monthly.rows, totals: totals.rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/vendors/all — admin gets all vendors for dropdowns
+router.get('/all', auth, requireRole('superadmin'), async (req, res) => {
+  try {
+    const result = await db.query(`
+      SELECT v.id, v.company_name, v.verified, v.commission_rate,
+             COUNT(p.id) as package_count
+      FROM vendors v
+      LEFT JOIN packages p ON v.id = p.vendor_id AND p.status = 'live'
+      GROUP BY v.id
+      ORDER BY v.company_name ASC
+    `);
+    res.json(result.rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

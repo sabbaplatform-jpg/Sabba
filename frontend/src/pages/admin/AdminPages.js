@@ -2598,7 +2598,9 @@ export function AdminSponsored() {
   const [vendors,  setVendors]  = useState([]);
   const [loading,  setLoading]  = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [vendorFilter, setVendorFilter] = useState('');
   const [form, setForm] = useState({ package_id: '', vendor_id: '', slot_number: 1, monthly_fee_gbp: 2000, start_date: new Date().toISOString().split('T')[0], end_date: '', notes: '' });
+  const toDateStr = (val) => val ? String(val).split('T')[0] : '';
   const [saving, setSaving] = useState(false);
   const [error, setError]   = useState('');
 
@@ -2636,8 +2638,8 @@ export function AdminSponsored() {
 
   const today = new Date().toISOString().split('T')[0];
 
-  const activeListings  = listings.filter(l => l.end_date >= today);
-  const expiredListings = listings.filter(l => l.end_date < today);
+  const activeListings  = listings.filter(l => toDateStr(l.end_date) >= today);
+  const expiredListings = listings.filter(l => toDateStr(l.end_date) < today);
 
   const lStyle = { fontSize: 11.5, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.08em', display: 'block', marginBottom: 6 };
   const iStyle = { width: '100%', border: '1.5px solid #eee', borderRadius: 10, padding: '10px 14px', fontSize: 13.5, color: colors.dark, background: '#fff', outline: 'none', fontFamily: font.body, fontWeight: 500 };
@@ -2657,7 +2659,7 @@ export function AdminSponsored() {
       {/* Slot status overview */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 28 }}>
         {[1, 2, 3].map(slot => {
-          const active = activeListings.find(l => l.slot_number === slot);
+          const active = activeListings.find(l => Number(l.slot_number) === slot);
           return (
             <div key={slot} style={{ background: active ? '#FDF3E3' : '#fff', border: `1px solid ${active ? '#F59E0B' : '#eee'}`, borderRadius: 14, padding: '18px 20px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
@@ -2670,7 +2672,7 @@ export function AdminSponsored() {
                 <>
                   <p style={{ fontSize: 14, fontWeight: 700, color: colors.dark, marginBottom: 4 }}>{active.package_title}</p>
                   <p style={{ fontSize: 12, color: colors.muted, marginBottom: 4 }}>{active.vendor_name}</p>
-                  <p style={{ fontSize: 12, color: colors.orange, fontWeight: 600 }}>£{Number(active.monthly_fee_gbp).toLocaleString()}/mo · until {new Date(active.end_date).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' })}</p>
+                  <p style={{ fontSize: 12, color: colors.orange, fontWeight: 600 }}>£{Number(active.monthly_fee_gbp).toLocaleString()}/mo · until {new Date(toDateStr(active.end_date)).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' })}</p>
                   <button onClick={() => handleDelete(active.id)} style={{ marginTop: 10, background: 'none', border: 'none', color: colors.red, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: font.body, padding: 0 }}>
                     Remove listing
                   </button>
@@ -2717,7 +2719,7 @@ export function AdminSponsored() {
             </thead>
             <tbody>
               {listings.map(l => {
-                const isActive = l.end_date >= today;
+                const isActive = toDateStr(l.end_date) >= today;
                 return (
                   <tr key={l.id} style={{ borderTop: '1px solid #F7F5F2' }}>
                     <td style={{ padding: '12px 16px' }}>
@@ -2726,8 +2728,8 @@ export function AdminSponsored() {
                     <td style={{ padding: '12px 16px', fontSize: 13.5, color: colors.dark, fontWeight: 500 }}>{l.package_title}</td>
                     <td style={{ padding: '12px 16px', fontSize: 13, color: colors.muted }}>{l.vendor_name}</td>
                     <td style={{ padding: '12px 16px', fontSize: 13, color: colors.dark, fontWeight: 600 }}>£{Number(l.monthly_fee_gbp).toLocaleString()}</td>
-                    <td style={{ padding: '12px 16px', fontSize: 12.5, color: colors.muted }}>{new Date(l.start_date).toLocaleDateString('en-GB')}</td>
-                    <td style={{ padding: '12px 16px', fontSize: 12.5, color: colors.muted }}>{new Date(l.end_date).toLocaleDateString('en-GB')}</td>
+                    <td style={{ padding: '12px 16px', fontSize: 12.5, color: colors.muted }}>{new Date(toDateStr(l.start_date)).toLocaleDateString('en-GB')}</td>
+                    <td style={{ padding: '12px 16px', fontSize: 12.5, color: colors.muted }}>{new Date(toDateStr(l.end_date)).toLocaleDateString('en-GB')}</td>
                     <td style={{ padding: '12px 16px' }}>
                       <span style={{ fontSize: 11, fontWeight: 700, background: isActive ? '#DCFCE7' : '#F3F4F6', color: isActive ? colors.green : colors.faint, borderRadius: 6, padding: '3px 8px' }}>
                         {isActive ? 'Active' : 'Expired'}
@@ -2768,16 +2770,31 @@ export function AdminSponsored() {
               </select>
             </div>
             <div>
+              <label style={lStyle}>Filter by vendor</label>
+              <select value={vendorFilter} onChange={e => { setVendorFilter(e.target.value); setForm(f => ({...f, package_id: ''})); }} style={iStyle}>
+                <option value="">All vendors</option>
+                {vendors.map(v => (
+                  <option key={v.id} value={v.id}>{v.company_name}</option>
+                ))}
+              </select>
+            </div>
+            <div>
               <label style={lStyle}>Package <span style={{ color: colors.orange }}>*</span></label>
               <select value={form.package_id} onChange={e => {
                 const pkg = packages.find(p => p.id === e.target.value);
                 setForm(f => ({...f, package_id: e.target.value, vendor_id: pkg?.vendor_id || f.vendor_id}));
               }} style={iStyle} required>
                 <option value="">Select a package…</option>
-                {packages.filter(p => p.status === 'live').map(p => (
-                  <option key={p.id} value={p.id}>{p.title} — {p.vendor_name} (£{Number(p.price_gbp).toLocaleString()})</option>
-                ))}
+                {packages
+                  .filter(p => p.status === 'live' && (!vendorFilter || p.vendor_id === vendorFilter))
+                  .map(p => (
+                    <option key={p.id} value={p.id}>{p.title} — {p.vendor_name} (£{Number(p.price_gbp).toLocaleString()})</option>
+                  ))
+                }
               </select>
+              {vendorFilter && packages.filter(p => p.status === 'live' && p.vendor_id === vendorFilter).length === 0 && (
+                <p style={{ fontSize: 11, color: colors.orange, marginTop: 4 }}>No live packages for this vendor yet.</p>
+              )}
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <div>
