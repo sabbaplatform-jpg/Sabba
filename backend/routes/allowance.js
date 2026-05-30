@@ -10,16 +10,17 @@ router.get('/', auth, requireRole('employee'), async (req, res) => {
 
     // Always read the authoritative spend limit from employee_profiles
     const profile = await db.query(`
-      SELECT ep.spend_limit_gbp, u.company_id
+      SELECT ep.spend_limit_gbp, ep.sabba_points, u.company_id
       FROM employee_profiles ep
       JOIN users u ON u.id = ep.user_id
       WHERE ep.user_id = $1
     `, [req.user.id]);
 
-    const spendLimit = profile.rows[0]?.spend_limit_gbp
+    const spendLimit   = profile.rows[0]?.spend_limit_gbp
       ? parseFloat(profile.rows[0].spend_limit_gbp)
       : 5000;
-    const companyId = profile.rows[0]?.company_id || req.user.company_id;
+    const companyId    = profile.rows[0]?.company_id || req.user.company_id;
+    const sabbaPoints  = parseInt(profile.rows[0]?.sabba_points || 0);
 
     // Upsert the travel_allowances row — always sync total from spend_limit_gbp
     await db.query(`
@@ -60,6 +61,8 @@ router.get('/', auth, requireRole('employee'), async (req, res) => {
       used_allowance_gbp:      usedAmount,
       remaining_allowance_gbp: remaining,
       available_years:         availableYears,
+      sabba_points:            sabbaPoints,
+      sabba_points_value_gbp:  parseFloat((sabbaPoints / 100).toFixed(2)),
       note: 'Payroll bookings only. Card payments do not count against this allowance.',
     });
   } catch (err) {

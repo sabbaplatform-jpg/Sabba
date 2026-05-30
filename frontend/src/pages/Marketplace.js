@@ -162,7 +162,8 @@ export default function Marketplace() {
   const [category,  setCategory]  = useState('all');
   const [search,    setSearch]    = useState('');
   const [cartPopup, setCartPopup] = useState(null);
-  const [fetchError, setFetchError] = useState(false);
+  const [fetchError,  setFetchError]  = useState(false);
+  const [addedToast,  setAddedToast]  = useState(null);
   const { addToCart } = useCart();
   const navigate = useNavigate();
 
@@ -183,7 +184,8 @@ export default function Marketplace() {
     if (cartPopup) {
       addToCart(cartPopup.id, { departure_date, payroll_months });
       setCartPopup(null);
-      navigate('/cart');
+      setAddedToast(cartPopup.title);
+      setTimeout(() => setAddedToast(null), 3000);
     }
   };
 
@@ -226,6 +228,20 @@ export default function Marketplace() {
           </div>
         </div>
       </div>
+
+      {/* Added to cart toast */}
+      {addedToast && (
+        <div style={{ position: 'fixed', bottom: 28, left: '50%', transform: 'translateX(-50%)', background: colors.dark, color: '#fff', borderRadius: 12, padding: '14px 24px', fontSize: 14, fontWeight: 600, fontFamily: font.body, zIndex: 600, display: 'flex', alignItems: 'center', gap: 12, boxShadow: '0 8px 32px rgba(0,0,0,0.2)' }}>
+          <span style={{ fontSize: 18 }}>🛒</span>
+          <span>{addedToast} added to cart!</span>
+          <button onClick={() => navigate('/cart')} style={{ background: colors.orange, color: '#fff', border: 'none', borderRadius: 8, padding: '5px 12px', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: font.body, marginLeft: 4 }}>
+            View cart
+          </button>
+          <button onClick={() => setAddedToast(null)} style={{ background: 'rgba(255,255,255,0.15)', color: '#fff', border: 'none', borderRadius: 8, padding: '5px 10px', fontSize: 12, cursor: 'pointer', fontFamily: font.body }}>
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* Results */}
       <div style={{ maxWidth: 1280, margin: '0 auto', padding: '28px 40px' }}>

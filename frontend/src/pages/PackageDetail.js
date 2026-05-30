@@ -9,9 +9,9 @@ import { colors, font, gradients } from '../lib/styles';
 const GOLD = "#C9882A";
 
 // ── Exact same popup as EmployeeHome ──────────────────────────
-function AddToCartPopup({ pkg, onClose, onConfirm }) {
+function AddToCartPopup({ pkg, onClose, onConfirm, initialMonths }) {
   const [departureDate, setDepartureDate] = useState('');
-  const [payrollMonths, setPayrollMonths] = useState(6);
+  const [payrollMonths, setPayrollMonths] = useState(initialMonths || 6);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const minDate = new Date(); minDate.setDate(minDate.getDate() + 14);
@@ -76,11 +76,9 @@ function AddToCartPopup({ pkg, onClose, onConfirm }) {
 }
 
 // ── Cost Breakdown — interactive, shown before Add to Cart ──
-function CostBreakdown({ pkg }) {
-  const [selectedMonths, setSelectedMonths] = useState(6);
+function CostBreakdown({ pkg, selectedMonths, setSelectedMonths }) {
   const price = Number(pkg.price_gbp);
   const monthly = Math.ceil(price / selectedMonths);
-  const total   = monthly * selectedMonths; // may be slightly > price due to rounding
 
   return (
     <div style={{ background: '#F7F5F2', borderRadius: 12, padding: '16px', marginBottom: 20 }}>
@@ -131,7 +129,9 @@ export default function PackageDetail() {
   const navigate = useNavigate();
   const [pkg,       setPkg]       = useState(null);
   const [loading,   setLoading]   = useState(true);
-  const [cartPopup, setCartPopup] = useState(false);
+  const [cartPopup,     setCartPopup]     = useState(false);
+  const [addedToast,    setAddedToast]    = useState(false);
+  const [selectedMonths, setSelectedMonths] = useState(6);
 
   useEffect(() => {
     api.get(`/packages/${id}`).then(r => setPkg(r.data)).finally(() => setLoading(false));
@@ -141,7 +141,8 @@ export default function PackageDetail() {
     if (pkg) {
       addToCart(pkg.id, { departure_date, payroll_months });
       setCartPopup(false);
-      navigate('/cart');
+      setAddedToast(true);
+      setTimeout(() => setAddedToast(false), 3000);
     }
   };
 
@@ -166,7 +167,19 @@ export default function PackageDetail() {
           pkg={pkg}
           onClose={() => setCartPopup(false)}
           onConfirm={confirmAddToCart}
+          initialMonths={selectedMonths}
         />
+      )}
+
+      {/* Added to cart toast */}
+      {addedToast && (
+        <div style={{ position: 'fixed', bottom: 28, left: '50%', transform: 'translateX(-50%)', background: colors.dark, color: '#fff', borderRadius: 12, padding: '14px 24px', fontSize: 14, fontWeight: 600, fontFamily: font.body, zIndex: 600, display: 'flex', alignItems: 'center', gap: 12, boxShadow: '0 8px 32px rgba(0,0,0,0.2)', animation: 'fadeIn 0.2s ease' }}>
+          <span style={{ fontSize: 18 }}>🛒</span>
+          <span>Added to cart!</span>
+          <button onClick={() => navigate('/cart')} style={{ background: colors.orange, color: '#fff', border: 'none', borderRadius: 8, padding: '5px 12px', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: font.body, marginLeft: 4 }}>
+            View cart
+          </button>
+        </div>
       )}
 
       {/* Back */}
@@ -282,8 +295,8 @@ export default function PackageDetail() {
               Paid via payroll — choose your spread below
             </p>
 
-            {/* Cost breakdown — always visible */}
-            <CostBreakdown pkg={pkg}/>
+            {/* Cost breakdown — always visible, selectedMonths shared with popup */}
+            <CostBreakdown pkg={pkg} selectedMonths={selectedMonths} setSelectedMonths={setSelectedMonths}/>
 
             {/* Add to cart — show for employees, hide expired */}
             {isExpired ? (
