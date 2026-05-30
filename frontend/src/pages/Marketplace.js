@@ -231,13 +231,13 @@ export default function Marketplace() {
 
       {/* Added to cart toast */}
       {addedToast && (
-        <div style={{ position: 'fixed', bottom: 28, left: '50%', transform: 'translateX(-50%)', background: colors.dark, color: '#fff', borderRadius: 12, padding: '14px 24px', fontSize: 14, fontWeight: 600, fontFamily: font.body, zIndex: 600, display: 'flex', alignItems: 'center', gap: 12, boxShadow: '0 8px 32px rgba(0,0,0,0.2)' }}>
-          <span style={{ fontSize: 18 }}>🛒</span>
-          <span>{addedToast} added to cart!</span>
-          <button onClick={() => navigate('/cart')} style={{ background: colors.orange, color: '#fff', border: 'none', borderRadius: 8, padding: '5px 12px', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: font.body, marginLeft: 4 }}>
+        <div style={{ position: 'fixed', bottom: 32, right: 32, background: colors.dark, color: '#fff', borderRadius: 14, padding: '16px 22px', fontSize: 14, fontWeight: 600, fontFamily: font.body, zIndex: 9999, display: 'flex', alignItems: 'center', gap: 14, boxShadow: '0 12px 40px rgba(0,0,0,0.25)', minWidth: 280 }}>
+          <span style={{ fontSize: 22 }}>🛒</span>
+          <span style={{ flex: 1 }}>{addedToast} added!</span>
+          <button onClick={() => navigate('/cart')} style={{ background: colors.orange, color: '#fff', border: 'none', borderRadius: 8, padding: '7px 14px', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: font.body }}>
             View cart
           </button>
-          <button onClick={() => setAddedToast(null)} style={{ background: 'rgba(255,255,255,0.15)', color: '#fff', border: 'none', borderRadius: 8, padding: '5px 10px', fontSize: 12, cursor: 'pointer', fontFamily: font.body }}>
+          <button onClick={() => setAddedToast(null)} style={{ background: 'rgba(255,255,255,0.12)', color: '#fff', border: 'none', borderRadius: 6, padding: '6px 9px', fontSize: 13, cursor: 'pointer', fontFamily: font.body }}>
             ✕
           </button>
         </div>

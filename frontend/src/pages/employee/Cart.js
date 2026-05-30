@@ -84,6 +84,9 @@ export function Cart() {
     <div style={{ fontFamily: font.body, background: '#F7F5F2', minHeight: '100vh', paddingBottom: 80 }}>
       <div style={{ background: '#fff', borderBottom: '1px solid #eee', padding: '28px 40px 24px' }}>
         <div style={{ maxWidth: 1000, margin: '0 auto' }}>
+          <button onClick={() => navigate('/marketplace')} style={{ background: 'none', border: 'none', color: colors.orange, fontWeight: 700, fontSize: 13, cursor: 'pointer', fontFamily: font.body, display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12, padding: 0 }}>
+            ← Continue shopping
+          </button>
           <p style={{ fontSize: 10.5, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>Checkout</p>
           <h1 style={{ fontFamily: font.display, fontSize: 34, color: colors.dark, fontWeight: 700, fontStyle: 'italic' }}>Your cart</h1>
         </div>

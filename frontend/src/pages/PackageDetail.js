@@ -76,29 +76,30 @@ function AddToCartPopup({ pkg, onClose, onConfirm, initialMonths }) {
 }
 
 // ── Cost Breakdown — interactive, shown before Add to Cart ──
-function CostBreakdown({ pkg, selectedMonths, setSelectedMonths }) {
+function CostBreakdown({ pkg, onMonthsChange }) {
+  const [selected, setSelected] = useState(6);
   const price = Number(pkg.price_gbp);
-  const monthly = Math.ceil(price / selectedMonths);
+
+  const handleSelect = (mo) => {
+    setSelected(mo);
+    if (onMonthsChange) onMonthsChange(mo);
+  };
 
   return (
     <div style={{ background: '#F7F5F2', borderRadius: 12, padding: '16px', marginBottom: 20 }}>
       <p style={{ fontSize: 11, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>
         Cost breakdown
       </p>
-
-      {/* Spread selector — matches popup style exactly */}
       <label style={{ fontSize: 11.5, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.07em', display: 'block', marginBottom: 8 }}>Pay via payroll over</label>
       <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
         {[3, 6, 12].map(mo => (
-          <div key={mo} onClick={() => setSelectedMonths(mo)}
-            style={{ flex: 1, padding: '10px 8px', border: `2px solid ${selectedMonths === mo ? colors.orange : '#eee'}`, borderRadius: 10, background: selectedMonths === mo ? colors.orangeLight : '#fff', cursor: 'pointer', textAlign: 'center', transition: 'all 0.15s' }}>
-            <p style={{ fontSize: 13, fontWeight: 700, color: selectedMonths === mo ? colors.orange : colors.mid }}>{mo} months</p>
-            <p style={{ fontSize: 12, color: selectedMonths === mo ? colors.dark : colors.muted, marginTop: 2 }}>£{Math.ceil(price / mo)}/mo</p>
+          <div key={mo} onClick={() => handleSelect(mo)}
+            style={{ flex: 1, padding: '10px 8px', border: `2px solid ${selected === mo ? colors.orange : '#eee'}`, borderRadius: 10, background: selected === mo ? colors.orangeLight : '#fff', cursor: 'pointer', textAlign: 'center', transition: 'all 0.15s' }}>
+            <p style={{ fontSize: 13, fontWeight: 700, color: selected === mo ? colors.orange : colors.mid }}>{mo} months</p>
+            <p style={{ fontSize: 12, color: selected === mo ? colors.dark : colors.muted, marginTop: 2 }}>£{Math.ceil(price / mo)}/mo</p>
           </div>
         ))}
       </div>
-
-      {/* Summary rows */}
       <div style={{ borderTop: '1px solid #eee', paddingTop: 12 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
           <span style={{ fontSize: 12.5, color: colors.muted }}>Package price</span>
@@ -106,14 +107,13 @@ function CostBreakdown({ pkg, selectedMonths, setSelectedMonths }) {
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
           <span style={{ fontSize: 12.5, color: colors.muted }}>Spread over</span>
-          <span style={{ fontSize: 12.5, fontWeight: 600, color: colors.dark }}>{selectedMonths} months</span>
+          <span style={{ fontSize: 12.5, fontWeight: 600, color: colors.dark }}>{selected} months</span>
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: 10, borderTop: '1px solid #eee' }}>
           <span style={{ fontSize: 13.5, fontWeight: 700, color: colors.dark }}>Monthly via payroll</span>
-          <span style={{ fontFamily: font.display, fontSize: 20, fontWeight: 700, color: colors.orange }}>£{monthly}</span>
+          <span style={{ fontFamily: font.display, fontSize: 20, fontWeight: 700, color: colors.orange }}>£{Math.ceil(price / selected)}</span>
         </div>
       </div>
-
       <p style={{ fontSize: 11, color: colors.faint, marginTop: 10, textAlign: 'center', lineHeight: 1.5 }}>
         Deducted from your employer payroll. HR reviews before deductions begin.
       </p>
@@ -173,10 +173,10 @@ export default function PackageDetail() {
 
       {/* Added to cart toast */}
       {addedToast && (
-        <div style={{ position: 'fixed', bottom: 28, left: '50%', transform: 'translateX(-50%)', background: colors.dark, color: '#fff', borderRadius: 12, padding: '14px 24px', fontSize: 14, fontWeight: 600, fontFamily: font.body, zIndex: 600, display: 'flex', alignItems: 'center', gap: 12, boxShadow: '0 8px 32px rgba(0,0,0,0.2)', animation: 'fadeIn 0.2s ease' }}>
-          <span style={{ fontSize: 18 }}>🛒</span>
-          <span>Added to cart!</span>
-          <button onClick={() => navigate('/cart')} style={{ background: colors.orange, color: '#fff', border: 'none', borderRadius: 8, padding: '5px 12px', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: font.body, marginLeft: 4 }}>
+        <div style={{ position: 'fixed', bottom: 32, right: 32, background: colors.dark, color: '#fff', borderRadius: 14, padding: '16px 22px', fontSize: 14, fontWeight: 600, fontFamily: font.body, zIndex: 9999, display: 'flex', alignItems: 'center', gap: 14, boxShadow: '0 12px 40px rgba(0,0,0,0.25)', minWidth: 260 }}>
+          <span style={{ fontSize: 22 }}>🛒</span>
+          <span style={{ flex: 1 }}>Added to cart!</span>
+          <button onClick={() => navigate('/cart')} style={{ background: colors.orange, color: '#fff', border: 'none', borderRadius: 8, padding: '7px 14px', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: font.body }}>
             View cart
           </button>
         </div>
@@ -295,8 +295,8 @@ export default function PackageDetail() {
               Paid via payroll — choose your spread below
             </p>
 
-            {/* Cost breakdown — always visible, selectedMonths shared with popup */}
-            <CostBreakdown pkg={pkg} selectedMonths={selectedMonths} setSelectedMonths={setSelectedMonths}/>
+            {/* Cost breakdown — self-contained, notifies parent of month selection */}
+            <CostBreakdown pkg={pkg} onMonthsChange={(mo) => setSelectedMonths(mo)}/>
 
             {/* Add to cart — show for employees, hide expired */}
             {isExpired ? (

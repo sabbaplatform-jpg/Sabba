@@ -11,11 +11,13 @@ import { colors, font, gradients } from '../../lib/styles';
 function AddToCartPopup({ pkg, onClose, onConfirm }) {
   const [departureDate, setDepartureDate] = useState('');
   const [payrollMonths, setPayrollMonths] = useState(6);
-  const [error, setError] = useState('');
+  const [error,         setError]         = useState('');
+  const [adding,        setAdding]        = useState(false);
   const minDate = new Date(); minDate.setDate(minDate.getDate() + 14);
   const minStr  = minDate.toISOString().split('T')[0];
   const handleConfirm = () => {
     if (!departureDate) { setError('Please select a departure date'); return; }
+    setAdding(true);
     onConfirm({ departure_date: departureDate, payroll_months: payrollMonths });
   };
   return (
@@ -50,7 +52,10 @@ function AddToCartPopup({ pkg, onClose, onConfirm }) {
           <div><p style={{ fontSize: 12, color: colors.muted }}>Total cost</p><p style={{ fontSize: 13.5, fontWeight: 700, color: colors.dark }}>£{Number(pkg.price_gbp).toLocaleString()}</p></div>
           <div style={{ textAlign: 'right' }}><p style={{ fontSize: 12, color: colors.muted }}>Monthly payment</p><p style={{ fontFamily: font.display, fontSize: 22, fontWeight: 700, color: colors.orange }}>£{(pkg.price_gbp / payrollMonths).toFixed(2)}</p></div>
         </div>
-        <button onClick={handleConfirm} style={{ width: '100%', background: colors.dark, color: '#fff', border: 'none', borderRadius: 12, padding: '13px', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: font.body }}>🛒 Add to cart</button>
+        <button onClick={handleConfirm} disabled={adding}
+          style={{ width: '100%', background: adding ? colors.green : colors.dark, color: '#fff', border: 'none', borderRadius: 12, padding: '13px', fontSize: 14, fontWeight: 700, cursor: adding ? 'default' : 'pointer', fontFamily: font.body, transition: 'background 0.2s' }}>
+          {adding ? '✓ Adding to cart…' : '🛒 Add to cart'}
+        </button>
       </div>
     </div>
   );
