@@ -13,12 +13,19 @@ function AddToCartPopup({ pkg, onClose, onConfirm }) {
   const [departureDate, setDepartureDate] = useState('');
   const [payrollMonths, setPayrollMonths] = useState(6);
   const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
   const minDate = new Date(); minDate.setDate(minDate.getDate() + 14);
   const minStr  = minDate.toISOString().split('T')[0];
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     if (!departureDate) { setError('Please select a departure date'); return; }
-    onConfirm({ departure_date: departureDate, payroll_months: payrollMonths });
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      await onConfirm({ departure_date: departureDate, payroll_months: payrollMonths });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -63,11 +70,58 @@ function AddToCartPopup({ pkg, onClose, onConfirm }) {
             <p style={{ fontFamily: font.display, fontSize: 22, fontWeight: 700, color: colors.orange }}>£{(pkg.price_gbp / payrollMonths).toFixed(2)}</p>
           </div>
         </div>
-        <button onClick={handleConfirm}
-          style={{ width: '100%', background: colors.dark, color: '#fff', border: 'none', borderRadius: 12, padding: '13px', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: font.body }}>
-          🛒 Add to cart
+        <button onClick={handleConfirm} disabled={submitting}
+          style={{ width: '100%', background: submitting ? colors.muted : colors.dark, color: '#fff', border: 'none', borderRadius: 12, padding: '13px', fontSize: 14, fontWeight: 700, cursor: submitting ? 'default' : 'pointer', fontFamily: font.body, transition: 'background 0.15s' }}>
+          {submitting ? 'Adding…' : '🛒 Add to cart'}
         </button>
       </div>
+    </div>
+  );
+}
+
+// ── Cost Breakdown — interactive, shown before Add to Cart ──
+function CostBreakdown({ pkg }) {
+  const [selectedMonths, setSelectedMonths] = useState(6);
+  const price = Number(pkg.price_gbp);
+  const monthly = Math.ceil(price / selectedMonths);
+  const total   = monthly * selectedMonths; // may be slightly > price due to rounding
+
+  return (
+    <div style={{ background: '#F7F5F2', borderRadius: 12, padding: '16px', marginBottom: 20 }}>
+      <p style={{ fontSize: 11, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>
+        Cost breakdown
+      </p>
+
+      {/* Spread selector */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+        {[3, 6, 12].map(mo => (
+          <div key={mo} onClick={() => setSelectedMonths(mo)}
+            style={{ flex: 1, padding: '10px 6px', border: `2px solid ${selectedMonths === mo ? colors.orange : '#eee'}`, borderRadius: 10, background: selectedMonths === mo ? colors.orangeLight : '#fff', cursor: 'pointer', textAlign: 'center', transition: 'all 0.15s' }}>
+            <p style={{ fontSize: 13, fontWeight: 700, color: selectedMonths === mo ? colors.orange : colors.mid }}>{mo} months</p>
+            <p style={{ fontSize: 13, fontWeight: 700, color: selectedMonths === mo ? colors.dark : colors.muted, marginTop: 3 }}>£{monthly}/mo</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Summary rows */}
+      <div style={{ borderTop: '1px solid #eee', paddingTop: 12 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+          <span style={{ fontSize: 12.5, color: colors.muted }}>Package price</span>
+          <span style={{ fontSize: 12.5, fontWeight: 600, color: colors.dark }}>£{price.toLocaleString()}</span>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+          <span style={{ fontSize: 12.5, color: colors.muted }}>Spread over</span>
+          <span style={{ fontSize: 12.5, fontWeight: 600, color: colors.dark }}>{selectedMonths} months</span>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: 10, borderTop: '1px solid #eee' }}>
+          <span style={{ fontSize: 13.5, fontWeight: 700, color: colors.dark }}>Monthly via payroll</span>
+          <span style={{ fontFamily: font.display, fontSize: 20, fontWeight: 700, color: colors.orange }}>£{monthly}</span>
+        </div>
+      </div>
+
+      <p style={{ fontSize: 11, color: colors.faint, marginTop: 10, textAlign: 'center', lineHeight: 1.5 }}>
+        Deducted from your employer payroll. HR reviews before deductions begin.
+      </p>
     </div>
   );
 }

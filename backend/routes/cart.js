@@ -24,15 +24,57 @@ router.get('/', auth, requireRole('employee'), async (req, res) => {
 router.post('/', auth, requireRole('employee'), async (req, res) => {
   try {
     const { package_id, payroll_months, departure_date, payment_method } = req.body;
+    if (!package_id || !departure_date) {
+      return res.status(400).json({ error: 'package_id and departure_date are required' });
+    }
+
+    // Verify package is still live and not expired
+    const pkg = await db.query(
+      `SELECT * FROM packages WHERE id=$1 AND status='live'
+       AND (end_date IS NULL OR end_date >= CURRENT_DATE)`,
+      [package_id]
+    );
+    if (!pkg.rows.length) {
+      return res.status(400).json({ error: 'This package is no longer available' });
+    }
+
+    // Check allowance — warn if package exceeds remaining allowance
+    // Non-blocking: we warn but still allow (HR can reject if needed)
+    const allowance = await db.query(
+      `SELECT ea.total_allowance_gbp,
+        COALESCE(SUM(CASE WHEN b.status IN ('pending','approved','confirmed','vendor_confirmed')
+          AND b.payment_method = 'payroll'
+          AND EXTRACT(YEAR FROM b.created_at) = EXTRACT(YEAR FROM NOW())
+          THEN b.total_amount ELSE 0 END), 0) as used
+       FROM employee_allowances ea
+       LEFT JOIN bookings b ON b.employee_id = $1
+       WHERE ea.user_id = $1
+       GROUP BY ea.total_allowance_gbp`,
+      [req.user.id]
+    ).catch(() => ({ rows: [] }));
+
+    let allowanceWarning = null;
+    if (allowance.rows.length) {
+      const total     = Number(allowance.rows[0].total_allowance_gbp);
+      const used      = Number(allowance.rows[0].used);
+      const remaining = total - used;
+      const pkgPrice  = Number(pkg.rows[0].price_gbp);
+      if (pkgPrice > remaining) {
+        allowanceWarning = `This package (£${pkgPrice.toLocaleString()}) exceeds your remaining allowance (£${remaining.toLocaleString()})`;
+      }
+    }
+
     const result = await db.query(`
       INSERT INTO cart_items (user_id, package_id, payroll_months, departure_date, payment_method)
       VALUES ($1,$2,$3,$4,$5)
       ON CONFLICT (user_id, package_id) DO UPDATE SET
-        payroll_months=$3, departure_date=$4, payment_method=$5
+        payroll_months=$3, departure_date=$4, payment_method=$5, updated_at=NOW()
       RETURNING *
     `, [req.user.id, package_id, payroll_months || 6, departure_date, payment_method || 'payroll']);
-    res.status(201).json(result.rows[0]);
+
+    res.status(201).json({ ...result.rows[0], allowance_warning: allowanceWarning });
   } catch (err) {
+    console.error(err);
     res.status(500).json({ error: err.message });
   }
 });

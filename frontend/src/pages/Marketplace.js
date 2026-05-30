@@ -23,12 +23,19 @@ function AddToCartPopup({ pkg, onClose, onConfirm }) {
   const [departureDate,  setDepartureDate]  = useState('');
   const [payrollMonths,  setPayrollMonths]  = useState(6);
   const [error,          setError]          = useState('');
+  const [submitting,     setSubmitting]     = useState(false);
   const minDate = new Date(); minDate.setDate(minDate.getDate() + 14);
   const minStr  = minDate.toISOString().split('T')[0];
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     if (!departureDate) { setError('Please select a departure date'); return; }
-    onConfirm({ departure_date: departureDate, payroll_months: payrollMonths });
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      await onConfirm({ departure_date: departureDate, payroll_months: payrollMonths });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -81,9 +88,9 @@ function AddToCartPopup({ pkg, onClose, onConfirm }) {
           </div>
         </div>
 
-        <button onClick={handleConfirm}
-          style={{ width: '100%', background: colors.dark, color: '#fff', border: 'none', borderRadius: 12, padding: '13px', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: font.body }}>
-          🛒 Add to cart
+        <button onClick={handleConfirm} disabled={submitting}
+          style={{ width: '100%', background: submitting ? colors.muted : colors.dark, color: '#fff', border: 'none', borderRadius: 12, padding: '13px', fontSize: 14, fontWeight: 700, cursor: submitting ? 'default' : 'pointer', fontFamily: font.body, transition: 'background 0.15s' }}>
+          {submitting ? 'Adding…' : '🛒 Add to cart'}
         </button>
       </div>
     </div>
@@ -159,16 +166,18 @@ export default function Marketplace() {
   const [category,  setCategory]  = useState('all');
   const [search,    setSearch]    = useState('');
   const [cartPopup, setCartPopup] = useState(null);
+  const [fetchError, setFetchError] = useState(false);
   const { addToCart } = useCart();
   const navigate = useNavigate();
 
   useEffect(() => {
-    setLoading(true);
+    setLoading(true); setFetchError(false);
     const params = {};
     if (category !== 'all') params.category = category;
     if (search) params.search = search;
     api.get('/packages', { params })
       .then(r => setPackages(r.data || []))
+      .catch(() => setFetchError(true))
       .finally(() => setLoading(false));
   }, [category, search]);
 
@@ -226,6 +235,16 @@ export default function Marketplace() {
       <div style={{ maxWidth: 1280, margin: '0 auto', padding: '28px 40px' }}>
         {loading ? (
           <Spinner/>
+        ) : fetchError ? (
+          <div style={{ textAlign: 'center', padding: '60px 20px' }}>
+            <p style={{ fontSize: 32, marginBottom: 12 }}>⚠️</p>
+            <p style={{ fontSize: 16, fontWeight: 700, color: colors.dark, marginBottom: 8 }}>Couldn't load packages</p>
+            <p style={{ fontSize: 13, color: colors.muted, marginBottom: 20 }}>Check your connection and try again.</p>
+            <button onClick={() => { setFetchError(false); setLoading(true); api.get('/packages').then(r => setPackages(r.data || [])).catch(() => setFetchError(true)).finally(() => setLoading(false)); }}
+              style={{ background: colors.orange, color: '#fff', border: 'none', borderRadius: 10, padding: '10px 22px', fontSize: 13.5, fontWeight: 700, cursor: 'pointer', fontFamily: font.body }}>
+              Try again
+            </button>
+          </div>
         ) : packages.length === 0 ? (
           <EmptyState emoji="🔍" title="No packages found" subtitle="Try a different search or category"/>
         ) : (

@@ -168,10 +168,13 @@ router.patch('/:id', auth, async (req, res) => {
         price_gbp   = COALESCE($6, price_gbp),
         emoji       = COALESCE($7, emoji),
         status      = COALESCE($8, status),
-        image_url   = COALESCE($9, image_url)
+        image_url   = COALESCE($9, image_url),
+        start_date  = COALESCE($11, start_date),
+        end_date    = COALESCE($12, end_date)
        WHERE id=$10 RETURNING *`,
       [title, description, category, destination, duration,
-       price_gbp, emoji, status, image_url, req.params.id]
+       price_gbp, emoji, status, image_url, req.params.id,
+       start_date || null, end_date || null]
     );
     res.json(result.rows[0]);
   } catch (err) {
@@ -256,6 +259,7 @@ router.post('/import', auth, requireRole('vendor'), async (req, res) => {
   }
 });
 
+// Note: cart deduplication and allowance check handled in cart.js route
 // ── Sponsored listings ───────────────────────────────────────
 
 
@@ -267,12 +271,15 @@ router.post('/sponsored', auth, requireRole('superadmin'), async (req, res) => {
       return res.status(400).json({ error: 'Missing required fields' });
     }
     // Check slot not already occupied for overlapping dates
+    // Check slot not already occupied — new listing's range overlaps existing if:
+    // existing.start <= new.end AND existing.end >= new.start
+    const newStart = start_date || new Date().toISOString().split('T')[0];
     const conflict = await db.query(`
       SELECT id FROM sponsored_listings
       WHERE slot_number = $1
-        AND start_date <= $3 AND end_date >= $2
-        AND id != '00000000-0000-0000-0000-000000000000'
-    `, [slot_number, start_date || new Date().toISOString().split('T')[0], end_date]);
+        AND start_date <= $3
+        AND end_date   >= $2
+    `, [slot_number, newStart, end_date]);
     if (conflict.rows.length) {
       return res.status(409).json({ error: `Slot ${slot_number} is already occupied for those dates` });
     }
