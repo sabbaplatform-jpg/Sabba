@@ -17,15 +17,11 @@ function AddToCartPopup({ pkg, onClose, onConfirm }) {
   const minDate = new Date(); minDate.setDate(minDate.getDate() + 14);
   const minStr  = minDate.toISOString().split('T')[0];
 
-  const handleConfirm = async () => {
+  const handleConfirm = () => {
     if (!departureDate) { setError('Please select a departure date'); return; }
     if (submitting) return;
     setSubmitting(true);
-    try {
-      await onConfirm({ departure_date: departureDate, payroll_months: payrollMonths });
-    } finally {
-      setSubmitting(false);
-    }
+    onConfirm({ departure_date: departureDate, payroll_months: payrollMonths });
   };
 
   return (
@@ -70,9 +66,9 @@ function AddToCartPopup({ pkg, onClose, onConfirm }) {
             <p style={{ fontFamily: font.display, fontSize: 22, fontWeight: 700, color: colors.orange }}>£{(pkg.price_gbp / payrollMonths).toFixed(2)}</p>
           </div>
         </div>
-        <button onClick={handleConfirm} disabled={submitting}
-          style={{ width: '100%', background: submitting ? colors.muted : colors.dark, color: '#fff', border: 'none', borderRadius: 12, padding: '13px', fontSize: 14, fontWeight: 700, cursor: submitting ? 'default' : 'pointer', fontFamily: font.body, transition: 'background 0.15s' }}>
-          {submitting ? 'Adding…' : '🛒 Add to cart'}
+        <button onClick={handleConfirm}
+          style={{ width: '100%', background: colors.dark, color: '#fff', border: 'none', borderRadius: 12, padding: '13px', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: font.body }}>
+          🛒 Add to cart
         </button>
       </div>
     </div>
@@ -92,13 +88,14 @@ function CostBreakdown({ pkg }) {
         Cost breakdown
       </p>
 
-      {/* Spread selector */}
+      {/* Spread selector — matches popup style exactly */}
+      <label style={{ fontSize: 11.5, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.07em', display: 'block', marginBottom: 8 }}>Pay via payroll over</label>
       <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
         {[3, 6, 12].map(mo => (
           <div key={mo} onClick={() => setSelectedMonths(mo)}
-            style={{ flex: 1, padding: '10px 6px', border: `2px solid ${selectedMonths === mo ? colors.orange : '#eee'}`, borderRadius: 10, background: selectedMonths === mo ? colors.orangeLight : '#fff', cursor: 'pointer', textAlign: 'center', transition: 'all 0.15s' }}>
+            style={{ flex: 1, padding: '10px 8px', border: `2px solid ${selectedMonths === mo ? colors.orange : '#eee'}`, borderRadius: 10, background: selectedMonths === mo ? colors.orangeLight : '#fff', cursor: 'pointer', textAlign: 'center', transition: 'all 0.15s' }}>
             <p style={{ fontSize: 13, fontWeight: 700, color: selectedMonths === mo ? colors.orange : colors.mid }}>{mo} months</p>
-            <p style={{ fontSize: 13, fontWeight: 700, color: selectedMonths === mo ? colors.dark : colors.muted, marginTop: 3 }}>£{monthly}/mo</p>
+            <p style={{ fontSize: 12, color: selectedMonths === mo ? colors.dark : colors.muted, marginTop: 2 }}>£{Math.ceil(price / mo)}/mo</p>
           </div>
         ))}
       </div>
@@ -140,10 +137,12 @@ export default function PackageDetail() {
     api.get(`/packages/${id}`).then(r => setPkg(r.data)).finally(() => setLoading(false));
   }, [id]);
 
-  const confirmAddToCart = async ({ departure_date, payroll_months }) => {
-    await addToCart(pkg.id, { departure_date, payroll_months });
-    setCartPopup(false);
-    navigate('/cart');
+  const confirmAddToCart = ({ departure_date, payroll_months }) => {
+    if (pkg) {
+      addToCart(pkg.id, { departure_date, payroll_months });
+      setCartPopup(false);
+      navigate('/cart');
+    }
   };
 
   // Expiry

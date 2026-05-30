@@ -27,15 +27,11 @@ function AddToCartPopup({ pkg, onClose, onConfirm }) {
   const minDate = new Date(); minDate.setDate(minDate.getDate() + 14);
   const minStr  = minDate.toISOString().split('T')[0];
 
-  const handleConfirm = async () => {
+  const handleConfirm = () => {
     if (!departureDate) { setError('Please select a departure date'); return; }
     if (submitting) return;
     setSubmitting(true);
-    try {
-      await onConfirm({ departure_date: departureDate, payroll_months: payrollMonths });
-    } finally {
-      setSubmitting(false);
-    }
+    onConfirm({ departure_date: departureDate, payroll_months: payrollMonths });
   };
 
   return (
@@ -88,9 +84,9 @@ function AddToCartPopup({ pkg, onClose, onConfirm }) {
           </div>
         </div>
 
-        <button onClick={handleConfirm} disabled={submitting}
-          style={{ width: '100%', background: submitting ? colors.muted : colors.dark, color: '#fff', border: 'none', borderRadius: 12, padding: '13px', fontSize: 14, fontWeight: 700, cursor: submitting ? 'default' : 'pointer', fontFamily: font.body, transition: 'background 0.15s' }}>
-          {submitting ? 'Adding…' : '🛒 Add to cart'}
+        <button onClick={handleConfirm}
+          style={{ width: '100%', background: colors.dark, color: '#fff', border: 'none', borderRadius: 12, padding: '13px', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: font.body }}>
+          🛒 Add to cart
         </button>
       </div>
     </div>
@@ -183,9 +179,9 @@ export default function Marketplace() {
 
   // Same pattern as EmployeeHome
   const handleAddToCart = (pkg) => setCartPopup(pkg);
-  const confirmAddToCart = async ({ departure_date, payroll_months }) => {
+  const confirmAddToCart = ({ departure_date, payroll_months }) => {
     if (cartPopup) {
-      await addToCart(cartPopup.id, { departure_date, payroll_months });
+      addToCart(cartPopup.id, { departure_date, payroll_months });
       setCartPopup(null);
       navigate('/cart');
     }
