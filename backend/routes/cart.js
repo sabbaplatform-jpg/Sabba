@@ -1,5 +1,5 @@
 const router = require('express').Router();
-const db = require('../lib/db');
+const db     = require('../lib/db');
 const { auth, requireRole } = require('../middleware/auth');
 
 // GET /api/cart
@@ -21,60 +21,19 @@ router.get('/', auth, requireRole('employee'), async (req, res) => {
 });
 
 // POST /api/cart
+// ON CONFLICT handles deduplication — adding same package updates it rather than duplicating
 router.post('/', auth, requireRole('employee'), async (req, res) => {
   try {
     const { package_id, payroll_months, departure_date, payment_method } = req.body;
-    if (!package_id || !departure_date) {
-      return res.status(400).json({ error: 'package_id and departure_date are required' });
-    }
-
-    // Verify package is still live and not expired
-    const pkg = await db.query(
-      `SELECT * FROM packages WHERE id=$1 AND status='live'
-       AND (end_date IS NULL OR end_date >= CURRENT_DATE)`,
-      [package_id]
-    );
-    if (!pkg.rows.length) {
-      return res.status(400).json({ error: 'This package is no longer available' });
-    }
-
-    // Check allowance — warn if package exceeds remaining allowance
-    // Non-blocking: we warn but still allow (HR can reject if needed)
-    const allowance = await db.query(
-      `SELECT ea.total_allowance_gbp,
-        COALESCE(SUM(CASE WHEN b.status IN ('pending','approved','confirmed','vendor_confirmed')
-          AND b.payment_method = 'payroll'
-          AND EXTRACT(YEAR FROM b.created_at) = EXTRACT(YEAR FROM NOW())
-          THEN b.total_amount ELSE 0 END), 0) as used
-       FROM employee_allowances ea
-       LEFT JOIN bookings b ON b.employee_id = $1
-       WHERE ea.user_id = $1
-       GROUP BY ea.total_allowance_gbp`,
-      [req.user.id]
-    ).catch(() => ({ rows: [] }));
-
-    let allowanceWarning = null;
-    if (allowance.rows.length) {
-      const total     = Number(allowance.rows[0].total_allowance_gbp);
-      const used      = Number(allowance.rows[0].used);
-      const remaining = total - used;
-      const pkgPrice  = Number(pkg.rows[0].price_gbp);
-      if (pkgPrice > remaining) {
-        allowanceWarning = `This package (£${pkgPrice.toLocaleString()}) exceeds your remaining allowance (£${remaining.toLocaleString()})`;
-      }
-    }
-
     const result = await db.query(`
       INSERT INTO cart_items (user_id, package_id, payroll_months, departure_date, payment_method)
       VALUES ($1,$2,$3,$4,$5)
       ON CONFLICT (user_id, package_id) DO UPDATE SET
-        payroll_months=$3, departure_date=$4, payment_method=$5, updated_at=NOW()
+        payroll_months=$3, departure_date=$4, payment_method=$5
       RETURNING *
     `, [req.user.id, package_id, payroll_months || 6, departure_date, payment_method || 'payroll']);
-
-    res.status(201).json({ ...result.rows[0], allowance_warning: allowanceWarning });
+    res.status(201).json(result.rows[0]);
   } catch (err) {
-    console.error(err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -121,7 +80,7 @@ router.post('/checkout', auth, requireRole('employee'), async (req, res) => {
 
     if (payment_method === 'card') {
       const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
-      const pointsDiscount = pointsToDeduct / 100; // 100pts = £1
+      const pointsDiscount = pointsToDeduct / 100;
 
       const lineItems = cart.rows.map(item => ({
         price_data: {
@@ -141,7 +100,6 @@ router.post('/checkout', auth, requireRole('employee'), async (req, res) => {
         metadata: { user_id: req.user.id, company_id: req.user.company_id },
       });
 
-      // Create bookings — card payments auto-approve (skip HR, vendor confirms)
       for (const item of cart.rows) {
         const total   = Number(item.price_gbp);
         const monthly = parseFloat((total / (item.payroll_months || 1)).toFixed(2));
@@ -157,7 +115,6 @@ router.post('/checkout', auth, requireRole('employee'), async (req, res) => {
         ]);
       }
 
-      // Notify employee that card payment was auto-approved
       await db.query(`
         INSERT INTO notifications (user_id, title, message, type)
         VALUES ($1,'Card payment processing 💳','Your booking has been created. Complete payment to confirm your adventure.','info')
@@ -167,7 +124,7 @@ router.post('/checkout', auth, requireRole('employee'), async (req, res) => {
       return res.json({ url: session.url, type: 'stripe' });
     }
 
-    // Payroll checkout — stays pending for HR approval
+    // Payroll checkout
     const bookingIds = [];
     const months = parseInt(payroll_months) || 6;
 
@@ -186,7 +143,6 @@ router.post('/checkout', auth, requireRole('employee'), async (req, res) => {
       ]);
       bookingIds.push(result.rows[0].id);
 
-      // Award Sabba Points for booking
       await db.query(
         'INSERT INTO points_transactions (user_id, points, reason) VALUES ($1, 100, $2)',
         [req.user.id, 'Package booked']
@@ -197,7 +153,6 @@ router.post('/checkout', auth, requireRole('employee'), async (req, res) => {
       );
     }
 
-    // Notify employee
     await db.query(`
       INSERT INTO notifications (user_id, title, message, type)
       VALUES ($1,'Booking submitted! 🌍','Your adventure request is with your HR team for approval.','info')
