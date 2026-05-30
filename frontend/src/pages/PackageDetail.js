@@ -271,37 +271,37 @@ export default function PackageDetail() {
           </div>
         </div>
 
-        {/* Right — sticky add to cart panel */}
+        {/* Right — sticky panel */}
         <div style={{ position: 'sticky', top: 24 }}>
           <div style={{ background: '#fff', border: '1px solid #eee', borderRadius: 16, padding: '24px 22px' }}>
+
+            {/* Price */}
             <p style={{ fontFamily: font.display, fontSize: 34, fontWeight: 700, color: colors.dark, marginBottom: 2 }}>
               £{Number(pkg.price_gbp).toLocaleString()}
             </p>
-            <p style={{ fontSize: 12.5, color: colors.muted, marginBottom: 24 }}>
-              from £{Math.ceil(pkg.price_gbp / 12)}/mo via payroll
+            <p style={{ fontSize: 12.5, color: colors.muted, marginBottom: 20 }}>
+              Paid via payroll — choose your spread below
             </p>
 
-            {user?.role === 'employee' ? (
-              isExpired ? (
-                <div style={{ background: '#FEE2E2', borderRadius: 10, padding: '14px 16px', textAlign: 'center' }}>
-                  <p style={{ fontSize: 13, fontWeight: 700, color: '#DC2626' }}>Bookings closed</p>
-                </div>
-              ) : (
-                <>
-                  <button
-                    onClick={() => setCartPopup(true)}
-                    style={{ width: '100%', background: colors.orange, color: '#fff', border: 'none', borderRadius: 12, padding: '14px', fontSize: 15, fontWeight: 700, cursor: 'pointer', fontFamily: font.body, marginBottom: 10 }}>
-                    🛒 Add to cart
-                  </button>
-                  <p style={{ fontSize: 11.5, color: colors.faint, textAlign: 'center', lineHeight: 1.5 }}>
-                    Your cart is reviewed by HR before payroll deductions begin.
-                  </p>
-                </>
-              )
+            {/* Cost breakdown — always visible */}
+            <CostBreakdown pkg={pkg}/>
+
+            {/* Add to cart — show for employees, hide expired */}
+            {isExpired ? (
+              <div style={{ background: '#FEE2E2', borderRadius: 10, padding: '14px 16px', textAlign: 'center' }}>
+                <p style={{ fontSize: 13, fontWeight: 700, color: '#DC2626' }}>Bookings closed</p>
+              </div>
             ) : (
-              <p style={{ color: colors.muted, fontSize: 13, textAlign: 'center' }}>
-                Log in as an employee to book this package.
-              </p>
+              <>
+                <button
+                  onClick={() => setCartPopup(true)}
+                  style={{ width: '100%', background: colors.orange, color: '#fff', border: 'none', borderRadius: 12, padding: '14px', fontSize: 15, fontWeight: 700, cursor: 'pointer', fontFamily: font.body, marginBottom: 10 }}>
+                  🛒 Add to cart
+                </button>
+                <p style={{ fontSize: 11.5, color: colors.faint, textAlign: 'center', lineHeight: 1.5 }}>
+                  Your cart is reviewed by HR before payroll deductions begin.
+                </p>
+              </>
             )}
           </div>
         </div>
