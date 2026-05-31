@@ -255,7 +255,7 @@ export default function VendorOnboarding() {
                     </p>
                     <p style={{ fontSize: 12.5, color: '#9E8E7E', lineHeight: 1.6 }}>
                       By submitting your profile you confirm you have read and accepted the{' '}
-                      <a href="/vendor-terms" target="_blank" rel="noopener noreferrer"
+                      <a href="/Sabba_Vendor_Terms_of_Use.pdf" target="_blank" rel="noopener noreferrer"
                         onClick={e => e.stopPropagation()}
                         style={{ color: '#D4622A', fontWeight: 700, textDecoration: 'underline' }}>
                         Vendor Terms of Use

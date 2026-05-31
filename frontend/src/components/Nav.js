@@ -336,6 +336,7 @@ export function Footer() {
       <div style={{ display: 'flex', gap: 24, alignItems: 'center' }}>
         <Link to="/contact" style={{ color: colors.muted, textDecoration: 'none' }}>Contact</Link>
         <Link to="/faq" style={{ color: colors.muted, textDecoration: 'none' }}>FAQ</Link>
+        <Link to="/privacy" style={{ color: colors.muted, textDecoration: 'none' }}>Privacy</Link>
       </div>
       <span>© 2026 Sabba Platform Ltd</span>
     </div>
