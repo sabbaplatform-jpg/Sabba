@@ -79,6 +79,9 @@ export function EmployeeHome() {
   const currentYear = new Date().getFullYear();
 
   useEffect(() => {
+    // Silent expiry check — sends notifications if any booked packages are expiring soon
+    api.get('/packages/expiry-check').catch(() => {});
+
     Promise.all([
       api.get('/packages'),
       api.get('/quiz').catch(() => ({ data: null })),

@@ -93,6 +93,54 @@ router.get('/sponsored/all', auth, requireRole('superadmin'), async (req, res) =
 });
 
 
+// ── GET /api/packages/expiry-check ───────────────────────────
+// Called by employee portal on load — notifies about booked packages expiring soon
+router.get('/expiry-check', auth, requireRole('employee'), async (req, res) => {
+  try {
+    const today = new Date().toISOString().split('T')[0];
+
+    // Find employee's active bookings where the package expires within 14 days
+    const result = await db.query(`
+      SELECT b.id as booking_id, p.title, p.end_date,
+        (p.end_date::date - $2::date) as days_until_expiry
+      FROM bookings b
+      JOIN packages p ON b.package_id = p.id
+      WHERE b.employee_id = $1
+        AND b.status IN ('pending','approved','confirmed')
+        AND p.end_date IS NOT NULL
+        AND p.end_date != '2099-12-31'
+        AND p.end_date >= $2
+        AND p.end_date <= ($2::date + interval '14 days')
+    `, [req.user.id, today]);
+
+    // For each expiring booking, create a notification if not already sent today
+    for (const row of result.rows) {
+      const existing = await db.query(`
+        SELECT id FROM notifications
+        WHERE user_id = $1
+          AND message LIKE $2
+          AND created_at >= NOW() - interval '24 hours'
+      `, [req.user.id, `%${row.title}%expires%`]);
+
+      if (!existing.rows.length) {
+        await db.query(`
+          INSERT INTO notifications (user_id, title, message, type)
+          VALUES ($1, $2, $3, 'warning')
+          ON CONFLICT DO NOTHING
+        `, [
+          req.user.id,
+          `Package expiring soon ⏳`,
+          `Your booking for "${row.title}" expires in ${row.days_until_expiry} day${row.days_until_expiry === 1 ? '' : 's'}. Contact your vendor if you have questions.`
+        ]);
+      }
+    }
+
+    res.json({ checked: result.rows.length });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.get('/:id', async (req, res) => {
   try {
     const result = await db.query(`

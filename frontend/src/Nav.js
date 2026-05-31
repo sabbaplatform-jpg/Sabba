@@ -337,6 +337,8 @@ export function Footer() {
         <Link to="/contact" style={{ color: colors.muted, textDecoration: 'none' }}>Contact</Link>
         <Link to="/faq" style={{ color: colors.muted, textDecoration: 'none' }}>FAQ</Link>
         <Link to="/privacy" style={{ color: colors.muted, textDecoration: 'none' }}>Privacy</Link>
+        <span style={{ color: colors.muted, fontSize: 12 }}>·</span>
+        <span style={{ color: colors.muted, fontSize: 12 }}>© 2026 Sabba Platform Ltd</span>
       </div>
       <span>© 2026 Sabba Platform Ltd</span>
     </div>

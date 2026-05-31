@@ -79,7 +79,8 @@ export default function VendorOnboarding() {
   const [answers,  setAnswers] = useState({});
   const [error,    setError]   = useState('');
   const [saving,   setSaving]  = useState(false);
-  const [done,     setDone]    = useState(false);
+  const [done,          setDone]         = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
 
   const current = STEPS[step];
   const progress = ((step) / STEPS.length) * 100;
@@ -114,6 +115,9 @@ export default function VendorOnboarding() {
         if (field.required && !answers[field.id]?.trim()) {
           setError(`${field.label} is required`); return false;
         }
+      }
+      if (!termsAccepted) {
+        setError('You must accept the Vendor Terms of Use to continue'); return false;
       }
     }
     return true;
@@ -237,6 +241,36 @@ export default function VendorOnboarding() {
                     style={{ width: '100%', border: '1.5px solid #eee', borderRadius: 10, padding: '11px 14px', fontSize: 14, color: '#1C1916', fontFamily: 'Arial, sans-serif', outline: 'none' }}/>
                 </div>
               ))}
+
+              {/* Terms of use — click to accept on final step */}
+              <div style={{ marginTop: 8, padding: '18px 20px', background: '#F7F5F2', borderRadius: 14, border: `2px solid ${termsAccepted ? '#D4622A' : '#eee'}` }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, cursor: 'pointer' }}
+                  onClick={() => setTermsAccepted(t => !t)}>
+                  <div style={{ width: 24, height: 24, borderRadius: 6, border: `2px solid ${termsAccepted ? '#D4622A' : '#ccc'}`, background: termsAccepted ? '#D4622A' : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}>
+                    {termsAccepted && <span style={{ color: '#fff', fontSize: 13, fontWeight: 800 }}>✓</span>}
+                  </div>
+                  <div>
+                    <p style={{ fontSize: 13.5, fontWeight: 600, color: '#1C1916', marginBottom: 4 }}>
+                      I agree to the Sabba Vendor Terms of Use <span style={{ color: '#D4622A' }}>*</span>
+                    </p>
+                    <p style={{ fontSize: 12.5, color: '#9E8E7E', lineHeight: 1.6 }}>
+                      By submitting your profile you confirm you have read and accepted the{' '}
+                      <a href="/vendor-terms" target="_blank" rel="noopener noreferrer"
+                        onClick={e => e.stopPropagation()}
+                        style={{ color: '#D4622A', fontWeight: 700, textDecoration: 'underline' }}>
+                        Vendor Terms of Use
+                      </a>
+                      {' '}and{' '}
+                      <a href="/privacy" target="_blank" rel="noopener noreferrer"
+                        onClick={e => e.stopPropagation()}
+                        style={{ color: '#D4622A', fontWeight: 700, textDecoration: 'underline' }}>
+                        Privacy Policy
+                      </a>
+                      . These govern your use of the Sabba platform and your obligations as a vendor partner.
+                    </p>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 
