@@ -173,7 +173,6 @@ function RequireAdmin({ children }) {
   return children;
 }
 
-export default 
 // ── Animated progress bar on page navigation ─────────────────
 function RouteProgress() {
   const location = useLocation();
@@ -198,15 +197,23 @@ function RouteProgress() {
   );
 }
 
-function App() {
+function AppInner() {
   return (
-    <BrowserRouter>
+    <>
       <RouteProgress/>
       <AuthProvider>
         <CartProvider>
           <AppRoutes/>
         </CartProvider>
       </AuthProvider>
+    </>
+  );
+}
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <AppInner/>
     </BrowserRouter>
   );
 }
