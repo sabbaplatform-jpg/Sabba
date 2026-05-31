@@ -60,7 +60,7 @@ export default function MyBooking() {
   const [review, setReview]         = useState('');
   const [savingRating, setSavingRating] = useState(false);
   const [ratedIds, setRatedIds]     = useState(new Set());
-  const [filter,    setFilter]      = useState('all');
+  const [filter,    setFilter]      = useState('upcoming');
 
   useEffect(() => {
     api.get('/bookings/mine').then(r => setBookings(r.data)).finally(() => setLoading(false));
@@ -78,11 +78,27 @@ export default function MyBooking() {
 
   if (loading) return <Spinner/>;
 
-  const allStatuses = ['all', 'pending', 'approved', 'confirmed', 'cancelled'];
-  const filtered = filter === 'all' ? bookings : bookings.filter(b => b.status === filter);
-  const active   = filtered.filter(b => ['approved','confirmed','vendor_confirmed'].includes(b.status));
-  const pending  = filtered.filter(b => b.status === 'pending');
-  const past     = filtered.filter(b => ['cancelled'].includes(b.status));
+  // Tab definitions — Upcoming = future departure confirmed/approved, Pending = awaiting HR
+  const today = new Date();
+  const upcoming = bookings.filter(b =>
+    ['approved','confirmed','vendor_confirmed'].includes(b.status) &&
+    (!b.departure_date || new Date(b.departure_date) >= today)
+  );
+  const pendingTab = bookings.filter(b => b.status === 'pending');
+  const pastTab    = bookings.filter(b =>
+    b.status === 'cancelled' ||
+    (['approved','confirmed','vendor_confirmed'].includes(b.status) && b.departure_date && new Date(b.departure_date) < today)
+  );
+
+  const TABS = [
+    { id: 'upcoming', label: 'Upcoming',  icon: '🌍', bookings: upcoming },
+    { id: 'pending',  label: 'Pending',   icon: '⏳', bookings: pendingTab },
+    { id: 'past',     label: 'Past',      icon: '📖', bookings: pastTab },
+    { id: 'all',      label: 'All',       icon: '📋', bookings: bookings },
+  ];
+
+  const activeTab   = TABS.find(t => t.id === filter) || TABS[0];
+  const tabBookings = activeTab.bookings;
 
   const BookingCard = ({ b }) => {
     const gradient = gradients[b.category] || gradients.default;
@@ -182,12 +198,19 @@ export default function MyBooking() {
             <Button onClick={() => navigate('/marketplace')} small>+ Book another</Button>
           </div>
 
-          {/* Filter pills */}
+          {/* Tabs */}
           {bookings.length > 0 && (
-            <div style={{ display: 'flex', gap: 8, marginTop: 16, flexWrap: 'wrap' }}>
-              {allStatuses.map(s => (
-                <button key={s} onClick={() => setFilter(s)} style={{ padding: '6px 14px', borderRadius: 20, border: `1.5px solid ${filter === s ? colors.orange : '#eee'}`, background: filter === s ? colors.orangeLight : '#fff', color: filter === s ? colors.orange : colors.mid, fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: font.body, transition: 'all 0.15s' }}>
-                  {s.charAt(0).toUpperCase() + s.slice(1)} ({s === 'all' ? bookings.length : bookings.filter(b => b.status === s).length})
+            <div style={{ display: 'flex', gap: 0, marginTop: 24, borderBottom: '2px solid #eee' }}>
+              {TABS.map(t => (
+                <button key={t.id} onClick={() => setFilter(t.id)}
+                  style={{ padding: '10px 22px', background: 'none', border: 'none', borderBottom: `2px solid ${filter === t.id ? colors.orange : 'transparent'}`, marginBottom: -2, color: filter === t.id ? colors.orange : colors.muted, fontSize: 13.5, fontWeight: filter === t.id ? 700 : 500, cursor: 'pointer', fontFamily: font.body, transition: 'all 0.15s', display: 'flex', alignItems: 'center', gap: 7 }}>
+                  <span>{t.icon}</span>
+                  <span>{t.label}</span>
+                  {t.bookings.length > 0 && (
+                    <span style={{ background: filter === t.id ? colors.orange : '#eee', color: filter === t.id ? '#fff' : colors.muted, borderRadius: 10, fontSize: 11, fontWeight: 700, padding: '1px 7px', minWidth: 20, textAlign: 'center' }}>
+                      {t.bookings.length}
+                    </span>
+                  )}
                 </button>
               ))}
             </div>
@@ -203,32 +226,21 @@ export default function MyBooking() {
             <p style={{ fontSize: 14, color: colors.muted, marginBottom: 24, lineHeight: 1.6 }}>Browse the marketplace and request your first adventure — your employer covers the cost via payroll.</p>
             <Button onClick={() => navigate('/marketplace')}>Explore packages →</Button>
           </div>
+        ) : tabBookings.length === 0 ? (
+          <div style={{ padding: '40px 0', textAlign: 'center' }}>
+            <p style={{ fontSize: 32, marginBottom: 12 }}>{activeTab.icon}</p>
+            <p style={{ fontSize: 15, fontWeight: 600, color: colors.dark, marginBottom: 8 }}>No {activeTab.label.toLowerCase()} bookings</p>
+            <p style={{ fontSize: 13.5, color: colors.muted }}>{
+              activeTab.id === 'upcoming' ? 'Your approved adventures will appear here.' :
+              activeTab.id === 'pending'  ? 'No bookings awaiting HR approval.' :
+              activeTab.id === 'past'     ? 'Completed and cancelled bookings will appear here.' :
+              'No bookings found.'
+            }</p>
+          </div>
         ) : (
-          <>
-            {/* Active bookings */}
-            {active.length > 0 && (
-              <section style={{ marginBottom: 8 }}>
-                <p style={{ fontSize: 10.5, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: 16 }}>Active &amp; Approved</p>
-                {active.map(b => <BookingCard key={b.id} b={b}/>)}
-              </section>
-            )}
-
-            {/* Pending */}
-            {pending.length > 0 && (
-              <section style={{ marginBottom: 8 }}>
-                <p style={{ fontSize: 10.5, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: 16 }}>Awaiting Approval</p>
-                {pending.map(b => <BookingCard key={b.id} b={b}/>)}
-              </section>
-            )}
-
-            {/* Past / cancelled */}
-            {past.length > 0 && (
-              <section>
-                <p style={{ fontSize: 10.5, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: 16 }}>Cancelled</p>
-                {past.map(b => <BookingCard key={b.id} b={b}/>)}
-              </section>
-            )}
-          </>
+          <div>
+            {tabBookings.map(b => <BookingCard key={b.id} b={b}/>)}
+          </div>
         )}
       </div>
 

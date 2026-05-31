@@ -1,4 +1,5 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import React, { useEffect, useRef, useState } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
 import Nav, { Footer } from './components/Nav';
@@ -172,9 +173,35 @@ function RequireAdmin({ children }) {
   return children;
 }
 
-export default function App() {
+export default 
+// ── Animated progress bar on page navigation ─────────────────
+function RouteProgress() {
+  const location = useLocation();
+  const [progress, setProgress] = useState(0);
+  const [visible, setVisible]   = useState(false);
+  const t1 = useRef(); const t2 = useRef(); const t3 = useRef(); const t4 = useRef();
+
+  useEffect(() => {
+    setProgress(0); setVisible(true);
+    t1.current = setTimeout(() => setProgress(30),  20);
+    t2.current = setTimeout(() => setProgress(65), 120);
+    t3.current = setTimeout(() => setProgress(85), 320);
+    t4.current = setTimeout(() => { setProgress(100); setTimeout(() => setVisible(false), 250); }, 600);
+    return () => [t1,t2,t3,t4].forEach(t => clearTimeout(t.current));
+  }, [location.pathname]);
+
+  if (!visible) return null;
+  return (
+    <div style={{ position:'fixed', top:0, left:0, right:0, height:3, zIndex:99999, pointerEvents:'none' }}>
+      <div style={{ height:'100%', width:`${progress}%`, background:'linear-gradient(90deg,#E05A2B,#f59e0b)', borderRadius:'0 2px 2px 0', transition: progress === 100 ? 'width 0.1s,opacity 0.25s' : 'width 0.35s ease', opacity: progress === 100 ? 0 : 1, boxShadow:'0 0 8px rgba(224,90,43,0.5)' }}/>
+    </div>
+  );
+}
+
+function App() {
   return (
     <BrowserRouter>
+      <RouteProgress/>
       <AuthProvider>
         <CartProvider>
           <AppRoutes/>

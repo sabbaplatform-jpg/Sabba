@@ -123,62 +123,56 @@ export function Cart() {
               ))}
             </div>
 
-            {/* Sabba Points section */}
-            {pointsBalance > 0 && (
-              <div className="card" style={{ padding: '20px 22px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                  <div>
-                    <p style={{ fontSize: 14, fontWeight: 700, color: colors.dark, marginBottom: 2 }}>⭐ Sabba Points</p>
-                    <p style={{ fontSize: 12.5, color: colors.muted }}>You have <strong style={{ color: colors.orange }}>{pointsBalance.toLocaleString()} pts</strong> · 100 pts = £1 off</p>
-                  </div>
-                  {pointsToApply > 0 && (
-                    <div style={{ background: colors.greenLight, borderRadius: 8, padding: '4px 12px', textAlign: 'right' }}>
-                      <p style={{ fontSize: 12, fontWeight: 700, color: colors.green }}>−£{pointsDiscount.toFixed(2)}</p>
-                      <p style={{ fontSize: 11, color: colors.green }}>{pointsToApply} pts applied</p>
-                    </div>
-                  )}
-                </div>
 
-                {pointsToApply > 0 ? (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <div style={{ flex: 1, background: colors.greenLight, borderRadius: 10, padding: '10px 14px' }}>
-                      <p style={{ fontSize: 13, fontWeight: 600, color: colors.green }}>
-                        {pointsToApply.toLocaleString()} points applied — saving £{pointsDiscount.toFixed(2)}
-                      </p>
-                    </div>
-                    <button onClick={removePoints} style={{ background: colors.redLight, color: colors.red, border: 'none', borderRadius: 8, padding: '8px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: font.body, flexShrink: 0 }}>
-                      Remove
-                    </button>
-                  </div>
-                ) : (
-                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                    <input
-                      type="number"
-                      value={pointsInput}
-                      onChange={e => setPointsInput(e.target.value)}
-                      placeholder={`Up to ${maxPointsForOrder.toLocaleString()} pts`}
-                      min="0"
-                      max={maxPointsForOrder}
-                      style={{ flex: 1, border: '1.5px solid #eee', borderRadius: 10, padding: '10px 14px', fontSize: 14, color: colors.dark, fontFamily: font.body, outline: 'none' }}
-                    />
-                    <button onClick={applyPoints} style={{ background: colors.orange, color: '#fff', border: 'none', borderRadius: 10, padding: '10px 18px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: font.body, flexShrink: 0 }}>
-                      Apply
-                    </button>
-                    <button onClick={() => { setPointsInput(String(maxPointsForOrder)); setPointsToApply(maxPointsForOrder); }} style={{ background: '#F7F5F2', color: colors.mid, border: '1px solid #eee', borderRadius: 10, padding: '10px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: font.body, flexShrink: 0 }}>
-                      Use max
-                    </button>
-                  </div>
-                )}
-                <p style={{ fontSize: 11.5, color: colors.faint, marginTop: 8 }}>
-                  Max redeemable: {maxPointsForOrder.toLocaleString()} pts (= £{(maxPointsForOrder/POINTS_PER_POUND).toFixed(2)} off)
-                </p>
-              </div>
-            )}
           </div>
 
           {/* Checkout panel */}
           <div>
             <div className="card" style={{ padding: 24, position: 'sticky', top: 80 }}>
+
+              {/* Sabba Points — above the fold, first thing visible */}
+              {pointsBalance > 0 && (
+                <div style={{ background: 'linear-gradient(135deg, #1a1612, #2e2318)', borderRadius: 12, padding: '16px 18px', marginBottom: 20 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                    <div>
+                      <p style={{ fontSize: 13.5, fontWeight: 700, color: '#f5a66d', marginBottom: 2 }}>⭐ Sabba Points</p>
+                      <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)' }}>{pointsBalance.toLocaleString()} pts · worth £{(pointsBalance/POINTS_PER_POUND).toFixed(2)}</p>
+                    </div>
+                    {pointsToApply > 0 && (
+                      <div style={{ background: 'rgba(255,255,255,0.1)', borderRadius: 8, padding: '4px 10px', textAlign: 'right' }}>
+                        <p style={{ fontSize: 12, fontWeight: 700, color: colors.green }}>−£{pointsDiscount.toFixed(2)}</p>
+                        <p style={{ fontSize: 10.5, color: colors.green }}>{pointsToApply} pts applied</p>
+                      </div>
+                    )}
+                  </div>
+                  {pointsToApply > 0 ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <div style={{ flex: 1, background: 'rgba(255,255,255,0.08)', borderRadius: 8, padding: '8px 12px' }}>
+                        <p style={{ fontSize: 12.5, fontWeight: 600, color: colors.green }}>
+                          {pointsToApply.toLocaleString()} pts — saving £{pointsDiscount.toFixed(2)}
+                        </p>
+                      </div>
+                      <button onClick={removePoints} style={{ background: 'rgba(220,38,38,0.2)', color: '#fca5a5', border: 'none', borderRadius: 8, padding: '7px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: font.body, flexShrink: 0 }}>
+                        Remove
+                      </button>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      <input type="number" value={pointsInput} onChange={e => setPointsInput(e.target.value)}
+                        placeholder={`Max ${maxPointsForOrder.toLocaleString()} pts`} min="0" max={maxPointsForOrder}
+                        style={{ flex: 1, background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 8, padding: '8px 12px', fontSize: 13, color: '#fff', fontFamily: font.body, outline: 'none' }}/>
+                      <button onClick={applyPoints} style={{ background: '#f5a66d', color: '#1a1612', border: 'none', borderRadius: 8, padding: '8px 14px', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: font.body, flexShrink: 0 }}>
+                        Apply
+                      </button>
+                      <button onClick={() => { setPointsInput(String(maxPointsForOrder)); setPointsToApply(maxPointsForOrder); }}
+                        style={{ background: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.6)', border: 'none', borderRadius: 8, padding: '8px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: font.body, flexShrink: 0 }}>
+                        Max
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
               <h2 style={{ fontSize: 16, fontWeight: 700, color: colors.dark, marginBottom: 20 }}>Order summary</h2>
 
               {items.map(item => (
