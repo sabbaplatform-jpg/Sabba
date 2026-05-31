@@ -56,9 +56,18 @@ export default function Allowance() {
 
   const fetchAllowance = (y) => {
     setLoading(true);
-    api.get('/allowance', { params: { year: y } })
-      .then(r => setData(r.data))
-      .finally(() => setLoading(false));
+    Promise.all([
+      api.get('/allowance', { params: { year: y } }),
+      api.get('/bookings/mine'),
+    ]).then(([allowResp, bookResp]) => {
+      const allBookings = bookResp.data || [];
+      // Filter bookings to the selected year
+      const yearBookings = allBookings.filter(b => {
+        const d = new Date(b.created_at);
+        return d.getFullYear() === y;
+      });
+      setData({ ...allowResp.data, bookings: yearBookings });
+    }).finally(() => setLoading(false));
   };
 
   useEffect(() => { fetchAllowance(year); }, [year]);
@@ -204,12 +213,17 @@ export default function Allowance() {
         </div>
       )}
 
-      {bookings.length === 0 && (
+      {bookings.length === 0 && (!used || used === 0) && (
         <div className="card" style={{ padding: 40, textAlign: 'center' }}>
           <p style={{ fontSize: 36, marginBottom: 12 }}>✈️</p>
           <p style={{ fontSize: 15, fontWeight: 700, color: colors.dark, marginBottom: 6 }}>No bookings in {year}</p>
           <p style={{ fontSize: 13.5, color: colors.muted, marginBottom: 20 }}>You have £{Number(remaining).toLocaleString()} remaining to spend this year.</p>
           <Button onClick={() => navigate('/marketplace')}>Start exploring →</Button>
+        </div>
+      )}
+      {bookings.length === 0 && used > 0 && (
+        <div className="card" style={{ padding: 24 }}>
+          <p style={{ fontSize: 13.5, color: colors.muted }}>Booking history for {year} is loading from your bookings page. <button onClick={() => navigate('/my-booking')} style={{ color: colors.orange, background: 'none', border: 'none', fontWeight: 700, cursor: 'pointer', fontFamily: font.body, fontSize: 13.5 }}>View all bookings →</button></p>
         </div>
       )}
     </div>

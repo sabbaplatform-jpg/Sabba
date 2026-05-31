@@ -90,7 +90,10 @@ export default function MyBooking() {
       ? Math.ceil((new Date(b.departure_date) - new Date()) / (1000*60*60*24))
       : null;
     const isPast   = b.status === 'cancelled';
-    const canRate  = ['approved','confirmed'].includes(b.status) && !ratedIds.has(b.id);
+    const hasHappened = b.departure_date
+      ? new Date(b.departure_date) < new Date()
+      : false;
+    const canRate  = ['approved','confirmed'].includes(b.status) && hasHappened && !ratedIds.has(b.id);
 
     return (
       <div className="card" style={{ overflow: 'hidden', marginBottom: 20 }}>

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import api from '../lib/api';
 import { useCart } from '../context/CartContext';
@@ -229,18 +230,19 @@ export default function Marketplace() {
         </div>
       </div>
 
-      {/* Added to cart toast */}
-      {addedToast && (
-        <div style={{ position: 'fixed', bottom: 32, right: 32, background: colors.dark, color: '#fff', borderRadius: 14, padding: '16px 22px', fontSize: 14, fontWeight: 600, fontFamily: font.body, zIndex: 9999, display: 'flex', alignItems: 'center', gap: 14, boxShadow: '0 12px 40px rgba(0,0,0,0.25)', minWidth: 280 }}>
+      {/* Added to cart toast — rendered via portal to escape any CSS stacking context */}
+      {addedToast && createPortal(
+        <div style={{ position: 'fixed', bottom: 32, right: 32, background: '#1A2E44', color: '#fff', borderRadius: 14, padding: '16px 22px', fontSize: 14, fontWeight: 600, fontFamily: 'Arial, sans-serif', zIndex: 99999, display: 'flex', alignItems: 'center', gap: 14, boxShadow: '0 12px 40px rgba(0,0,0,0.35)', minWidth: 280, pointerEvents: 'all' }}>
           <span style={{ fontSize: 22 }}>🛒</span>
           <span style={{ flex: 1 }}>{addedToast} added!</span>
-          <button onClick={() => navigate('/cart')} style={{ background: colors.orange, color: '#fff', border: 'none', borderRadius: 8, padding: '7px 14px', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: font.body }}>
+          <button onClick={() => navigate('/cart')} style={{ background: '#E05A2B', color: '#fff', border: 'none', borderRadius: 8, padding: '7px 14px', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'Arial, sans-serif' }}>
             View cart
           </button>
-          <button onClick={() => setAddedToast(null)} style={{ background: 'rgba(255,255,255,0.12)', color: '#fff', border: 'none', borderRadius: 6, padding: '6px 9px', fontSize: 13, cursor: 'pointer', fontFamily: font.body }}>
+          <button onClick={() => setAddedToast(null)} style={{ background: 'rgba(255,255,255,0.12)', color: '#fff', border: 'none', borderRadius: 6, padding: '6px 9px', fontSize: 13, cursor: 'pointer', fontFamily: 'Arial, sans-serif' }}>
             ✕
           </button>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Results */}
