@@ -715,7 +715,7 @@ export function CommunityFeed() {
 export function CommunityProfile() {
   const { id }    = useParams();
   const navigate  = useNavigate();
-  const { user }  = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [profile, setProfile] = useState(null);
   const [posts,   setPosts]   = useState([]);
   const [editing, setEditing] = useState(false);
@@ -723,12 +723,12 @@ export function CommunityProfile() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Wait for auth to finish loading — user starts null and gets set after token check
-    if (user === null) return;
-    // Treat as 'me' if id is literally 'me' OR matches the logged-in user's ID
-    const isMe = id === 'me' || id === user.id;
-    const endpoint = isMe ? '/community/profile/me' : `/community/profile/${id}`;
+    // Wait for auth context to finish verifying the token
+    if (authLoading) return;
     if (!id || id === 'undefined') { setLoading(false); return; }
+    // Treat as 'me' if id is literally 'me' OR matches the logged-in user's ID
+    const isMe = id === 'me' || (user && id === user.id);
+    const endpoint = isMe ? '/community/profile/me' : `/community/profile/${id}`;
     Promise.all([
       api.get(endpoint),
       api.get('/community/feed'),
@@ -742,8 +742,9 @@ export function CommunityProfile() {
       }
     }).catch(err => {
       console.error('Profile load error:', err);
+      setLoading(false);
     }).finally(() => setLoading(false));
-  }, [id, user]);
+  }, [id, authLoading, user]);
 
   const saveProfile = async () => {
     await api.put('/community/profile', { bio, opt_out: profile.opt_out });
