@@ -269,7 +269,7 @@ function PostCard({ post, myProfile, onDelete, navigate }) {
         {/* Author row */}
         <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:12 }}>
           <div style={{ display:'flex', alignItems:'center', gap:10, cursor:'pointer' }}
-            onClick={() => navigate(`/community/profile/${post.user_id}`)}>
+            onClick={() => post.user_id && navigate(`/community/profile/${post.user_id}`)}>
             <Avatar name={post.author_name} avatar={post.author_avatar} level={post.author_level}/>
             <div>
               <div style={{ display:'flex', alignItems:'center', gap:6 }}>
@@ -348,7 +348,7 @@ function MatchedTravellers({ matches, navigate }) {
           <div key={i} style={{ background:'rgba(255,255,255,0.08)', borderRadius:14,
             padding:'14px 16px', minWidth:200, flexShrink:0, cursor:'pointer',
             border:'1px solid rgba(255,255,255,0.1)', transition:'background 0.15s' }}
-            onClick={() => navigate(`/community/profile/${m.matched_user_id}`)}>
+            onClick={() => m.matched_user_id && navigate(`/community/profile/${m.matched_user_id}`)}>
             <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:10 }}>
               <Avatar name={m.matched_name} avatar={m.matched_avatar} level={m.matched_level} size={40}/>
               <div>
@@ -371,7 +371,7 @@ function MatchedTravellers({ matches, navigate }) {
                   cursor:'pointer', fontFamily:font.body }}>
                 💬 Message
               </button>
-              <button onClick={e => { e.stopPropagation(); navigate(`/community/profile/${m.matched_user_id}`); }}
+              <button onClick={e => { e.stopPropagation(); m.matched_user_id && navigate(`/community/profile/${m.matched_user_id}`); }}
                 style={{ flex:1, background:'rgba(255,255,255,0.1)', color:'#fff', border:'none',
                   borderRadius:8, padding:'6px', fontSize:11.5, fontWeight:700,
                   cursor:'pointer', fontFamily:font.body }}>
@@ -545,10 +545,15 @@ export function CommunityProfile() {
       api.get(endpoint),
       api.get('/community/feed'),
     ]).then(([p, f]) => {
-      setProfile(p.data);
-      setBio(p.data.bio || '');
-      const userId = p.data.user_id;
-      setPosts(f.data.filter(post => post.user_id === userId));
+      const profileData = p.data;
+      setProfile(profileData);
+      setBio(profileData.bio || '');
+      const userId = profileData.user_id;
+      if (userId) {
+        setPosts((f.data || []).filter(post => post.user_id === userId));
+      }
+    }).catch(err => {
+      console.error('Profile load error:', err);
     }).finally(() => setLoading(false));
   }, [id]);
 

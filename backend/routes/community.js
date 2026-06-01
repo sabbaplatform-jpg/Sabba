@@ -189,7 +189,9 @@ router.get('/feed', auth, async (req, res) => {
 
     // Simpler query that always works
     const posts = await db.query(
-      `SELECT p.*,
+      `SELECT
+        p.id, p.user_id, p.company_id, p.content, p.image_url,
+        p.visibility, p.likes_count, p.comments_count, p.created_at,
         u.full_name as author_name,
         c.name as author_company,
         cp.level as author_level,
