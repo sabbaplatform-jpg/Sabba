@@ -82,6 +82,7 @@ app.use('/api/allowance',     require('./routes/allowance'));
 app.use('/api/upload',        require('./routes/upload'));
 app.use('/api/messages',      require('./routes/messages'));
 app.use('/api/admin',         require('./routes/admin'));
+app.use('/api/community',     require('./routes/community'));
 
 app.get('/api/health', (_, res) => res.json({ status: 'ok', version: 'v3' }));
 

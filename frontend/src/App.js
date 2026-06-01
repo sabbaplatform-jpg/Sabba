@@ -29,6 +29,7 @@ import { AdminDashboard, AdminEmployers, AdminVendors, AdminPackages, AdminAnaly
 import { AdminEmployerDetail } from './pages/admin/AdminEmployerDetail';
 import { Cart, CheckoutSuccess } from './pages/employee/Cart';
 import Allowance from './pages/employee/Allowance';
+import { CommunityFeed, CommunityProfile } from './pages/employee/Community';
 
 // Vendor pages
 import { VendorDashboard, VendorPackages, VendorBookings, VendorEarnings, VendorProfile } from './pages/vendor/VendorPages';
@@ -112,6 +113,9 @@ function AppRoutes() {
                 <Route path="/profile"          element={<RequireAuth role="employee"><EmployeeProfile/></RequireAuth>}/>
                 <Route path="/cart"             element={<RequireAuth role="employee"><Cart/></RequireAuth>}/>
                 <Route path="/allowance"        element={<RequireAuth role="employee"><Allowance/></RequireAuth>}/>
+                <Route path="/community"           element={<RequireAuth role="employee"><CommunityFeed/></RequireAuth>}/>
+                <Route path="/community/profile/:id" element={<RequireAuth role="employee"><CommunityProfile/></RequireAuth>}/>
+                <Route path="/community/profile/me" element={<RequireAuth role="employee"><CommunityProfile/></RequireAuth>}/>
                 <Route path="/checkout-success" element={<RequireAuth role="employee"><CheckoutSuccess/></RequireAuth>}/>
 
                 {/* Vendor */}

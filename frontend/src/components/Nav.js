@@ -103,6 +103,7 @@ export default function Nav() {
     employee: [
       { to: '/home',       label: 'Home'      },
       { to: '/marketplace',label: 'Explore'   },
+      { to: '/community',  label: 'Community' },
       { to: '/my-booking', label: 'My Booking'},
       { to: '/allowance',  label: 'Allowance' },
     ],
