@@ -723,12 +723,12 @@ export function CommunityProfile() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Wait for auth to load before determining endpoint
-    if (user === undefined) return;
+    // Wait for auth to finish loading — user starts null and gets set after token check
+    if (user === null) return;
     // Treat as 'me' if id is literally 'me' OR matches the logged-in user's ID
-    const isMe = id === 'me' || (user && id === user.id);
+    const isMe = id === 'me' || id === user.id;
     const endpoint = isMe ? '/community/profile/me' : `/community/profile/${id}`;
-    if (!isMe && (!id || id === 'undefined')) return;
+    if (!id || id === 'undefined') { setLoading(false); return; }
     Promise.all([
       api.get(endpoint),
       api.get('/community/feed'),
@@ -743,7 +743,7 @@ export function CommunityProfile() {
     }).catch(err => {
       console.error('Profile load error:', err);
     }).finally(() => setLoading(false));
-  }, [id]);
+  }, [id, user]);
 
   const saveProfile = async () => {
     await api.put('/community/profile', { bio, opt_out: profile.opt_out });
