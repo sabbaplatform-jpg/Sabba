@@ -716,8 +716,6 @@ export function CommunityProfile() {
   const { id }    = useParams();
   const navigate  = useNavigate();
   const { user }  = useAuth();
-  // Treat as 'me' if id is literally 'me' OR matches the logged-in user's ID
-  const isMe      = id === 'me' || id === user?.id;
   const [profile, setProfile] = useState(null);
   const [posts,   setPosts]   = useState([]);
   const [editing, setEditing] = useState(false);
@@ -725,7 +723,12 @@ export function CommunityProfile() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Wait for auth to load before determining endpoint
+    if (user === undefined) return;
+    // Treat as 'me' if id is literally 'me' OR matches the logged-in user's ID
+    const isMe = id === 'me' || (user && id === user.id);
     const endpoint = isMe ? '/community/profile/me' : `/community/profile/${id}`;
+    if (!isMe && (!id || id === 'undefined')) return;
     Promise.all([
       api.get(endpoint),
       api.get('/community/feed'),
@@ -747,6 +750,8 @@ export function CommunityProfile() {
     setProfile(p => ({ ...p, bio }));
     setEditing(false);
   };
+
+  const isMe = id === 'me' || (user && profile && profile.user_id === user.id);
 
   if (loading) return <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'60vh'}}><Spinner/></div>;
   if (!profile) return <div style={{padding:60,textAlign:'center',color:colors.muted,fontFamily:font.body}}>Profile not found</div>;

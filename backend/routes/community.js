@@ -118,7 +118,8 @@ router.get('/profile/:id', auth, async (req, res) => {
   try {
     const profile = await db.query(
       `SELECT cp.*, u.full_name, u.job_title, c.name as company_name,
-        ep.adventure_type, ep.sabba_points,
+        COALESCE(ep.adventure_type, '') as adventure_type,
+        COALESCE(ep.sabba_points, 0) as sabba_points,
         (SELECT COUNT(*) FROM community_posts WHERE user_id=cp.user_id) as post_count
        FROM community_profiles cp
        JOIN users u ON u.id = cp.user_id
