@@ -124,10 +124,10 @@ router.get('/profile/:id', auth, async (req, res) => {
        JOIN users u ON u.id = cp.user_id
        LEFT JOIN companies c ON c.id = u.company_id
        LEFT JOIN employee_profiles ep ON ep.user_id = cp.user_id
-       WHERE cp.user_id = $1 AND cp.opt_out = false`,
+       WHERE cp.user_id = $1`,
       [req.params.id]
     );
-    if (!profile.rows.length) return res.status(404).json({ error: 'Profile not found or opted out' });
+    if (!profile.rows.length) return res.status(404).json({ error: 'Profile not found' });
     res.json(profile.rows[0]);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });

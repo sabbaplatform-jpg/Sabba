@@ -56,6 +56,71 @@ function LevelBadge({ level }) {
   );
 }
 
+// ── Image Uploader Component ─────────────────────────────
+function ImageUploader({ imageUrl, setImageUrl }) {
+  const [uploading, setUploading] = useState(false);
+  const [error,     setError]     = useState('');
+  const fileRef = useRef();
+
+  const handleFile = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) { setError('Image must be under 5MB'); return; }
+    if (!file.type.startsWith('image/')) { setError('Please select an image file'); return; }
+
+    setUploading(true); setError('');
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      fd.append('bucket', 'community');
+      fd.append('folder', 'posts');
+      const { data } = await api.post('/upload', fd, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      setImageUrl(data.url);
+    } catch (err) {
+      setError('Upload failed — try again');
+    } finally {
+      setUploading(false);
+      e.target.value = '';
+    }
+  };
+
+  return (
+    <div style={{ marginBottom: 12 }}>
+      {!imageUrl ? (
+        <div>
+          <input ref={fileRef} type="file" accept="image/*"
+            onChange={handleFile} style={{ display:'none' }}/>
+          <button type="button" onClick={() => fileRef.current?.click()} disabled={uploading}
+            style={{ background:'#F7F5F2', border:'1.5px dashed #ddd', borderRadius:10,
+              padding:'10px 16px', fontSize:13, color: uploading ? colors.muted : colors.mid,
+              fontFamily:font.body, cursor: uploading ? 'default' : 'pointer',
+              display:'flex', alignItems:'center', gap:8, width:'100%',
+              justifyContent:'center', fontWeight:600 }}>
+            <span style={{ fontSize:18 }}>📸</span>
+            {uploading ? 'Uploading…' : 'Add a photo'}
+          </button>
+          {error && <p style={{ fontSize:12, color:colors.red, marginTop:4, fontWeight:600 }}>{error}</p>}
+        </div>
+      ) : (
+        <div style={{ position:'relative' }}>
+          <img src={imageUrl} alt="preview"
+            style={{ width:'100%', maxHeight:240, objectFit:'cover',
+              borderRadius:10, display:'block' }}/>
+          <button type="button" onClick={() => setImageUrl('')}
+            style={{ position:'absolute', top:8, right:8, background:'rgba(0,0,0,0.55)',
+              color:'#fff', border:'none', borderRadius:'50%', width:28, height:28,
+              fontSize:14, cursor:'pointer', fontFamily:font.body, display:'flex',
+              alignItems:'center', justifyContent:'center' }}>
+            ✕
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Post Composer ─────────────────────────────────────────
 function PostComposer({ profile, onPost }) {
   const [open,       setOpen]       = useState(false);
@@ -65,6 +130,7 @@ function PostComposer({ profile, onPost }) {
   const [posting,    setPosting]    = useState(false);
   const [error,      setError]      = useState('');
   const textRef = useRef();
+  const fileRef = useRef();
 
   const handlePost = async () => {
     if (!content.trim()) { setError('Write something first'); return; }
@@ -100,23 +166,8 @@ function PostComposer({ profile, onPost }) {
                 background:'transparent' }}/>
           </div>
 
-          {/* Image URL input */}
-          <div style={{ background:'#F7F5F2', borderRadius:10, padding:'10px 14px', marginBottom:12 }}>
-            <p style={{ fontSize:11, fontWeight:700, color:colors.faint,
-              textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:6 }}>
-              📸 Add image URL (optional)
-            </p>
-            <input value={imageUrl} onChange={e=>setImageUrl(e.target.value)}
-              placeholder="https://images.unsplash.com/…"
-              style={{ width:'100%', border:'1.5px solid #eee', borderRadius:8,
-                padding:'8px 12px', fontSize:13, color:colors.dark,
-                fontFamily:font.body, outline:'none', boxSizing:'border-box' }}/>
-            {imageUrl && (
-              <img src={imageUrl} alt="preview" onError={()=>setImageUrl('')}
-                style={{ width:'100%', maxHeight:200, objectFit:'cover',
-                  borderRadius:8, marginTop:8 }}/>
-            )}
-          </div>
+          {/* Image upload */}
+          <ImageUploader imageUrl={imageUrl} setImageUrl={setImageUrl}/>
 
           {/* Visibility */}
           <div style={{ display:'flex', gap:8, marginBottom:12, alignItems:'center' }}>
