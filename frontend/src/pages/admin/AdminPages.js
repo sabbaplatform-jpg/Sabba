@@ -2657,38 +2657,73 @@ export function AdminSponsored() {
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 28 }}>
         <div>
           <h1 style={{ fontFamily: font.display, fontSize: 30, color: colors.dark, fontWeight: 700, fontStyle: 'italic', marginBottom: 6 }}>Sponsored listings</h1>
-          <p style={{ fontSize: 13.5, color: colors.muted }}>Manage the 3 featured package slots that appear at the top of the employee marketplace.</p>
+          <p style={{ fontSize: 13.5, color: colors.muted }}>Manage marketplace featured slots and platinum community sidebar placements.</p>
         </div>
         <Button onClick={() => setShowForm(true)}>+ Add sponsored listing</Button>
       </div>
 
-      {/* Slot status overview */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 28 }}>
-        {[1, 2, 3].map(slot => {
-          const active = activeListings.find(l => Number(l.slot_number) === slot);
-          return (
-            <div key={slot} style={{ background: active ? '#FDF3E3' : '#fff', border: `1px solid ${active ? '#F59E0B' : '#eee'}`, borderRadius: 14, padding: '18px 20px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                <p style={{ fontSize: 11, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Slot {slot}</p>
-                <span style={{ fontSize: 10, fontWeight: 700, background: active ? '#FEF3C7' : '#F3F4F6', color: active ? '#D97706' : colors.faint, borderRadius: 6, padding: '3px 8px' }}>
-                  {active ? '⭐ OCCUPIED' : 'AVAILABLE'}
-                </span>
+      {/* Slot status overview — Marketplace */}
+      <div style={{ marginBottom: 8 }}>
+        <p style={{ fontSize: 11, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 10 }}>⭐ Marketplace slots — top of Explore page</p>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 20 }}>
+          {[1, 2, 3].map(slot => {
+            const active = activeListings.find(l => Number(l.slot_number) === slot && l.listing_type !== 'platinum');
+            return (
+              <div key={slot} style={{ background: active ? '#FDF3E3' : '#fff', border: `1px solid ${active ? '#F59E0B' : '#eee'}`, borderRadius: 14, padding: '16px 18px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <p style={{ fontSize: 11, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Slot {slot}</p>
+                  <span style={{ fontSize: 10, fontWeight: 700, background: active ? '#FEF3C7' : '#F3F4F6', color: active ? '#D97706' : colors.faint, borderRadius: 6, padding: '3px 8px' }}>
+                    {active ? '⭐ OCCUPIED' : 'AVAILABLE'}
+                  </span>
+                </div>
+                {active ? (
+                  <>
+                    <p style={{ fontSize: 13.5, fontWeight: 700, color: colors.dark, marginBottom: 4 }}>{active.package_title}</p>
+                    <p style={{ fontSize: 12, color: colors.muted, marginBottom: 4 }}>{active.vendor_name}</p>
+                    <p style={{ fontSize: 12, color: colors.orange, fontWeight: 600 }}>£{Number(active.monthly_fee_gbp).toLocaleString()}/mo · until {new Date(toDateStr(active.end_date)).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' })}</p>
+                    <button onClick={() => handleDelete(active.id)} style={{ marginTop: 8, background: 'none', border: 'none', color: colors.red, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: font.body, padding: 0 }}>Remove</button>
+                  </>
+                ) : (
+                  <p style={{ fontSize: 12.5, color: colors.faint, marginTop: 4 }}>Empty — click '+ Add' to assign a package.</p>
+                )}
               </div>
-              {active ? (
-                <>
-                  <p style={{ fontSize: 14, fontWeight: 700, color: colors.dark, marginBottom: 4 }}>{active.package_title}</p>
-                  <p style={{ fontSize: 12, color: colors.muted, marginBottom: 4 }}>{active.vendor_name}</p>
-                  <p style={{ fontSize: 12, color: colors.orange, fontWeight: 600 }}>£{Number(active.monthly_fee_gbp).toLocaleString()}/mo · until {new Date(toDateStr(active.end_date)).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' })}</p>
-                  <button onClick={() => handleDelete(active.id)} style={{ marginTop: 10, background: 'none', border: 'none', color: colors.red, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: font.body, padding: 0 }}>
-                    Remove listing
-                  </button>
-                </>
-              ) : (
-                <p style={{ fontSize: 13, color: colors.faint, marginTop: 4 }}>No active sponsorship. Click '+ Add' to assign a vendor package to this slot.</p>
-              )}
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Slot status overview — Platinum */}
+      <div style={{ marginBottom: 28 }}>
+        <p style={{ fontSize: 11, fontWeight: 700, color: '#7C3AED', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 10 }}>💎 Platinum slots — community page sidebars</p>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+          {[1, 2, 3, 4].map(slot => {
+            const active = activeListings.find(l => Number(l.slot_number) === slot && l.listing_type === 'platinum');
+            const sideLabel = slot <= 2 ? 'Left sidebar' : 'Right sidebar';
+            return (
+              <div key={slot} style={{ background: active ? '#F5F3FF' : '#fff', border: `1px solid ${active ? '#8B5CF6' : '#eee'}`, borderRadius: 14, padding: '16px 18px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <div>
+                    <p style={{ fontSize: 11, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Slot {slot}</p>
+                    <p style={{ fontSize: 10, color: colors.faint }}>{sideLabel}</p>
+                  </div>
+                  <span style={{ fontSize: 10, fontWeight: 700, background: active ? '#EDE9FE' : '#F3F4F6', color: active ? '#7C3AED' : colors.faint, borderRadius: 6, padding: '3px 8px' }}>
+                    {active ? '💎 OCCUPIED' : 'AVAILABLE'}
+                  </span>
+                </div>
+                {active ? (
+                  <>
+                    <p style={{ fontSize: 13.5, fontWeight: 700, color: colors.dark, marginBottom: 4 }}>{active.package_title}</p>
+                    <p style={{ fontSize: 12, color: colors.muted, marginBottom: 4 }}>{active.vendor_name}</p>
+                    <p style={{ fontSize: 12, color: '#7C3AED', fontWeight: 600 }}>£{Number(active.monthly_fee_gbp).toLocaleString()}/mo · until {new Date(toDateStr(active.end_date)).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' })}</p>
+                    <button onClick={() => handleDelete(active.id)} style={{ marginTop: 8, background: 'none', border: 'none', color: colors.red, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: font.body, padding: 0 }}>Remove</button>
+                  </>
+                ) : (
+                  <p style={{ fontSize: 12.5, color: colors.faint, marginTop: 4 }}>Empty — click '+ Add' to assign a package.</p>
+                )}
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       {/* Revenue summary */}
@@ -2700,7 +2735,7 @@ export function AdminSponsored() {
           </div>
           <div>
             <p style={{ fontSize: 11, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>Active slots</p>
-            <p style={{ fontSize: 26, fontWeight: 700, fontFamily: font.display, color: colors.dark }}>{activeListings.length} / 3</p>
+            <p style={{ fontSize: 26, fontWeight: 700, fontFamily: font.display, color: colors.dark }}>{activeListings.length} / 7</p>
           </div>
           <div>
             <p style={{ fontSize: 11, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>Annual run rate</p>

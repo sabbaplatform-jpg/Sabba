@@ -715,7 +715,8 @@ export function CommunityProfile() {
   const { id }    = useParams();
   const navigate  = useNavigate();
   const { user }  = useAuth();
-  const isMe      = id === 'me';
+  // Treat as 'me' if id is literally 'me' OR matches the logged-in user's ID
+  const isMe      = id === 'me' || id === user?.id;
   const [profile, setProfile] = useState(null);
   const [posts,   setPosts]   = useState([]);
   const [editing, setEditing] = useState(false);
