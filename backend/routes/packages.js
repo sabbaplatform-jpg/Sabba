@@ -318,20 +318,20 @@ router.post('/sponsored', auth, requireRole('superadmin'), async (req, res) => {
     if (!package_id || !vendor_id || !slot_number || !end_date) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
-    // Check slot not already occupied for overlapping dates
-    // Check slot not already occupied — new listing's range overlaps existing if:
-    // existing.start <= new.end AND existing.end >= new.start
+    const listing_type = req.body.listing_type || 'marketplace';
+    // Check slot not already occupied for overlapping dates — scoped to listing_type
+    // Platinum slot 1 and marketplace slot 1 are independent
     const newStart = start_date || new Date().toISOString().split('T')[0];
     const conflict = await db.query(`
       SELECT id FROM sponsored_listings
       WHERE slot_number = $1
+        AND listing_type = $4
         AND start_date <= $3
         AND end_date   >= $2
-    `, [slot_number, newStart, end_date]);
+    `, [slot_number, newStart, end_date, listing_type]);
     if (conflict.rows.length) {
-      return res.status(409).json({ error: `Slot ${slot_number} is already occupied for those dates` });
+      return res.status(409).json({ error: `${listing_type === 'platinum' ? 'Platinum slot' : 'Slot'} ${slot_number} is already occupied for those dates` });
     }
-    const listing_type = req.body.listing_type || 'marketplace';
     const result = await db.query(`
       INSERT INTO sponsored_listings (package_id, vendor_id, slot_number, listing_type, monthly_fee_gbp, start_date, end_date, notes, created_by)
       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *
