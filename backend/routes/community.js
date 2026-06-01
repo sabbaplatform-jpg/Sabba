@@ -117,7 +117,7 @@ router.get('/profile/me', auth, async (req, res) => {
 router.get('/profile/:id', auth, async (req, res) => {
   try {
     const profile = await db.query(
-      `SELECT cp.*, u.full_name, c.name as company_name,
+      `SELECT cp.*, u.full_name, u.job_title, c.name as company_name,
         ep.adventure_type, ep.sabba_points,
         (SELECT COUNT(*) FROM community_posts WHERE user_id=cp.user_id) as post_count
        FROM community_profiles cp
@@ -192,7 +192,7 @@ router.get('/feed', auth, async (req, res) => {
       `SELECT
         p.id, p.user_id, p.company_id, p.content, p.image_url,
         p.visibility, p.likes_count, p.comments_count, p.created_at,
-        u.full_name as author_name,
+        u.full_name as author_name, u.job_title as author_job_title,
         c.name as author_company,
         cp.level as author_level,
         cp.avatar_url as author_avatar,
@@ -455,6 +455,30 @@ router.patch('/admin/company/:id/restrict', auth, requireRole('superadmin'), asy
     );
     res.json({ success: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ── GET /api/community/platinum ──────────────────────────
+// Returns active platinum sponsored listings for community sidebar
+router.get('/platinum', auth, async (req, res) => {
+  try {
+    const today = new Date().toISOString().split('T')[0];
+    const result = await db.query(`
+      SELECT sl.*, p.title as package_title, p.price_gbp, p.destination,
+        p.image_url, p.emoji, p.category, p.duration, p.id as package_id,
+        v.company_name as vendor_name
+      FROM sponsored_listings sl
+      JOIN packages p ON sl.package_id = p.id
+      JOIN vendors v ON sl.vendor_id = v.id
+      WHERE sl.listing_type = 'platinum'
+        AND sl.start_date <= $1
+        AND sl.end_date   >= $1
+        AND p.status = 'live'
+      ORDER BY sl.slot_number ASC
+    `, [today]);
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 module.exports = router;

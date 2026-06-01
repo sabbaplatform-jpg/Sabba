@@ -79,7 +79,7 @@ router.get('/sponsored', async (req, res) => {
 router.get('/sponsored/all', auth, requireRole('superadmin'), async (req, res) => {
   try {
     const result = await db.query(`
-      SELECT sl.*, p.title as package_title, p.category, p.destination,
+      SELECT sl.*, sl.listing_type, p.title as package_title, p.category, p.destination,
         v.company_name as vendor_name
       FROM sponsored_listings sl
       JOIN packages p ON sl.package_id = p.id
@@ -331,10 +331,11 @@ router.post('/sponsored', auth, requireRole('superadmin'), async (req, res) => {
     if (conflict.rows.length) {
       return res.status(409).json({ error: `Slot ${slot_number} is already occupied for those dates` });
     }
+    const listing_type = req.body.listing_type || 'marketplace';
     const result = await db.query(`
-      INSERT INTO sponsored_listings (package_id, vendor_id, slot_number, monthly_fee_gbp, start_date, end_date, notes, created_by)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *
-    `, [package_id, vendor_id, slot_number, monthly_fee_gbp || 2000,
+      INSERT INTO sponsored_listings (package_id, vendor_id, slot_number, listing_type, monthly_fee_gbp, start_date, end_date, notes, created_by)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *
+    `, [package_id, vendor_id, slot_number, listing_type, monthly_fee_gbp || 2000,
         start_date || new Date().toISOString().split('T')[0], end_date, notes || null, req.user.id]);
     res.status(201).json(result.rows[0]);
   } catch (err) {

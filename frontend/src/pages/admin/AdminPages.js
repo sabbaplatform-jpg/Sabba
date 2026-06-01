@@ -2600,7 +2600,7 @@ export function AdminSponsored() {
   const [loading,  setLoading]  = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [vendorFilter, setVendorFilter] = useState('');
-  const [form, setForm] = useState({ package_id: '', vendor_id: '', slot_number: 1, monthly_fee_gbp: 2000, start_date: new Date().toISOString().split('T')[0], end_date: '', notes: '' });
+  const [form, setForm] = useState({ package_id: '', vendor_id: '', slot_number: 1, listing_type: 'marketplace', monthly_fee_gbp: 2000, start_date: new Date().toISOString().split('T')[0], end_date: '', notes: '' });
   const toDateStr = (val) => val ? String(val).split('T')[0] : '';
   const [saving, setSaving] = useState(false);
   const [error, setError]   = useState('');
@@ -2624,7 +2624,7 @@ export function AdminSponsored() {
     try {
       await api.post('/packages/sponsored', form);
       setShowForm(false);
-      setForm({ package_id: '', vendor_id: '', slot_number: 1, monthly_fee_gbp: 2000, start_date: new Date().toISOString().split('T')[0], end_date: '', notes: '' });
+      setForm({ package_id: '', vendor_id: '', slot_number: 1, listing_type: 'marketplace', monthly_fee_gbp: 2000, start_date: new Date().toISOString().split('T')[0], end_date: '', notes: '' });
       fetch_all();
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to create sponsored listing');
@@ -2729,7 +2729,9 @@ export function AdminSponsored() {
                 return (
                   <tr key={l.id} style={{ borderTop: '1px solid #F7F5F2' }}>
                     <td style={{ padding: '12px 16px' }}>
-                      <span style={{ background: isActive ? '#FEF3C7' : '#F3F4F6', color: isActive ? '#D97706' : colors.faint, borderRadius: 6, padding: '3px 8px', fontSize: 12, fontWeight: 700 }}>⭐ {l.slot_number}</span>
+                      <span style={{ background: l.listing_type === 'platinum' ? '#F3E8FF' : (isActive ? '#FEF3C7' : '#F3F4F6'), color: l.listing_type === 'platinum' ? '#7C3AED' : (isActive ? '#D97706' : colors.faint), borderRadius: 6, padding: '3px 8px', fontSize: 12, fontWeight: 700 }}>
+                        {l.listing_type === 'platinum' ? '💎' : '⭐'} {l.slot_number}
+                      </span>
                     </td>
                     <td style={{ padding: '12px 16px', fontSize: 13.5, color: colors.dark, fontWeight: 500 }}>{l.package_title}</td>
                     <td style={{ padding: '12px 16px', fontSize: 13, color: colors.muted }}>{l.vendor_name}</td>
@@ -2768,11 +2770,29 @@ export function AdminSponsored() {
         <Modal title="Add sponsored listing" onClose={() => { setShowForm(false); setError(''); }}>
           <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <div>
+              <label style={lStyle}>Listing type <span style={{ color: colors.orange }}>*</span></label>
+              <select value={form.listing_type} onChange={e => setForm(f => ({...f, listing_type: e.target.value, slot_number: 1}))} style={iStyle} required>
+                <option value="marketplace">⭐ Marketplace — featured at top of Explore page</option>
+                <option value="platinum">💎 Platinum — sidebar on Community page</option>
+              </select>
+            </div>
+            <div>
               <label style={lStyle}>Slot number <span style={{ color: colors.orange }}>*</span></label>
               <select value={form.slot_number} onChange={e => setForm(f => ({...f, slot_number: Number(e.target.value)}))} style={iStyle} required>
-                <option value={1}>Slot 1 — first featured position</option>
-                <option value={2}>Slot 2 — second featured position</option>
-                <option value={3}>Slot 3 — third featured position</option>
+                {form.listing_type === 'marketplace' ? (
+                  <>
+                    <option value={1}>Slot 1 — first featured position</option>
+                    <option value={2}>Slot 2 — second featured position</option>
+                    <option value={3}>Slot 3 — third featured position</option>
+                  </>
+                ) : (
+                  <>
+                    <option value={1}>Slot 1 — left sidebar</option>
+                    <option value={2}>Slot 2 — left sidebar</option>
+                    <option value={3}>Slot 3 — right sidebar</option>
+                    <option value={4}>Slot 4 — right sidebar</option>
+                  </>
+                )}
               </select>
             </div>
             <div>
