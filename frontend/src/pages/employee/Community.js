@@ -435,14 +435,15 @@ function MatchedTravellers({ matches, navigate }) {
 }
 
 // ── Platinum Sponsored Sidebar ───────────────────────────
-function PlatinumSidebar({ navigate }) {
+function PlatinumSidebar({ navigate, slots }) {
   const [listings, setListings] = useState([]);
 
   useEffect(() => {
     api.get('/community/platinum').then(r => setListings(r.data || [])).catch(() => {});
   }, []);
 
-  if (!listings.length) return null;
+  const filtered = listings.filter(l => slots.includes(Number(l.slot_number)));
+  if (!filtered.length) return null;
 
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
@@ -450,7 +451,7 @@ function PlatinumSidebar({ navigate }) {
         textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:2 }}>
         ⭐ Platinum
       </p>
-      {listings.map(l => (
+      {filtered.map(l => (
         <div key={l.id} onClick={() => navigate(`/package/${l.package_id}`)}
           style={{ background:'#fff', border:'1.5px solid #F0C060', borderRadius:14,
             overflow:'hidden', cursor:'pointer', boxShadow:'0 2px 12px rgba(201,136,42,0.12)',
@@ -656,9 +657,9 @@ export function CommunityFeed() {
       <div style={{ maxWidth:1200, margin:'0 auto', padding:'24px 20px',
         display:'grid', gridTemplateColumns:'200px 1fr 200px', gap:24, alignItems:'start' }}>
 
-        {/* Left platinum sidebar */}
+        {/* Left platinum sidebar — slots 1 & 2 */}
         <div>
-          <PlatinumSidebar navigate={navigate}/>
+          <PlatinumSidebar navigate={navigate} slots={[1, 2]}/>
         </div>
 
         {/* Main feed column */}
@@ -701,9 +702,9 @@ export function CommunityFeed() {
           )}
         </div>
 
-        {/* Right platinum sidebar */}
+        {/* Right platinum sidebar — slots 3 & 4 */}
         <div>
-          <PlatinumSidebar navigate={navigate}/>
+          <PlatinumSidebar navigate={navigate} slots={[3, 4]}/>
         </div>
       </div>
     </div>

@@ -325,7 +325,7 @@ router.post('/sponsored', auth, requireRole('superadmin'), async (req, res) => {
     const conflict = await db.query(`
       SELECT id FROM sponsored_listings
       WHERE slot_number = $1
-        AND listing_type = $4
+        AND COALESCE(listing_type, 'marketplace') = $4
         AND start_date <= $3
         AND end_date   >= $2
     `, [slot_number, newStart, end_date, listing_type]);
