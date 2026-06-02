@@ -18,6 +18,7 @@ router.get('/', async (req, res) => {
         ON sl.package_id = p.id
         AND sl.start_date <= $1
         AND sl.end_date   >= $1
+        AND COALESCE(sl.listing_type, 'marketplace') = 'marketplace'
       WHERE p.status = 'live'
         AND (p.start_date IS NULL OR p.start_date <= $1)
         AND (p.end_date   IS NULL OR p.end_date   >= $1)
@@ -65,6 +66,7 @@ router.get('/sponsored', async (req, res) => {
       JOIN packages p ON sl.package_id = p.id
       JOIN vendors v ON p.vendor_id = v.id
       WHERE sl.start_date <= $1 AND sl.end_date >= $1
+        AND COALESCE(sl.listing_type, 'marketplace') = 'marketplace'
         AND p.status = 'live'
         AND (p.end_date IS NULL OR p.end_date >= $1)
       ORDER BY sl.slot_number ASC
