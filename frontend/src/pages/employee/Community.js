@@ -56,71 +56,6 @@ function LevelBadge({ level }) {
   );
 }
 
-// ── Image Uploader Component ─────────────────────────────
-function ImageUploader({ imageUrl, setImageUrl }) {
-  const [uploading, setUploading] = useState(false);
-  const [error,     setError]     = useState('');
-  const fileRef = useRef();
-
-  const handleFile = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    if (file.size > 5 * 1024 * 1024) { setError('Image must be under 5MB'); return; }
-    if (!file.type.startsWith('image/')) { setError('Please select an image file'); return; }
-
-    setUploading(true); setError('');
-    try {
-      const fd = new FormData();
-      fd.append('file', file);
-      fd.append('bucket', 'community');
-      fd.append('folder', 'posts');
-      const { data } = await api.post('/upload', fd, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
-      setImageUrl(data.url);
-    } catch (err) {
-      setError('Upload failed — try again');
-    } finally {
-      setUploading(false);
-      e.target.value = '';
-    }
-  };
-
-  return (
-    <div style={{ marginBottom: 12 }}>
-      {!imageUrl ? (
-        <div>
-          <input ref={fileRef} type="file" accept="image/*"
-            onChange={handleFile} style={{ display:'none' }}/>
-          <button type="button" onClick={() => fileRef.current?.click()} disabled={uploading}
-            style={{ background:'#F7F5F2', border:'1.5px dashed #ddd', borderRadius:10,
-              padding:'10px 16px', fontSize:13, color: uploading ? colors.muted : colors.mid,
-              fontFamily:font.body, cursor: uploading ? 'default' : 'pointer',
-              display:'flex', alignItems:'center', gap:8, width:'100%',
-              justifyContent:'center', fontWeight:600 }}>
-            <span style={{ fontSize:18 }}>📸</span>
-            {uploading ? 'Uploading…' : 'Add a photo'}
-          </button>
-          {error && <p style={{ fontSize:12, color:colors.red, marginTop:4, fontWeight:600 }}>{error}</p>}
-        </div>
-      ) : (
-        <div style={{ position:'relative' }}>
-          <img src={imageUrl} alt="preview"
-            style={{ width:'100%', maxHeight:240, objectFit:'cover',
-              borderRadius:10, display:'block' }}/>
-          <button type="button" onClick={() => setImageUrl('')}
-            style={{ position:'absolute', top:8, right:8, background:'rgba(0,0,0,0.55)',
-              color:'#fff', border:'none', borderRadius:'50%', width:28, height:28,
-              fontSize:14, cursor:'pointer', fontFamily:font.body, display:'flex',
-              alignItems:'center', justifyContent:'center' }}>
-            ✕
-          </button>
-        </div>
-      )}
-    </div>
-  );
-}
-
 // ── Post Composer ─────────────────────────────────────────
 function PostComposer({ profile, onPost }) {
   const [open,       setOpen]       = useState(false);
@@ -130,7 +65,6 @@ function PostComposer({ profile, onPost }) {
   const [posting,    setPosting]    = useState(false);
   const [error,      setError]      = useState('');
   const textRef = useRef();
-  const fileRef = useRef();
 
   const handlePost = async () => {
     if (!content.trim()) { setError('Write something first'); return; }
@@ -166,8 +100,23 @@ function PostComposer({ profile, onPost }) {
                 background:'transparent' }}/>
           </div>
 
-          {/* Image upload */}
-          <ImageUploader imageUrl={imageUrl} setImageUrl={setImageUrl}/>
+          {/* Image URL input */}
+          <div style={{ background:'#F7F5F2', borderRadius:10, padding:'10px 14px', marginBottom:12 }}>
+            <p style={{ fontSize:11, fontWeight:700, color:colors.faint,
+              textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:6 }}>
+              📸 Add image URL (optional)
+            </p>
+            <input value={imageUrl} onChange={e=>setImageUrl(e.target.value)}
+              placeholder="https://images.unsplash.com/…"
+              style={{ width:'100%', border:'1.5px solid #eee', borderRadius:8,
+                padding:'8px 12px', fontSize:13, color:colors.dark,
+                fontFamily:font.body, outline:'none', boxSizing:'border-box' }}/>
+            {imageUrl && (
+              <img src={imageUrl} alt="preview" onError={()=>setImageUrl('')}
+                style={{ width:'100%', maxHeight:200, objectFit:'cover',
+                  borderRadius:8, marginTop:8 }}/>
+            )}
+          </div>
 
           {/* Visibility */}
           <div style={{ display:'flex', gap:8, marginBottom:12, alignItems:'center' }}>
@@ -320,19 +269,21 @@ function PostCard({ post, myProfile, onDelete, navigate }) {
         {/* Author row */}
         <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:12 }}>
           <div style={{ display:'flex', alignItems:'center', gap:10, cursor:'pointer' }}
-            onClick={() => post.user_id && navigate(`/community/profile/${post.user_id}`)}>
+            onClick={() => navigate(`/community/profile/${post.user_id}`)}>
             <Avatar name={post.author_name} avatar={post.author_avatar} level={post.author_level}/>
             <div>
               <div style={{ display:'flex', alignItems:'center', gap:6 }}>
                 <span style={{ fontSize:14, fontWeight:700, color:colors.dark }}>{post.author_name}</span>
                 <LevelBadge level={post.author_level}/>
               </div>
-              <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:2, flexWrap:'wrap' }}>
+              <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:2 }}>
                 <span style={{ fontSize:12, color:colors.muted }}>{post.author_company}</span>
-                {post.author_job_title && (
+                {post.author_adventure_type && (
                   <>
                     <span style={{ color:colors.faint }}>·</span>
-                    <span style={{ fontSize:12, color:colors.faint }}>{post.author_job_title}</span>
+                    <span style={{ fontSize:12, color:colors.faint, textTransform:'capitalize' }}>
+                      {post.author_adventure_type}
+                    </span>
                   </>
                 )}
                 <span style={{ color:colors.faint }}>·</span>
@@ -397,7 +348,7 @@ function MatchedTravellers({ matches, navigate }) {
           <div key={i} style={{ background:'rgba(255,255,255,0.08)', borderRadius:14,
             padding:'14px 16px', minWidth:200, flexShrink:0, cursor:'pointer',
             border:'1px solid rgba(255,255,255,0.1)', transition:'background 0.15s' }}
-            onClick={() => m.matched_user_id && navigate(`/community/profile/${m.matched_user_id}`)}>
+            onClick={() => navigate(`/community/profile/${m.matched_user_id}`)}>
             <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:10 }}>
               <Avatar name={m.matched_name} avatar={m.matched_avatar} level={m.matched_level} size={40}/>
               <div>
@@ -420,7 +371,7 @@ function MatchedTravellers({ matches, navigate }) {
                   cursor:'pointer', fontFamily:font.body }}>
                 💬 Message
               </button>
-              <button onClick={e => { e.stopPropagation(); m.matched_user_id && navigate(`/community/profile/${m.matched_user_id}`); }}
+              <button onClick={e => { e.stopPropagation(); navigate(`/community/profile/${m.matched_user_id}`); }}
                 style={{ flex:1, background:'rgba(255,255,255,0.1)', color:'#fff', border:'none',
                   borderRadius:8, padding:'6px', fontSize:11.5, fontWeight:700,
                   cursor:'pointer', fontFamily:font.body }}>
@@ -430,71 +381,6 @@ function MatchedTravellers({ matches, navigate }) {
           </div>
         ))}
       </div>
-    </div>
-  );
-}
-
-// ── Platinum Sponsored Sidebar ───────────────────────────
-function PlatinumSidebar({ navigate, slots }) {
-  const [listings, setListings] = useState([]);
-
-  useEffect(() => {
-    api.get('/community/platinum').then(r => setListings(r.data || [])).catch(() => {});
-  }, []);
-
-  const filtered = listings.filter(l => slots.includes(Number(l.slot_number)));
-  if (!filtered.length) return null;
-
-  return (
-    <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
-      <p style={{ fontSize:9.5, fontWeight:700, color:colors.faint,
-        textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:2 }}>
-        ⭐ Platinum
-      </p>
-      {filtered.map(l => (
-        <div key={l.id} onClick={() => navigate(`/package/${l.package_id}`)}
-          style={{ background:'#fff', border:'1.5px solid #F0C060', borderRadius:14,
-            overflow:'hidden', cursor:'pointer', boxShadow:'0 2px 12px rgba(201,136,42,0.12)',
-            transition:'transform 0.15s, box-shadow 0.15s' }}
-          onMouseEnter={e => { e.currentTarget.style.transform='translateY(-2px)'; e.currentTarget.style.boxShadow='0 6px 20px rgba(201,136,42,0.2)'; }}
-          onMouseLeave={e => { e.currentTarget.style.transform='none'; e.currentTarget.style.boxShadow='0 2px 12px rgba(201,136,42,0.12)'; }}>
-
-          {/* Package image */}
-          <div style={{ height:110, background:'linear-gradient(135deg,#C9882A,#e8a84a)',
-            position:'relative', overflow:'hidden' }}>
-            {l.image_url
-              ? <img src={l.image_url} alt={l.package_title}
-                  style={{ width:'100%', height:'100%', objectFit:'cover' }}/>
-              : <div style={{ width:'100%', height:'100%', display:'flex',
-                  alignItems:'center', justifyContent:'center', fontSize:36 }}>
-                  {l.emoji || '🌍'}
-                </div>
-            }
-            <div style={{ position:'absolute', top:6, left:6,
-              background:'#C9882A', borderRadius:5, padding:'2px 7px' }}>
-              <span style={{ fontSize:9, fontWeight:800, color:'#fff',
-                letterSpacing:'0.06em' }}>⭐ PLATINUM</span>
-            </div>
-          </div>
-
-          {/* Details */}
-          <div style={{ padding:'10px 12px' }}>
-            <p style={{ fontSize:12, fontWeight:700, color:colors.dark,
-              lineHeight:1.3, marginBottom:3 }}>
-              {l.package_title}
-            </p>
-            <p style={{ fontSize:11, color:colors.muted, marginBottom:6 }}>
-              {l.destination} · {l.duration}
-            </p>
-            <p style={{ fontSize:13, fontWeight:700, color:'#C9882A' }}>
-              £{Number(l.price_gbp).toLocaleString()}
-            </p>
-            <p style={{ fontSize:10.5, color:colors.faint, marginTop:2 }}>
-              from £{Math.ceil(l.price_gbp/12)}/mo payroll
-            </p>
-          </div>
-        </div>
-      ))}
     </div>
   );
 }
@@ -518,11 +404,10 @@ export function CommunityFeed() {
       api.get('/community/matches'),
     ]).then(([p, f, m]) => {
       setProfile(p.data);
-      setPosts(f.data || []);
-      setMatches(m.data || []);
-      setHasMore((f.data || []).length === 20);
-    }).catch(err => console.error('Community load error:', err))
-      .finally(() => setLoading(false));
+      setPosts(f.data);
+      setMatches(m.data);
+      setHasMore(f.data.length === 20);
+    }).finally(() => setLoading(false));
   }, []);
 
   const loadMore = async () => {
@@ -569,30 +454,26 @@ export function CommunityFeed() {
     <div style={{ fontFamily:font.body, background:'#F7F5F2', minHeight:'100vh', paddingBottom:80 }}>
 
       {/* Header */}
-      <div style={{ background:'linear-gradient(135deg, #1A2E44 0%, #243d58 100%)', padding:'28px 40px 24px' }}>
-        <div style={{ maxWidth:1200, margin:'0 auto' }}>
-          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:20 }}>
-            <div>
-              <p style={{ fontSize:10.5, fontWeight:700, color:'rgba(255,255,255,0.45)',
-                textTransform:'uppercase', letterSpacing:'0.12em', marginBottom:6 }}>
-                Sabba Community
-              </p>
-              <h1 style={{ fontFamily:font.display, fontSize:32, color:'#fff',
-                fontWeight:700, fontStyle:'italic', marginBottom:6 }}>
-                Adventure Stories
-              </h1>
-              <p style={{ fontSize:13.5, color:'rgba(255,255,255,0.55)', lineHeight:1.6 }}>
-                Share your adventures · Connect with fellow travellers · Earn points
-              </p>
-            </div>
+      <div style={{ background:'#fff', borderBottom:'1px solid #eee', padding:'24px 40px 20px' }}>
+        <div style={{ maxWidth:680, margin:'0 auto', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+          <div>
+            <p style={{ fontSize:10.5, fontWeight:700, color:colors.faint,
+              textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:4 }}>
+              Sabba Community
+            </p>
+            <h1 style={{ fontFamily:font.display, fontSize:28, color:colors.dark,
+              fontWeight:700, fontStyle:'italic' }}>
+              Adventure Stories
+            </h1>
+          </div>
+          <div style={{ display:'flex', alignItems:'center', gap:10 }}>
             {profile && (
               <div style={{ display:'flex', alignItems:'center', gap:8, cursor:'pointer',
-                background:'rgba(255,255,255,0.1)', borderRadius:22,
-                padding:'8px 16px 8px 10px', border:'1px solid rgba(255,255,255,0.15)' }}
-                onClick={() => navigate('/community/profile/me')}>
-                <Avatar name={profile.full_name} avatar={profile.avatar_url} level={profile.level} size={32}/>
+                background:'#F7F5F2', borderRadius:22, padding:'6px 14px 6px 8px' }}
+                onClick={() => profile?.user_id && navigate(`/community/profile/${profile.user_id}`)}>	
+                <Avatar name={profile.full_name} avatar={profile.avatar_url} level={profile.level} size={28}/>
                 <div>
-                  <p style={{ fontSize:13, fontWeight:700, color:'#fff', lineHeight:1, marginBottom:3 }}>
+                  <p style={{ fontSize:12.5, fontWeight:700, color:colors.dark, lineHeight:1 }}>
                     {profile.full_name?.split(' ')[0]}
                   </p>
                   <LevelBadge level={profile.level}/>
@@ -600,112 +481,47 @@ export function CommunityFeed() {
               </div>
             )}
           </div>
-
-          {/* Points explainer + rules */}
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
-            {/* Earn points */}
-            <div style={{ background:'rgba(255,255,255,0.07)', borderRadius:14,
-              padding:'16px 18px', border:'1px solid rgba(255,255,255,0.1)' }}>
-              <p style={{ fontSize:11, fontWeight:700, color:'#f5a66d',
-                textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:10 }}>
-                ⭐ Earn Sabba Points
-              </p>
-              <div style={{ display:'flex', flexDirection:'column', gap:5 }}>
-                {[
-                  ['📝 Post with photo', '20 pts'],
-                  ['✏️ Text post', '10 pts'],
-                  ['💬 Comment', '5 pts'],
-                  ['❤️ Like received', '2 pts'],
-                  ['✈️ Message a match', '30 pts'],
-                ].map(([action, pts]) => (
-                  <div key={action} style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-                    <span style={{ fontSize:12, color:'rgba(255,255,255,0.6)' }}>{action}</span>
-                    <span style={{ fontSize:12, fontWeight:700, color:'#f5a66d' }}>{pts}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Community rules */}
-            <div style={{ background:'rgba(255,255,255,0.07)', borderRadius:14,
-              padding:'16px 18px', border:'1px solid rgba(255,255,255,0.1)' }}>
-              <p style={{ fontSize:11, fontWeight:700, color:'#f5a66d',
-                textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:10 }}>
-                📋 Community Rules
-              </p>
-              <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
-                {[
-                  'Share genuine adventure stories and travel tips',
-                  'Be respectful — this is a professional community',
-                  'No spam, self-promotion or offensive content',
-                  'Daily points cap applies — scales with your level',
-                  'Violations may result in account suspension',
-                ].map((rule, i) => (
-                  <div key={i} style={{ display:'flex', gap:8, alignItems:'flex-start' }}>
-                    <span style={{ fontSize:10, color:'rgba(255,255,255,0.3)', marginTop:2, flexShrink:0 }}>
-                      {i+1}.
-                    </span>
-                    <span style={{ fontSize:12, color:'rgba(255,255,255,0.6)', lineHeight:1.5 }}>{rule}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
         </div>
       </div>
 
-      <div style={{ maxWidth:1200, margin:'0 auto', padding:'24px 20px',
-        display:'grid', gridTemplateColumns:'200px 1fr 200px', gap:24, alignItems:'start' }}>
+      <div style={{ maxWidth:680, margin:'0 auto', padding:'24px 20px' }}>
 
-        {/* Left platinum sidebar — slots 1 & 2 */}
-        <div>
-          <PlatinumSidebar navigate={navigate} slots={[1, 2]}/>
-        </div>
+        {/* Matched travellers */}
+        <MatchedTravellers matches={matches} navigate={navigate}/>
 
-        {/* Main feed column */}
-        <div>
-          {/* Matched travellers */}
-          <MatchedTravellers matches={matches} navigate={navigate}/>
-
-          {/* Post composer */}
-          {profile && <PostComposer profile={profile} onPost={handleNewPost}/>}
+        {/* Post composer */}
+        {profile && <PostComposer profile={profile} onPost={handleNewPost}/>}
 
         {/* Feed */}
-          {posts.length === 0 ? (
-            <div style={{ background:'#fff', borderRadius:16, padding:48, textAlign:'center',
-              border:'1px solid #eee' }}>
-              <p style={{ fontSize:36, marginBottom:12 }}>✈️</p>
-              <p style={{ fontSize:16, fontWeight:700, color:colors.dark, marginBottom:8 }}>
-                Be the first to share your adventure
-              </p>
-              <p style={{ fontSize:13.5, color:colors.muted, lineHeight:1.6 }}>
-                Share your travel stories, tips and photos with the Sabba community.
-              </p>
-            </div>
-          ) : (
-            <>
-              {posts.map(post => (
-                <PostCard key={post.id} post={post} myProfile={profile}
-                  onDelete={handleDelete} navigate={navigate}/>
-              ))}
-              {hasMore && (
-                <div style={{ textAlign:'center', marginTop:20 }}>
-                  <button onClick={loadMore} disabled={loadingMore}
-                    style={{ background:'#fff', border:'1px solid #eee', borderRadius:10,
-                      padding:'10px 28px', fontSize:13.5, fontWeight:600, cursor:'pointer',
-                      color:colors.mid, fontFamily:font.body }}>
-                    {loadingMore ? 'Loading…' : 'Load more posts'}
-                  </button>
-                </div>
-              )}
-            </>
-          )}
-        </div>
-
-        {/* Right platinum sidebar — slots 3 & 4 */}
-        <div>
-          <PlatinumSidebar navigate={navigate} slots={[3, 4]}/>
-        </div>
+        {posts.length === 0 ? (
+          <div style={{ background:'#fff', borderRadius:16, padding:48, textAlign:'center',
+            border:'1px solid #eee' }}>
+            <p style={{ fontSize:36, marginBottom:12 }}>✈️</p>
+            <p style={{ fontSize:16, fontWeight:700, color:colors.dark, marginBottom:8 }}>
+              Be the first to share your adventure
+            </p>
+            <p style={{ fontSize:13.5, color:colors.muted, lineHeight:1.6 }}>
+              Share your travel stories, tips and photos with the Sabba community.
+            </p>
+          </div>
+        ) : (
+          <>
+            {posts.map(post => (
+              <PostCard key={post.id} post={post} myProfile={profile}
+                onDelete={handleDelete} navigate={navigate}/>
+            ))}
+            {hasMore && (
+              <div style={{ textAlign:'center', marginTop:20 }}>
+                <button onClick={loadMore} disabled={loadingMore}
+                  style={{ background:'#fff', border:'1px solid #eee', borderRadius:10,
+                    padding:'10px 28px', fontSize:13.5, fontWeight:600, cursor:'pointer',
+                    color:colors.mid, fontFamily:font.body }}>
+                  {loadingMore ? 'Loading…' : 'Load more posts'}
+                </button>
+              </div>
+            )}
+          </>
+        )}
       </div>
     </div>
   );
@@ -715,7 +531,8 @@ export function CommunityFeed() {
 export function CommunityProfile() {
   const { id }    = useParams();
   const navigate  = useNavigate();
-  const { user, loading: authLoading } = useAuth();
+  const { user }  = useAuth();
+  const isMe      = id === 'me';
   const [profile, setProfile] = useState(null);
   const [posts,   setPosts]   = useState([]);
   const [editing, setEditing] = useState(false);
@@ -723,36 +540,23 @@ export function CommunityProfile() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Wait for auth context to finish verifying the token
-    if (authLoading) return;
-    if (!id || id === 'undefined') { setLoading(false); return; }
-    // Treat as 'me' if id is literally 'me' OR matches the logged-in user's ID
-    const isMe = id === 'me' || (user && id === user.id);
     const endpoint = isMe ? '/community/profile/me' : `/community/profile/${id}`;
     Promise.all([
       api.get(endpoint),
       api.get('/community/feed'),
     ]).then(([p, f]) => {
-      const profileData = p.data;
-      setProfile(profileData);
-      setBio(profileData.bio || '');
-      const userId = profileData.user_id;
-      if (userId) {
-        setPosts((f.data || []).filter(post => post.user_id === userId));
-      }
-    }).catch(err => {
-      console.error('Profile load error:', err);
-      setLoading(false);
+      setProfile(p.data);
+      setBio(p.data.bio || '');
+      const userId = p.data.user_id;
+      setPosts(f.data.filter(post => post.user_id === userId));
     }).finally(() => setLoading(false));
-  }, [id, authLoading, user]);
+  }, [id]);
 
   const saveProfile = async () => {
     await api.put('/community/profile', { bio, opt_out: profile.opt_out });
     setProfile(p => ({ ...p, bio }));
     setEditing(false);
   };
-
-  const isMe = id === 'me' || (user && profile && profile.user_id === user.id);
 
   if (loading) return <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'60vh'}}><Spinner/></div>;
   if (!profile) return <div style={{padding:60,textAlign:'center',color:colors.muted,fontFamily:font.body}}>Profile not found</div>;
@@ -794,9 +598,6 @@ export function CommunityProfile() {
                 </h2>
                 <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
                   <LevelBadge level={level}/>
-                  {profile.job_title && (
-                    <span style={{ fontSize:12.5, color:colors.muted }}>{profile.job_title}</span>
-                  )}
                   <span style={{ fontSize:12.5, color:colors.muted }}>{profile.company_name}</span>
                   {profile.adventure_type && (
                     <span style={{ fontSize:12, color:colors.faint, textTransform:'capitalize',
