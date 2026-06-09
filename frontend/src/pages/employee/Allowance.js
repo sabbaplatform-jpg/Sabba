@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../lib/api';
-import { Button, Spinner, Badge } from '../../components/UI';
+import { Button, Spinner, Badge, SkeletonText } from '../../components/UI';
 import { colors, font } from '../../lib/styles';
 
 // Simple SVG pie chart

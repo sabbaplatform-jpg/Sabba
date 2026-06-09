@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../lib/api';
-import { Badge, Spinner, EmptyState, Button, Modal, StarRating } from '../../components/UI';
+import { Badge, Spinner, EmptyState, Button, Modal, StarRating, SkeletonRow } from '../../components/UI';
 import { colors, font, gradients } from '../../lib/styles';
 
 const MILESTONES = [
