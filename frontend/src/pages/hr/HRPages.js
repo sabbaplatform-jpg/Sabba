@@ -65,9 +65,16 @@ export function HRAdventures() {
     api.get('/bookings/company').then(r => setBookings(r.data)).finally(() => setLoading(false));
   }, []);
 
+  const [processing, setProcessing] = useState({});
+
   const updateStatus = async (id, status) => {
-    await api.patch(`/bookings/${id}/status`, { status });
-    setBookings(bs => bs.map(b => b.id === id ? { ...b, status } : b));
+    setProcessing(p => ({ ...p, [id]: status }));
+    try {
+      await api.patch(`/bookings/${id}/status`, { status });
+      setBookings(bs => bs.map(b => b.id === id ? { ...b, status } : b));
+    } finally {
+      setProcessing(p => { const n = {...p}; delete n[id]; return n; });
+    }
   };
 
   const filtered = bookings.filter(b => {
@@ -131,12 +138,21 @@ export function HRAdventures() {
                 <button onClick={() => setReviewing(b)} style={{ background: '#F7F5F2', color: colors.mid, border: '1px solid #eee', borderRadius: 6, padding: '5px 10px', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', fontFamily: font.body }}>Review</button>
                 {b.status === 'pending' && (
                   <>
-                    <button onClick={() => updateStatus(b.id, 'approved')} style={{ background: colors.greenLight, color: colors.green, border: 'none', borderRadius: 6, padding: '5px 10px', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', fontFamily: font.body }}>Approve</button>
-                    <button onClick={() => updateStatus(b.id, 'cancelled')} style={{ background: colors.redLight, color: colors.red, border: 'none', borderRadius: 6, padding: '5px 10px', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', fontFamily: font.body }}>Reject</button>
+                    <button onClick={() => updateStatus(b.id, 'approved')} disabled={!!processing[b.id]}
+                      style={{ background: processing[b.id]==='approved' ? colors.green : colors.greenLight, color: processing[b.id]==='approved' ? '#fff' : colors.green, border: 'none', borderRadius: 6, padding: '5px 10px', fontSize: 11.5, fontWeight: 700, cursor: processing[b.id] ? 'default' : 'pointer', fontFamily: font.body, opacity: processing[b.id] && processing[b.id]!=='approved' ? 0.5 : 1, transition: 'all 0.15s' }}>
+                      {processing[b.id]==='approved' ? '✓ Approving…' : 'Approve'}
+                    </button>
+                    <button onClick={() => updateStatus(b.id, 'cancelled')} disabled={!!processing[b.id]}
+                      style={{ background: processing[b.id]==='cancelled' ? colors.red : colors.redLight, color: processing[b.id]==='cancelled' ? '#fff' : colors.red, border: 'none', borderRadius: 6, padding: '5px 10px', fontSize: 11.5, fontWeight: 700, cursor: processing[b.id] ? 'default' : 'pointer', fontFamily: font.body, opacity: processing[b.id] && processing[b.id]!=='cancelled' ? 0.5 : 1, transition: 'all 0.15s' }}>
+                      {processing[b.id]==='cancelled' ? '✗ Rejecting…' : 'Reject'}
+                    </button>
                   </>
                 )}
                 {['approved','confirmed','vendor_confirmed'].includes(b.status) && (
-                  <button onClick={() => updateStatus(b.id, 'pending')} style={{ background: '#F7F5F2', color: colors.mid, border: '1px solid #eee', borderRadius: 6, padding: '5px 10px', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', fontFamily: font.body }}>↩ Undo</button>
+                  <button onClick={() => updateStatus(b.id, 'pending')} disabled={!!processing[b.id]}
+                    style={{ background: '#F7F5F2', color: colors.mid, border: '1px solid #eee', borderRadius: 6, padding: '5px 10px', fontSize: 11.5, fontWeight: 700, cursor: processing[b.id] ? 'default' : 'pointer', fontFamily: font.body, opacity: processing[b.id] ? 0.5 : 1 }}>
+                    {processing[b.id]==='pending' ? '↩ Undoing…' : '↩ Undo'}
+                  </button>
                 )}
               </div>
             </div>

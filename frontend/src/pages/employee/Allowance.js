@@ -72,7 +72,26 @@ export default function Allowance() {
 
   useEffect(() => { fetchAllowance(year); }, [year]);
 
-  if (loading) return <Spinner/>;
+  if (loading) return (
+    <div style={{ fontFamily: font.body, background: '#F7F5F2', minHeight: '100vh', paddingBottom: 80 }}>
+      <div style={{ background: '#fff', borderBottom: '1px solid #eee', padding: '28px 40px 24px' }}>
+        <div style={{ height: 36, background: '#f0ede9', borderRadius: 8, width: 220 }}/>
+      </div>
+      <div style={{ maxWidth: 900, margin: '0 auto', padding: '28px 40px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 16, marginBottom: 24 }}>
+          {[1,2,3].map(i => (
+            <div key={i} style={{ background: '#fff', borderRadius: 14, padding: '22px 24px', border: '1px solid #eee' }}>
+              <div style={{ height: 12, background: '#f0ede9', borderRadius: 6, width: '60%', marginBottom: 10 }}/>
+              <div style={{ height: 32, background: '#f0ede9', borderRadius: 8, width: '80%' }}/>
+            </div>
+          ))}
+        </div>
+        <div style={{ background: '#fff', borderRadius: 14, padding: '22px 24px', border: '1px solid #eee' }}>
+          <SkeletonText lines={4}/>
+        </div>
+      </div>
+    </div>
+  );
   if (!data) return <div style={{ padding: 40, fontFamily: font.body, color: colors.muted }}>Could not load allowance data. Please try again.</div>;
 
   const { total_allowance_gbp: total_allowance, used_allowance_gbp: used, remaining_allowance_gbp: remaining, available_years, sabba_points } = data || {};

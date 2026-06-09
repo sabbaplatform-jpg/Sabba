@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
-import { PackageCard, Button, Spinner } from '../../components/UI';
+import { PackageCard, Button, Spinner, SkeletonCard } from '../../components/UI';
 import { colors, font, gradients } from '../../lib/styles';
 
 // ── Add to Cart Popup (same as Marketplace) ───────────────────
@@ -153,7 +153,19 @@ export function EmployeeHome() {
     { icon: '🏠', label: 'Stays',      cat: 'accommodation', grad: gradients.accommodation },
   ];
 
-  if (loading) return <Spinner/>;
+  if (loading) return (
+    <div style={{ fontFamily: font.body, background: '#F7F5F2', minHeight: '100vh', paddingBottom: 80 }}>
+      <div style={{ background: '#fff', borderBottom: '1px solid #eee', padding: '28px 40px 24px' }}>
+        <div style={{ height: 16, background: '#f0ede9', borderRadius: 6, width: 180, marginBottom: 10 }}/>
+        <div style={{ height: 36, background: '#f0ede9', borderRadius: 8, width: 320 }}/>
+      </div>
+      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '28px 40px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 20 }}>
+          {[1,2,3].map(i => <SkeletonCard key={i} height={180}/>)}
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <div style={{ fontFamily: font.body, background: '#F7F5F2', minHeight: '100vh', paddingBottom: 52 }}>

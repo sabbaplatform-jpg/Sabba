@@ -178,6 +178,19 @@ function RequireAdmin({ children }) {
 }
 
 // ── Animated progress bar on page navigation ─────────────────
+// Inject shimmer keyframes globally
+const shimmerStyle = document.createElement('style');
+shimmerStyle.textContent = `
+  @keyframes sabba-shimmer {
+    0%   { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+`;
+if (!document.getElementById('sabba-shimmer')) {
+  shimmerStyle.id = 'sabba-shimmer';
+  document.head.appendChild(shimmerStyle);
+}
+
 function RouteProgress() {
   const location = useLocation();
   const [progress, setProgress] = useState(0);

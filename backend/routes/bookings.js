@@ -156,6 +156,24 @@ router.patch('/:id/status', auth, async (req, res) => {
           VALUES ($1, 'Booking approved', $2, 'info')
         `, [req.user.id,
             `You approved ${b.employee_name}'s booking for ${b.package_title}.`]);
+
+        // Send transactional email to employee
+        const empUser = await db.query('SELECT email FROM users WHERE id=$1', [b.employee_id]);
+        if (empUser.rows.length) {
+          email.sendBookingApproved({
+            to:             empUser.rows[0].email,
+            full_name:      b.employee_name,
+            package_title:  b.package_title,
+            destination:    b.destination,
+            departure_date: b.departure_date,
+            total_amount:   b.total_amount,
+            payment_method: b.payment_method,
+            spread:         b.payroll_months,
+            company_id:     req.user.company_id,
+          }).catch(err => console.error('[EMAIL] booking approved:', err.message));
+        }
+
+        // Send HR approval request email (for future — notify HR when booking submitted)
       }
     }
 

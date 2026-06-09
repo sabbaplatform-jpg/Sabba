@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import api from '../lib/api';
 import { useCart } from '../context/CartContext';
-import { PackageCard, Spinner, EmptyState, Input } from '../components/UI';
+import { PackageCard, Spinner, EmptyState, Input, SkeletonCard } from '../components/UI';
 import { colors, font } from '../lib/styles';
 
 const GOLD   = "#C9882A";
@@ -248,7 +248,9 @@ export default function Marketplace() {
       {/* Results */}
       <div style={{ maxWidth: 1280, margin: '0 auto', padding: '28px 40px' }}>
         {loading ? (
-          <Spinner/>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 20 }}>
+            {[1,2,3,4,5,6].map(i => <SkeletonCard key={i} height={200}/>)}
+          </div>
         ) : fetchError ? (
           <div style={{ textAlign: 'center', padding: '60px 20px' }}>
             <p style={{ fontSize: 32, marginBottom: 12 }}>⚠️</p>

@@ -91,6 +91,60 @@ export function Select({ label, children, ...props }) {
   );
 }
 
+
+// ── Skeleton loading components ───────────────────────────────
+export function SkeletonCard({ height = 200 }) {
+  return (
+    <div style={{
+      background: '#fff', borderRadius: 16, overflow: 'hidden',
+      marginBottom: 16, border: '1px solid #eee',
+    }}>
+      <div style={{
+        height, background: 'linear-gradient(90deg, #f0ede9 25%, #e8e4df 50%, #f0ede9 75%)',
+        backgroundSize: '200% 100%',
+        animation: 'sabba-shimmer 1.5s infinite',
+      }}/>
+      <div style={{ padding: '16px 20px' }}>
+        <div style={{ height: 14, background: '#f0ede9', borderRadius: 6, width: '45%', marginBottom: 8 }}/>
+        <div style={{ height: 12, background: '#f0ede9', borderRadius: 6, width: '70%', marginBottom: 6 }}/>
+        <div style={{ height: 12, background: '#f0ede9', borderRadius: 6, width: '55%' }}/>
+      </div>
+    </div>
+  );
+}
+
+export function SkeletonRow() {
+  return (
+    <div style={{
+      background: '#fff', borderRadius: 12, padding: '16px 20px',
+      marginBottom: 10, border: '1px solid #eee',
+      display: 'flex', alignItems: 'center', gap: 14
+    }}>
+      <div style={{ width: 42, height: 42, borderRadius: '50%', background: '#f0ede9', flexShrink: 0 }}/>
+      <div style={{ flex: 1 }}>
+        <div style={{ height: 13, background: '#f0ede9', borderRadius: 6, width: '40%', marginBottom: 7 }}/>
+        <div style={{ height: 11, background: '#f0ede9', borderRadius: 6, width: '60%' }}/>
+      </div>
+      <div style={{ width: 80, height: 28, background: '#f0ede9', borderRadius: 8 }}/>
+    </div>
+  );
+}
+
+export function SkeletonText({ lines = 3, widths = [] }) {
+  const defaultWidths = ['100%', '85%', '70%', '90%', '60%'];
+  return (
+    <div style={{ padding: '8px 0' }}>
+      {Array.from({ length: lines }).map((_, i) => (
+        <div key={i} style={{
+          height: 13, background: '#f0ede9', borderRadius: 6,
+          width: widths[i] || defaultWidths[i % defaultWidths.length],
+          marginBottom: 8
+        }}/>
+      ))}
+    </div>
+  );
+}
+
 export function Spinner({ size = 28 }) {
   return (
     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: 48 }}>

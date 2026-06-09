@@ -1,5 +1,6 @@
 const router = require('express').Router();
 const db     = require('../lib/db');
+const email  = require('../lib/email');
 const { auth, requireRole } = require('../middleware/auth');
 
 // GET /api/cart
@@ -157,6 +158,40 @@ router.post('/checkout', auth, requireRole('employee'), async (req, res) => {
       INSERT INTO notifications (user_id, title, message, type)
       VALUES ($1,'Booking submitted! 🌍','Your adventure request is with your HR team for approval.','info')
     `, [req.user.id]);
+
+    // Email employee confirmation + HR approval request
+    const userInfo = await db.query(`
+      SELECT u.email, u.full_name, u.company_id,
+        p.title as package_title, p.destination,
+        hr.email as hr_email, hr.full_name as hr_name
+      FROM users u
+      JOIN cart_items ci ON ci.user_id = u.id
+      JOIN packages p ON p.id = ci.package_id
+      LEFT JOIN users hr ON hr.company_id = u.company_id AND hr.role = 'hr'
+      WHERE u.id = $1 LIMIT 1
+    `, [req.user.id]).catch(() => ({ rows: [] }));
+
+    if (userInfo.rows.length) {
+      const info = userInfo.rows[0];
+      // Email employee
+      email.sendBookingSubmitted({
+        to: info.email, full_name: info.full_name,
+        package_title: info.package_title,
+        destination: info.destination,
+        company_id: info.company_id,
+      }).catch(() => {});
+      // Email HR
+      if (info.hr_email) {
+        email.sendHRApprovalRequest({
+          to: info.hr_email, hr_name: info.hr_name,
+          employee_name: info.full_name,
+          package_title: info.package_title,
+          destination: info.destination,
+          total_amount: cart.rows.reduce((s, i) => s + Number(i.price_gbp), 0),
+          company_id: info.company_id,
+        }).catch(() => {});
+      }
+    }
 
     await db.query('DELETE FROM cart_items WHERE user_id=$1', [req.user.id]);
     res.json({ type: 'payroll', booking_ids: bookingIds });

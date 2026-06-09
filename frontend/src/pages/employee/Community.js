@@ -1,4 +1,15 @@
 import { useState, useEffect, useRef } from 'react';
+
+// Simple responsive hook
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  useEffect(() => {
+    const handler = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handler);
+    return () => window.removeEventListener('resize', handler);
+  }, []);
+  return isMobile;
+}
 import { useNavigate, useParams } from 'react-router-dom';
 import api from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
@@ -513,7 +524,7 @@ export function CommunityFeed() {
             )}
           </div>
           {/* Points + rules */}
-          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+          <div style={{display:'grid',gridTemplateColumns:window.innerWidth<768?'1fr':'1fr 1fr',gap:12}}>
             <div style={{background:'rgba(255,255,255,0.07)',borderRadius:14,padding:'16px 18px',border:'1px solid rgba(255,255,255,0.1)'}}>
               <p style={{fontSize:11,fontWeight:700,color:'#f5a66d',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:10}}>⭐ Earn Sabba Points</p>
               {[['📝 Post with photo','20 pts'],['✏️ Text post','10 pts'],['💬 Comment','5 pts'],['❤️ Like received','2 pts'],['✈️ Message a match','30 pts']].map(([a,p])=>(
@@ -537,11 +548,16 @@ export function CommunityFeed() {
       </div>
 
       {/* 3-column layout */}
-      <div style={{maxWidth:1200,margin:'0 auto',padding:'24px 20px',
-        display:'grid',gridTemplateColumns:'200px 1fr 200px',gap:24,alignItems:'start'}}>
+      {(() => {
+        const isMobile = window.innerWidth < 768;
+        return (
+        <div style={{maxWidth:1200,margin:'0 auto',padding:'24px 20px',
+          display:'grid',
+          gridTemplateColumns: isMobile ? '1fr' : '200px 1fr 200px',
+          gap: isMobile ? 16 : 24, alignItems:'start'}}>
 
-        {/* Left — platinum slots 1 & 2 */}
-        <div><PlatinumSidebar navigate={navigate} slots={[1,2]}/></div>
+        {/* Left — platinum slots 1 & 2 — hidden on mobile */}
+        {!isMobile && <div><PlatinumSidebar navigate={navigate} slots={[1,2]}/></div>}
 
         {/* Main feed */}
         <div>
@@ -573,9 +589,11 @@ export function CommunityFeed() {
           )}
         </div>
 
-        {/* Right — platinum slots 3 & 4 */}
-        <div><PlatinumSidebar navigate={navigate} slots={[3,4]}/></div>
+        {/* Right — platinum slots 3 & 4 — hidden on mobile */}
+        {!isMobile && <div><PlatinumSidebar navigate={navigate} slots={[3,4]}/></div>}
       </div>
+        );
+      })()}
     </div>
   );
 }

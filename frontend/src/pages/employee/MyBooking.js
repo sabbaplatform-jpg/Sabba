@@ -76,7 +76,16 @@ export default function MyBooking() {
     setSavingRating(false);
   };
 
-  if (loading) return <Spinner/>;
+  if (loading) return (
+    <div style={{ fontFamily: font.body, background: '#F7F5F2', minHeight: '100vh', paddingBottom: 80 }}>
+      <div style={{ background: '#fff', borderBottom: '1px solid #eee', padding: '28px 40px 24px' }}>
+        <div style={{ height: 36, background: '#f0ede9', borderRadius: 8, width: 260 }}/>
+      </div>
+      <div style={{ maxWidth: 900, margin: '0 auto', padding: '28px 40px' }}>
+        {[1,2,3,4].map(i => <SkeletonRow key={i}/>)}
+      </div>
+    </div>
+  );
 
   // Tab definitions — Upcoming = future departure confirmed/approved, Pending = awaiting HR
   const today = new Date();
