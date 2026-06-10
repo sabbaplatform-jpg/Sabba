@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../lib/api';
+import OnboardingChecklist from './OnboardingChecklist';
 import { useAuth } from '../../context/AuthContext';
 import { Badge, Avatar, Spinner, EmptyState, Button, TableHeader } from '../../components/UI';
 import { colors, font } from '../../lib/styles';
@@ -53,6 +54,7 @@ export default function HRDashboard() {
 
   return (
     <div style={{ fontFamily: font.body, background: '#F7F5F2', minHeight: '100vh', paddingBottom: 80 }}>
+      <OnboardingChecklist/>
 
       {/* Banner */}
       <div style={{ background: '#1C1916', position: 'relative', overflow: 'hidden' }}>

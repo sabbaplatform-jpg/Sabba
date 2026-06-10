@@ -439,6 +439,7 @@ function PlatinumSidebar({ navigate, slots }) {
 export function CommunityFeed() {
   const { user }    = useAuth();
   const navigate    = useNavigate();
+  const isMobile    = useIsMobile();
   const [profile,   setProfile]   = useState(null);
   const [posts,     setPosts]     = useState([]);
   const [matches,   setMatches]   = useState([]);
@@ -524,7 +525,7 @@ export function CommunityFeed() {
             )}
           </div>
           {/* Points + rules */}
-          <div style={{display:'grid',gridTemplateColumns:window.innerWidth<768?'1fr':'1fr 1fr',gap:12}}>
+          <div style={{display:'grid',gridTemplateColumns:isMobile?'1fr':'1fr 1fr',gap:12}}>
             <div style={{background:'rgba(255,255,255,0.07)',borderRadius:14,padding:'16px 18px',border:'1px solid rgba(255,255,255,0.1)'}}>
               <p style={{fontSize:11,fontWeight:700,color:'#f5a66d',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:10}}>⭐ Earn Sabba Points</p>
               {[['📝 Post with photo','20 pts'],['✏️ Text post','10 pts'],['💬 Comment','5 pts'],['❤️ Like received','2 pts'],['✈️ Message a match','30 pts']].map(([a,p])=>(
@@ -548,13 +549,10 @@ export function CommunityFeed() {
       </div>
 
       {/* 3-column layout */}
-      {(() => {
-        const isMobile = window.innerWidth < 768;
-        return (
-        <div style={{maxWidth:1200,margin:'0 auto',padding:'24px 20px',
-          display:'grid',
-          gridTemplateColumns: isMobile ? '1fr' : '200px 1fr 200px',
-          gap: isMobile ? 16 : 24, alignItems:'start'}}>
+      <div style={{maxWidth:1200,margin:'0 auto',padding:'24px 20px',
+        display:'grid',
+        gridTemplateColumns: isMobile ? '1fr' : '200px 1fr 200px',
+        gap: isMobile ? 16 : 24, alignItems:'start'}}>
 
         {/* Left — platinum slots 1 & 2 — hidden on mobile */}
         {!isMobile && <div><PlatinumSidebar navigate={navigate} slots={[1,2]}/></div>}
@@ -592,8 +590,6 @@ export function CommunityFeed() {
         {/* Right — platinum slots 3 & 4 — hidden on mobile */}
         {!isMobile && <div><PlatinumSidebar navigate={navigate} slots={[3,4]}/></div>}
       </div>
-        );
-      })()}
     </div>
   );
 }
@@ -628,8 +624,11 @@ export function CommunityProfile() {
   }, [id, authLoading, user]);
 
   const saveProfile = async () => {
-    await api.put('/community/profile', { bio, opt_out: profile.opt_out });
-    setProfile(p=>({...p, bio}));
+    await api.put('/community/profile', {
+      bio,
+      opt_out: profile.opt_out,
+      avatar_url: profile.avatar_url || null,
+    });
     setEditing(false);
   };
 
@@ -727,6 +726,40 @@ export function CommunityProfile() {
             {/* Bio — editable for own profile */}
             {isMe && editing ? (
               <div>
+                {/* Avatar upload */}
+                <div style={{marginBottom:16}}>
+                  <p style={{fontSize:11,fontWeight:700,color:colors.faint,textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:8}}>Profile photo</p>
+                  <div style={{display:'flex',alignItems:'center',gap:14}}>
+                    <Avatar name={profile.full_name} avatar={profile.avatar_url} level={level} size={56}/>
+                    <div>
+                      <input type="file" accept="image/*" id="community-avatar-upload" style={{display:'none'}}
+                        onChange={async e => {
+                          const file = e.target.files[0];
+                          if (!file) return;
+                          if (file.size > 5*1024*1024) { alert('Image must be under 5MB'); return; }
+                          const fd = new FormData();
+                          fd.append('file', file);
+                          fd.append('bucket', 'community');
+                          fd.append('folder', 'avatars');
+                          try {
+                            const { data } = await api.post('/upload', fd, { headers:{'Content-Type':'multipart/form-data'} });
+                            setProfile(p => ({...p, avatar_url: data.url}));
+                          } catch { alert('Upload failed — try again'); }
+                        }}/>
+                      <label htmlFor="community-avatar-upload"
+                        style={{display:'inline-block',background:'#F7F5F2',border:'1px solid #eee',borderRadius:8,
+                          padding:'7px 14px',fontSize:12.5,fontWeight:700,cursor:'pointer',color:colors.mid}}>
+                        📷 Change photo
+                      </label>
+                      {profile.avatar_url && (
+                        <button onClick={()=>setProfile(p=>({...p,avatar_url:''}))}
+                          style={{marginLeft:8,background:'none',border:'none',color:colors.red,fontSize:12,cursor:'pointer',fontFamily:font.body}}>
+                          Remove
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
                 <textarea value={bio} onChange={e=>setBio(e.target.value)}
                   placeholder="Tell the community about your adventure style…"
                   style={{width:'100%',border:'1.5px solid #eee',borderRadius:10,padding:'10px 14px',

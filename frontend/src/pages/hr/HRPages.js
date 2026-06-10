@@ -1,4 +1,14 @@
 import { useState, useEffect } from 'react';
+
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  useEffect(() => {
+    const h = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', h);
+    return () => window.removeEventListener('resize', h);
+  }, []);
+  return isMobile;
+}
 import { useNavigate } from 'react-router-dom';
 import api from '../../lib/api';
 import { Badge, Avatar, Spinner, EmptyState, Button, Modal, TableHeader } from '../../components/UI';
@@ -120,7 +130,7 @@ export function HRAdventures() {
           {loading ? <Spinner/> : filtered.length === 0 ? (
             <EmptyState emoji="🌍" title="No adventures found" subtitle="Adjust your search or filter"/>
           ) : filtered.map((b, i) => (
-            <div key={b.id} className="row-hover" style={{ display: 'grid', gridTemplateColumns: '1.6fr 1.3fr 0.9fr 0.9fr 0.8fr 0.8fr 1fr 1.4fr', padding: '12px 24px', alignItems: 'center', borderBottom: i < filtered.length - 1 ? '1px solid #f5f5f5' : 'none' }}>
+            <div key={b.id} className="row-hover" style={{ display: 'grid', gridTemplateColumns: window.innerWidth < 768 ? '1fr 1fr' : '1.6fr 1.3fr 0.9fr 0.9fr 0.8fr 0.8fr 1fr 1.4fr', padding: '12px 24px', alignItems: 'center', borderBottom: i < filtered.length - 1 ? '1px solid #f5f5f5' : 'none' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <Avatar initials={b.employee_name?.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}/>
                 <div>
@@ -341,7 +351,7 @@ export function HRAnalytics() {
       <div style={{ maxWidth: 1280, margin: '0 auto', padding: '28px 40px' }}>
 
         {/* Row 1: 4 key stats */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16, marginBottom: 20 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: window.innerWidth<768?'1fr 1fr':'repeat(4,1fr)', gap: 16, marginBottom: 20 }}>
           {[
             { label: 'Total Requests',      value: bookings.length,                           icon: '📋', sub: 'all time' },
             { label: 'Confirmed',           value: confirmed,                                  icon: '✅', sub: `${bookings.length ? Math.round(confirmed/bookings.length*100) : 0}% conversion`, up: true },
