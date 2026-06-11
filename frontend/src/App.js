@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import React, { useEffect, useRef, useState } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { FlagsProvider, useFlags } from './context/FeatureFlagContext';
 import { CartProvider } from './context/CartContext';
 import Nav, { Footer } from './components/Nav';
 import Login from './pages/Login';
@@ -17,6 +18,7 @@ import { font, globalStyles } from './lib/styles';
 
 // HR pages
 import HRDashboard from './pages/hr/HRDashboard';
+import HRMessages from './pages/hr/HRMessages';
 import HREmployees from './pages/hr/HREmployees';
 import HRProfile from './pages/hr/HRProfile';
 import { HRAdventures, HRMarketplace, HRAnalytics, HRIntegrations } from './pages/hr/HRPages';
@@ -100,6 +102,8 @@ function AppRoutes() {
 
                 {/* HR */}
                 <Route path="/hr"              element={<RequireAuth role="hr"><HRDashboard/></RequireAuth>}/>
+                <Route path="/hr/messages"       element={<RequireAuth role="hr"><HRMessages/></RequireAuth>}/>
+                <Route path="/hr/messages/:threadId" element={<RequireAuth role="hr"><HRMessages/></RequireAuth>}/>
                 <Route path="/hr/employees"    element={<RequireAuth role="hr"><HREmployees/></RequireAuth>}/>
                 <Route path="/hr/profile"      element={<RequireAuth role="hr"><HRProfile/></RequireAuth>}/>
                 <Route path="/hr/adventures"   element={<RequireAuth role="hr"><HRAdventures/></RequireAuth>}/>
@@ -219,9 +223,11 @@ function AppInner() {
     <>
       <RouteProgress/>
       <AuthProvider>
+        <FlagsProvider>
         <CartProvider>
           <AppRoutes/>
         </CartProvider>
+        </FlagsProvider>
       </AuthProvider>
     </>
   );

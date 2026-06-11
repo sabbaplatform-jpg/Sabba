@@ -1,12 +1,14 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useFlags } from '../context/FeatureFlagContext';
 import { useCart } from '../context/CartContext';
 import api from '../lib/api';
 import { colors, font } from '../lib/styles';
 
 export default function Nav() {
   const { user, logout } = useAuth();
+  const flags = useFlags();
   const { items: cartItems } = useCart();
   const navigate   = useNavigate();
   const location   = useLocation();
@@ -97,6 +99,7 @@ export default function Nav() {
       { to: '/hr/adventures',    label: 'Adventures'    },
       { to: '/hr/employees',     label: 'Employees'     },
       { to: '/hr/marketplace',   label: 'Marketplace'   },
+      { to: '/hr/messages',      label: 'Messages'      },
       { to: '/hr/analytics',     label: 'Analytics'     },
       { to: '/hr/integrations',  label: 'Integrations'  },
     ],

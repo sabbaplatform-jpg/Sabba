@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useFlags } from '../../context/FeatureFlagContext';
 
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);

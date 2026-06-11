@@ -21,4 +21,25 @@ function requireRole(...roles) {
   };
 }
 
-module.exports = { auth, requireRole };
+// Feature flag middleware — checks if a feature is enabled for the company
+async function requireFlag(flagName) {
+  return async (req, res, next) => {
+    try {
+      const db = require('../lib/db');
+      const companyId = req.user?.company_id || null;
+      // Check company-specific flag first, then global
+      const result = await db.query(`
+        SELECT enabled FROM feature_flags
+        WHERE name = $1 AND (company_id = $2 OR company_id IS NULL)
+        ORDER BY company_id NULLS LAST
+        LIMIT 1
+      `, [flagName, companyId]).catch(() => ({ rows: [] }));
+      // Default to enabled if no flag set
+      const enabled = result.rows.length ? result.rows[0].enabled : true;
+      if (!enabled) return res.status(403).json({ error: `Feature '${flagName}' is not available for your organisation.` });
+      next();
+    } catch { next(); } // fail open — don't block on errors
+  };
+}
+
+module.exports = { auth, requireRole, requireFlag };

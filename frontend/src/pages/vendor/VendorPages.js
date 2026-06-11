@@ -866,6 +866,93 @@ export function VendorProfile() {
 }
 
 // ── Package Form Modal ───────────────────────────────────────
+// ── Package image uploader ────────────────────────────────────
+function PackageImageUploader({ imageUrl, onUpload, onRemove }) {
+  const [uploading, setUploading] = useState(false);
+  const [error,     setError]     = useState('');
+  const [dragOver,  setDragOver]  = useState(false);
+  const fileRef = useRef();
+
+  const handleFile = async (file) => {
+    if (!file) return;
+    if (!file.type.startsWith('image/')) { setError('Please select an image file'); return; }
+    if (file.size > 10 * 1024 * 1024) { setError('Image must be under 10MB'); return; }
+    setUploading(true); setError('');
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      fd.append('bucket', 'packages');
+      fd.append('folder', 'images');
+      const { data } = await api.post('/upload', fd, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      onUpload(data.url);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Upload failed — try again');
+    } finally { setUploading(false); }
+  };
+
+  const onDrop = (e) => {
+    e.preventDefault(); setDragOver(false);
+    const file = e.dataTransfer.files[0];
+    if (file) handleFile(file);
+  };
+
+  return (
+    <div>
+      <label style={{ fontSize: 11.5, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.08em', display: 'block', marginBottom: 6 }}>
+        Package image <span style={{ fontWeight: 400, color: colors.faint }}>(optional)</span>
+      </label>
+
+      {!imageUrl ? (
+        <div
+          onDrop={onDrop}
+          onDragOver={e => { e.preventDefault(); setDragOver(true); }}
+          onDragLeave={() => setDragOver(false)}
+          style={{
+            border: `2px dashed ${dragOver ? colors.orange : uploading ? colors.green : '#ddd'}`,
+            borderRadius: 12, padding: '24px 20px', textAlign: 'center',
+            background: dragOver ? colors.orangeLight : '#fafafa',
+            cursor: 'pointer', transition: 'all 0.15s'
+          }}
+          onClick={() => !uploading && fileRef.current?.click()}>
+          <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }}
+            onChange={e => handleFile(e.target.files[0])}/>
+          <div style={{ fontSize: 28, marginBottom: 8 }}>{uploading ? '⏳' : '🖼️'}</div>
+          <p style={{ fontSize: 13.5, fontWeight: 700, color: uploading ? colors.green : colors.mid, marginBottom: 4 }}>
+            {uploading ? 'Uploading…' : 'Click to upload or drag & drop'}
+          </p>
+          <p style={{ fontSize: 12, color: colors.faint }}>
+            {uploading ? 'Please wait' : 'JPG, PNG, WebP · Max 10MB · Landscape recommended'}
+          </p>
+          {error && <p style={{ fontSize: 12, color: colors.red, fontWeight: 600, marginTop: 8 }}>{error}</p>}
+        </div>
+      ) : (
+        <div style={{ position: 'relative', borderRadius: 12, overflow: 'hidden', border: '1px solid #eee' }}>
+          <img src={imageUrl} alt="Package preview"
+            style={{ width: '100%', height: 180, objectFit: 'cover', display: 'block' }}
+            onError={() => onRemove()}/>
+          <div style={{ position: 'absolute', top: 8, right: 8, display: 'flex', gap: 6 }}>
+            <button type="button" onClick={() => fileRef.current?.click()}
+              style={{ background: 'rgba(0,0,0,0.55)', color: '#fff', border: 'none', borderRadius: 7, padding: '5px 10px', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: font.body }}>
+              📷 Change
+            </button>
+            <button type="button" onClick={onRemove}
+              style={{ background: 'rgba(0,0,0,0.55)', color: '#fff', border: 'none', borderRadius: 7, padding: '5px 10px', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: font.body }}>
+              ✕
+            </button>
+          </div>
+          <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }}
+            onChange={e => handleFile(e.target.files[0])}/>
+        </div>
+      )}
+      <p style={{ fontSize: 11, color: colors.faint, marginTop: 4 }}>
+        If left blank, a colour gradient based on the category will be shown instead.
+      </p>
+    </div>
+  );
+}
+
 function PackageForm({ initial, onClose, onSaved }) {
   const stripDate = v => v ? String(v).split('T')[0] : '';
   const [form, setForm]   = useState(initial ? {
@@ -931,17 +1018,11 @@ function PackageForm({ initial, onClose, onSaved }) {
             <p style={{ fontSize: 11, color: colors.faint, marginTop: 4 }}>Leave as-is for an ongoing package. Set a specific date if the package has a fixed end.</p>
           </div>
         </div>
-        <div>
-          <label style={{ fontSize: 11.5, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.08em', display: 'block', marginBottom: 6 }}>Package image URL <span style={{ fontWeight: 400, color: colors.faint }}>(optional)</span></label>
-          <input value={form.image_url || ''} onChange={set('image_url')} placeholder="https://… (a great photo of the destination)"
-            style={{ width: '100%', border: '1.5px solid #eee', borderRadius: 10, padding: '10px 14px', fontSize: 13.5, color: colors.dark, background: '#fff', outline: 'none', fontFamily: font.body, fontWeight: 500 }}/>
-          {form.image_url && (
-            <div style={{ marginTop: 8, height: 80, borderRadius: 8, overflow: 'hidden', border: '1px solid #eee' }}>
-              <img src={form.image_url} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => e.target.style.display='none'}/>
-            </div>
-          )}
-          <p style={{ fontSize: 11, color: colors.faint, marginTop: 4 }}>If left blank, a gradient based on the category will be shown instead.</p>
-        </div>
+        <PackageImageUploader
+          imageUrl={form.image_url}
+          onUpload={url => setForm(f => ({ ...f, image_url: url }))}
+          onRemove={() => setForm(f => ({ ...f, image_url: '' }))}
+        />
         {error && <p style={{ color: colors.red, fontSize: 13, fontWeight: 600 }}>{error}</p>}
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 8 }}>
           <Button variant="secondary" onClick={onClose}>Cancel</Button>

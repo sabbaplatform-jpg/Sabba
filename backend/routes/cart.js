@@ -1,7 +1,7 @@
 const router = require('express').Router();
 const db     = require('../lib/db');
 const email  = require('../lib/email');
-const { auth, requireRole } = require('../middleware/auth');
+const { auth, requireRole, requireFlag } = require('../middleware/auth');
 
 // GET /api/cart
 router.get('/', auth, requireRole('employee'), async (req, res) => {
@@ -80,6 +80,15 @@ router.post('/checkout', auth, requireRole('employee'), async (req, res) => {
     }
 
     if (payment_method === 'card') {
+      // Check card_payments feature flag
+      const db2 = require('../lib/db');
+      const flagCheck = await db2.query(
+        `SELECT enabled FROM feature_flags WHERE name='card_payments' AND (company_id=$1 OR company_id IS NULL) ORDER BY company_id NULLS LAST LIMIT 1`,
+        [req.user.company_id]
+      ).catch(() => ({ rows: [] }));
+      const cardEnabled = flagCheck.rows.length ? flagCheck.rows[0].enabled : true;
+      if (!cardEnabled) return res.status(403).json({ error: 'Card payments are not enabled for your organisation.' });
+
       const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
       const pointsDiscount = pointsToDeduct / 100;
 

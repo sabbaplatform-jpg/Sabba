@@ -3,12 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import api from '../../lib/api';
 import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
+import { useFlags } from '../../context/FeatureFlagContext';
 import { Button, EmptyState } from '../../components/UI';
 import { colors, font } from '../../lib/styles';
 
 export function Cart() {
   const { items, removeFromCart, total, clearCart } = useCart();
   const { user } = useAuth();
+  const flags = useFlags();
   const navigate = useNavigate();
   const [paymentMethod,  setPaymentMethod]  = useState('payroll');
   const [payrollMonths,  setPayrollMonths]  = useState(6);
@@ -207,7 +209,7 @@ export function Cart() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {[
                     { value: 'payroll', label: 'Payroll deduction', icon: '💳', desc: 'Spread via employer payroll' },
-                    { value: 'card',    label: 'Pay now by card',   icon: '🏦', desc: 'Secure Stripe payment' },
+                    ...(flags.card_payments ? [{ value: 'card', label: 'Pay now by card', icon: '🏦', desc: 'Secure Stripe payment' }] : []),
                   ].map(opt => (
                     <div key={opt.value} onClick={() => setPaymentMethod(opt.value)}
                       style={{ padding: '12px 14px', border: `2px solid ${paymentMethod === opt.value ? colors.orange : '#eee'}`, borderRadius: 10, background: paymentMethod === opt.value ? colors.orangeLight : '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, transition: 'all 0.15s' }}>
