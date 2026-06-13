@@ -149,15 +149,15 @@ export default function HRMessages() {
                           {unread}
                         </span>
                       )}
-                      <span style={{ fontSize: 11, color: colors.faint }}>{timeAgo(t.last_message_at)}</span>
+                      <span style={{ fontSize: 11, color: colors.faint }}>{timeAgo(t.updated_at)}</span>
                     </div>
                   </div>
                   <p style={{ fontSize: 12.5, color: colors.muted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: 3 }}>
-                    {t.participant_names || 'Employee'}
+                    {Array.isArray(t.participants) ? t.participants.map(p => p.name).join(', ') : 'Employee'}
                   </p>
                   {t.last_message && (
                     <p style={{ fontSize: 12, color: colors.faint, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {t.last_message}
+                      {typeof t.last_message === 'object' ? t.last_message.body : t.last_message}
                     </p>
                   )}
                 </div>
@@ -184,8 +184,8 @@ export default function HRMessages() {
                   {active.subject || 'Booking conversation'}
                 </h2>
                 <p style={{ fontSize: 12.5, color: colors.muted }}>
-                  {active.participant_names || 'Conversation'}
-                  {active.booking_id && <span style={{ marginLeft: 8, color: colors.orange, fontWeight: 600 }}>· Booking #{active.booking_id.slice(0,8)}</span>}
+                  {Array.isArray(active.participants) ? active.participants.map(p => p.name).join(', ') : 'Conversation'}
+                  {active.booking_id && <span style={{ marginLeft: 8, color: colors.orange, fontWeight: 600 }}>· Booking #{String(active.booking_id).slice(0,8)}</span>}
                 </p>
               </div>
 
