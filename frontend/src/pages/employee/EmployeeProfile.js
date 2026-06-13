@@ -86,7 +86,10 @@ export function EmployeeProfile() {
           <p style={{ fontSize: 10.5, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>Employee Portal</p>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <h1 style={{ fontFamily: font.display, fontSize: 34, color: colors.dark, fontWeight: 700, fontStyle: 'italic' }}>My profile</h1>
-            <Button small variant="secondary" onClick={() => navigate('/home')}>← Back</Button>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <Button small variant="secondary" onClick={() => navigate('/home')}>← Back</Button>
+              <Button small onClick={() => p.id && navigate(`/community/profile/${p.id}`)}>🌍 Community profile</Button>
+            </div>
           </div>
         </div>
       </div>
@@ -202,6 +205,24 @@ export function EmployeeProfile() {
 
         {/* Points history */}
         <PointsHistory/>
+        {/* Community profile card */}
+        <div className="card" style={{ padding: '20px 24px', marginBottom: 20 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+              <div style={{ width: 44, height: 44, borderRadius: 12, background: 'linear-gradient(135deg, #1A2E44, #243d58)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>
+                🌍
+              </div>
+              <div>
+                <p style={{ fontSize: 14, fontWeight: 700, color: colors.dark, marginBottom: 2 }}>Sabba Community</p>
+                <p style={{ fontSize: 12.5, color: colors.muted }}>Share adventure stories, connect with travel matches, earn Sabba Points</p>
+              </div>
+            </div>
+            <Button small onClick={() => p.id && navigate(`/community/profile/${p.id}`)}>
+              View community profile →
+            </Button>
+          </div>
+        </div>
+
       </div>
     </div>
   );

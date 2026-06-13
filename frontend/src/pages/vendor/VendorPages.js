@@ -130,11 +130,11 @@ export function VendorDashboard() {
       </div>
 
       <div style={{ maxWidth: 1280, margin: '0 auto', padding: '28px 40px' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16, marginBottom: 24 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: window.innerWidth < 768 ? '1fr 1fr' : 'repeat(4,1fr)', gap: 16, marginBottom: 24 }}>
           {stats.map((s, i) => <StatCard key={i} {...s}/>)}
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 20 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: window.innerWidth < 768 ? '1fr' : '1fr 300px', gap: 20 }}>
           {/* Bookings table */}
           <div className="table-wrap">
             <div style={{ padding: '18px 24px 14px', borderBottom: '1px solid #eee', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -574,7 +574,7 @@ export function VendorBookings() {
           {loading ? <Spinner/> : filtered.length === 0 ? (
             <EmptyState emoji="📬" title="No bookings yet" subtitle="Bookings from employees will appear here"/>
           ) : filtered.map((b, i) => (
-            <div key={b.id} className="row-hover" style={{ display: 'grid', gridTemplateColumns: '1.8fr 1.2fr 1.4fr 0.9fr 0.9fr 1fr 1.6fr', padding: '12px 24px', alignItems: 'center', borderBottom: i<filtered.length-1?'1px solid #f5f5f5':'none' }}>
+            <div key={b.id} className="row-hover" style={{ display: 'grid', gridTemplateColumns: window.innerWidth < 768 ? '1fr 1fr' : '1.8fr 1.2fr 1.4fr 0.9fr 0.9fr 1fr 1.6fr', padding: '12px 24px', alignItems: 'center', borderBottom: i<filtered.length-1?'1px solid #f5f5f5':'none' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <Avatar initials={b.employee_name?.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase()}/>
                 <div>
@@ -617,15 +617,20 @@ export function VendorBookings() {
 
 // ── Vendor Earnings ──────────────────────────────────────────
 export function VendorEarnings() {
-  const [data, setData]   = useState(null);
-  const [bookings, setBookings] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [data,      setData]      = useState(null);
+  const [bookings,  setBookings]  = useState([]);
+  const [byPackage, setByPackage] = useState([]);
+  const [loading,   setLoading]   = useState(true);
 
   useEffect(() => {
     Promise.all([
       api.get('/vendors/earnings'),
       api.get('/bookings/vendor'),
-    ]).then(([e, b]) => { setData(e.data); setBookings(b.data); }).finally(() => setLoading(false));
+    ]).then(([e, b]) => {
+      setData(e.data);
+      setBookings(b.data);
+      setByPackage(e.data?.by_package || []);
+    }).finally(() => setLoading(false));
   }, []);
 
   const exportCsv = () => {
@@ -685,12 +690,12 @@ export function VendorEarnings() {
       </div>
 
       <div style={{ maxWidth: 1100, margin: '0 auto', padding: '28px 40px' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16, marginBottom: 24 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: window.innerWidth < 768 ? '1fr 1fr' : 'repeat(4,1fr)', gap: 16, marginBottom: 24 }}>
           {stats.map((s, i) => <StatCard key={i} {...s}/>)}
         </div>
 
         {/* Dark earnings hero */}
-        <div style={{ background: '#1C1916', borderRadius: 20, padding: '36px 40px', marginBottom: 24, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 40, position: 'relative', overflow: 'hidden' }}>
+        <div style={{ background: '#1C1916', borderRadius: 20, padding: '36px 40px', marginBottom: 24, display: 'grid', gridTemplateColumns: window.innerWidth < 768 ? '1fr' : '1fr 1fr', gap: 40, position: 'relative', overflow: 'hidden' }}>
           <div style={{ position: 'absolute', right: -80, top: -80, width: 300, height: 300, borderRadius: '50%', border: '1px solid rgba(212,98,42,0.1)' }}/>
           <div>
             <p style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: 8 }}>Confirmed Revenue</p>
@@ -757,6 +762,69 @@ export function VendorEarnings() {
             {bookings.filter(b => b.status === 'confirmed').length === 0 && <p style={{ fontSize: 13, color: colors.muted }}>No confirmed bookings yet</p>}
           </div>
         </div>
+
+        {/* Per-package performance */}
+        {byPackage.length > 0 && (
+          <div className="card" style={{ padding: '22px 24px', marginTop: 20 }}>
+            <p style={{ fontSize: 15, fontWeight: 700, color: colors.dark, marginBottom: 4 }}>Package Performance</p>
+            <p style={{ fontSize: 12.5, color: colors.muted, marginBottom: 16 }}>How each package is performing across bookings and revenue</p>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: font.body }}>
+                <thead>
+                  <tr style={{ background: '#F7F5F2' }}>
+                    {['Package','Status','Bookings','Revenue','Rating','Price'].map(h => (
+                      <th key={h} style={{ padding: '10px 14px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.07em', borderBottom: '1px solid #eee' }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {byPackage.map((pkg, i) => (
+                    <tr key={pkg.id} style={{ borderBottom: i < byPackage.length-1 ? '1px solid #f5f5f5' : 'none' }}>
+                      <td style={{ padding: '12px 14px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <div style={{ width: 36, height: 36, borderRadius: 8, overflow: 'hidden', flexShrink: 0, background: '#eee' }}>
+                            {pkg.image_url
+                              ? <img src={pkg.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }}/>
+                              : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>{pkg.emoji || '🌍'}</div>
+                            }
+                          </div>
+                          <div>
+                            <p style={{ fontSize: 13, fontWeight: 700, color: colors.dark }}>{pkg.title}</p>
+                            <p style={{ fontSize: 11, color: colors.muted }}>{pkg.destination}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td style={{ padding: '12px 14px' }}>
+                        <span style={{ fontSize: 11.5, fontWeight: 700, color: pkg.status === 'live' ? colors.green : colors.muted, background: pkg.status === 'live' ? colors.greenLight : '#f5f5f5', borderRadius: 5, padding: '3px 8px', textTransform: 'capitalize' }}>
+                          {pkg.status}
+                        </span>
+                      </td>
+                      <td style={{ padding: '12px 14px' }}>
+                        <p style={{ fontSize: 13.5, fontWeight: 700, color: colors.dark }}>{pkg.confirmed_bookings}</p>
+                        <p style={{ fontSize: 11, color: colors.faint }}>{pkg.total_bookings} total</p>
+                      </td>
+                      <td style={{ padding: '12px 14px' }}>
+                        <p style={{ fontFamily: font.display, fontSize: 16, fontWeight: 700, color: Number(pkg.revenue) > 0 ? colors.orange : colors.muted }}>
+                          £{Number(pkg.revenue).toLocaleString()}
+                        </p>
+                      </td>
+                      <td style={{ padding: '12px 14px' }}>
+                        <p style={{ fontSize: 13, color: colors.dark }}>
+                          {Number(pkg.avg_rating) > 0 ? `${Number(pkg.avg_rating).toFixed(1)} ★` : '—'}
+                          {pkg.review_count > 0 && <span style={{ fontSize: 11, color: colors.faint, marginLeft: 4 }}>({pkg.review_count})</span>}
+                        </p>
+                      </td>
+                      <td style={{ padding: '12px 14px' }}>
+                        <p style={{ fontSize: 13.5, fontWeight: 600, color: colors.dark }}>£{Number(pkg.price_gbp).toLocaleString()}</p>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
       </div>
     </div>
   );

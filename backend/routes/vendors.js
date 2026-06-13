@@ -157,7 +157,29 @@ router.get('/earnings', auth, requireRole('vendor'), async (req, res) => {
       WHERE p.vendor_id = $1
     `, [vendor.rows[0].id]);
 
-    res.json({ monthly: monthly.rows, totals: totals.rows[0] });
+    // Per-package breakdown
+    const byPackage = await db.query(`
+      SELECT
+        p.id, p.title, p.destination, p.category, p.price_gbp, p.image_url, p.emoji,
+        COUNT(b.id)                                                    AS total_bookings,
+        COUNT(CASE WHEN b.status IN ('confirmed','approved') THEN 1 END) AS confirmed_bookings,
+        COALESCE(SUM(CASE WHEN b.status IN ('confirmed','approved') THEN b.total_amount END), 0) AS revenue,
+        COALESCE(AVG(pr.rating), 0)                                    AS avg_rating,
+        COUNT(pr.id)                                                   AS review_count,
+        p.status
+      FROM packages p
+      LEFT JOIN bookings b ON b.package_id = p.id
+      LEFT JOIN package_ratings pr ON pr.package_id = p.id
+      WHERE p.vendor_id = $1
+      GROUP BY p.id
+      ORDER BY revenue DESC
+    `, [vendor.rows[0].id]);
+
+    res.json({
+      monthly:    monthly.rows,
+      totals:     totals.rows[0],
+      by_package: byPackage.rows,
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
