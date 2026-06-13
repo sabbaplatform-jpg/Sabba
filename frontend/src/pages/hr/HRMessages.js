@@ -49,8 +49,8 @@ export default function HRMessages() {
     navigate(`/hr/messages/${id}`, { replace: true });
     try {
       const { data } = await api.get(`/messages/threads/${id}`);
-      setActive(data.thread);
-      setMessages(data.messages || []);
+      setActive(data.thread || data);
+      setMessages(Array.isArray(data.messages) ? data.messages : []);
       setThreads(ts => ts.map(t => t.id === id ? { ...t, unread_count: '0' } : t));
     } finally { setThreadLoad(false); }
   };
@@ -62,7 +62,7 @@ export default function HRMessages() {
       await api.post(`/messages/threads/${active.id}/reply`, { body: reply });
       setReply('');
       const { data } = await api.get(`/messages/threads/${active.id}`);
-      setMessages(data.messages || []);
+      setMessages(Array.isArray(data.messages) ? data.messages : []);
       fetchThreads();
     } finally { setSending(false); }
   };
@@ -191,21 +191,22 @@ export default function HRMessages() {
 
               {/* Messages */}
               <div style={{ flex: 1, overflowY: 'auto', padding: '20px 22px', display: 'flex', flexDirection: 'column', gap: 14 }}>
-                {messages.length === 0 ? (
+                {!messages || messages.length === 0 ? (
                   <p style={{ color: colors.muted, fontSize: 13.5, textAlign: 'center', marginTop: 40 }}>No messages in this thread yet.</p>
-                ) : messages.map(m => {
+                ) : (Array.isArray(messages) ? messages : []).map(m => {
+                  if (!m || typeof m !== 'object') return null;
                   const isMe = m.sender_id === user?.id;
                   return (
-                    <div key={m.id} style={{ display: 'flex', flexDirection: 'column', alignItems: isMe ? 'flex-end' : 'flex-start' }}>
+                    <div key={m.id || Math.random()} style={{ display: 'flex', flexDirection: 'column', alignItems: isMe ? 'flex-end' : 'flex-start' }}>
                       <div style={{
                         maxWidth: '70%', padding: '10px 14px', borderRadius: isMe ? '14px 14px 4px 14px' : '14px 14px 14px 4px',
                         background: isMe ? colors.dark : '#F7F5F2',
                         color: isMe ? '#fff' : colors.dark,
                       }}>
-                        <p style={{ fontSize: 13.5, lineHeight: 1.6 }}>{m.body}</p>
+                        <p style={{ fontSize: 13.5, lineHeight: 1.6 }}>{String(m.body || '')}</p>
                       </div>
                       <p style={{ fontSize: 11, color: colors.faint, marginTop: 3, paddingLeft: isMe ? 0 : 4, paddingRight: isMe ? 4 : 0 }}>
-                        {m.sender_name} · {timeAgo(m.created_at)}
+                        {String(m.sender_name || '')} · {timeAgo(m.created_at)}
                       </p>
                     </div>
                   );

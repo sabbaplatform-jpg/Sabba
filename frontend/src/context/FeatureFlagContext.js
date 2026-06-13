@@ -21,21 +21,21 @@ export function FlagsProvider({ children }) {
 
   useEffect(() => {
     if (!user) return;
-    // Fetch flags scoped to this user's company + global overrides
+    // Only superadmin can call /admin/feature-flags
+    // All other roles use defaults (flags stay on unless superadmin disables)
+    if (user.role !== 'superadmin') return;
     api.get('/admin/feature-flags').then(({ data }) => {
       const resolved = { ...FLAG_DEFAULTS };
-      // Apply global flags first, then company-specific (company overrides global)
       const sorted = [...(data || [])].sort((a, b) =>
         (a.company_id ? 1 : 0) - (b.company_id ? 1 : 0)
       );
       for (const flag of sorted) {
-        // Apply if global or matches user's company
         if (!flag.company_id || flag.company_id === user.company_id) {
           resolved[flag.name] = flag.enabled;
         }
       }
       setFlags(resolved);
-    }).catch(() => {}); // fail silently — defaults keep features on
+    }).catch(() => {});
   }, [user]);
 
   return (
