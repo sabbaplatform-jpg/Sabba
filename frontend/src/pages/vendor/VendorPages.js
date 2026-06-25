@@ -1121,7 +1121,7 @@ export function VendorTeam() {
       setTeam(r.data);
       const me = r.data.find(m => m.id === user?.id);
       setIsPrimary(me?.is_primary_user || false);
-    }).catch(()=>{}).finally(() => setLoading(false));
+    }).catch(() => {}).finally(() => setLoading(false));
   };
   useEffect(() => { fetchTeam(); }, []);
 
@@ -1171,33 +1171,35 @@ export function VendorTeam() {
   );
 
   return (
-    <VendorLayout active="team">
-      <div style={{ background:'#1C1916', padding:'32px 36px 28px' }}>
-        <p style={{ fontSize:10.5, fontWeight:700, color:'rgba(212,98,42,0.8)', textTransform:'uppercase', letterSpacing:'0.12em', marginBottom:6 }}>Vendor Portal · Team</p>
-        <h1 style={{ fontFamily:font.display, fontSize:34, color:'#fff', fontWeight:700, fontStyle:'italic' }}>Team access</h1>
-        <p style={{ fontSize:14, color:'rgba(255,255,255,0.5)', marginTop:8 }}>
-          {isPrimary ? 'Manage who can access your vendor portal. You are the primary account holder.' : 'You have secondary access to this vendor account.'}
-        </p>
+    <div style={{ fontFamily: font.body, background: '#F7F5F2', minHeight: '100vh', paddingBottom: 80 }}>
+      <div style={{ background: '#fff', borderBottom: '1px solid #eee', padding: '28px 40px 24px' }}>
+        <div style={{ maxWidth: 1280, margin: '0 auto' }}>
+          <p style={{ fontSize: 10.5, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>Vendor Portal</p>
+          <h1 style={{ fontFamily: font.display, fontSize: 34, color: colors.dark, fontWeight: 700, fontStyle: 'italic', marginBottom: 4 }}>Team access</h1>
+          <p style={{ fontSize: 14, color: colors.muted }}>
+            {isPrimary ? 'Manage who can access your vendor portal. You are the primary account holder.' : 'You have secondary access to this vendor account.'}
+          </p>
+        </div>
       </div>
 
-      <div style={{ padding:'28px 36px' }}>
+      <div style={{ maxWidth: 1280, margin: '0 auto', padding: '28px 40px' }}>
         {!isPrimary && (
-          <div style={{ background:'#FEF3C7', border:'1px solid #F59E0B', borderRadius:12, padding:'14px 18px', marginBottom:20 }}>
-            <p style={{ fontSize:13.5, fontWeight:700, color:'#92400E' }}>Secondary access</p>
-            <p style={{ fontSize:13, color:'#78350F', marginTop:4 }}>Only the primary account holder can add or remove team members.</p>
+          <div style={{ background: '#FEF3C7', border: '1px solid #F59E0B', borderRadius: 12, padding: '14px 18px', marginBottom: 20 }}>
+            <p style={{ fontSize: 13.5, fontWeight: 700, color: '#92400E' }}>Secondary access</p>
+            <p style={{ fontSize: 13, color: '#78350F', marginTop: 4 }}>Only the primary account holder can add or remove team members.</p>
           </div>
         )}
 
         {editMember && (
           <Modal title={'Edit — ' + editMember.full_name} onClose={() => { setEditMember(null); setError(''); }} width={520}>
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14, marginBottom:14 }}>
-              <F k="full_name" label="Full name"    placeholder={editMember.full_name}/>
-              <F k="email"     label="Email"         placeholder={editMember.email}/>
-              <F k="job_title" label="Job title"     placeholder={editMember.job_title||'—'}/>
-              <F k="password"  label="New password"  placeholder="Leave blank to keep current" type="password"/>
+              <F k="full_name" label="Full name"   placeholder={editMember.full_name}/>
+              <F k="email"     label="Email"        placeholder={editMember.email}/>
+              <F k="job_title" label="Job title"    placeholder={editMember.job_title||'—'}/>
+              <F k="password"  label="New password" placeholder="Leave blank to keep current" type="password"/>
             </div>
-            {error   && <p style={{ fontSize:13, color:colors.red,   fontWeight:700, marginBottom:10 }}>{"⚠ " + error}</p>}
-            {success && <p style={{ fontSize:13, color:colors.green, fontWeight:700, marginBottom:10 }}>{"✓ " + success}</p>}
+            {error   && <p style={{ fontSize:13, color:colors.red,   fontWeight:700, marginBottom:10 }}>{'⚠ ' + error}</p>}
+            {success && <p style={{ fontSize:13, color:colors.green, fontWeight:700, marginBottom:10 }}>{'✓ ' + success}</p>}
             <div style={{ display:'flex', gap:10, justifyContent:'flex-end' }}>
               <Button variant="secondary" onClick={() => { setEditMember(null); setError(''); }}>Cancel</Button>
               <Button onClick={update} disabled={saving}>{saving ? 'Saving…' : 'Save changes'}</Button>
@@ -1217,8 +1219,8 @@ export function VendorTeam() {
             <div style={{ background:colors.orangeLight, border:'1px solid rgba(212,98,42,0.2)', borderRadius:10, padding:'10px 14px', marginBottom:14 }}>
               <p style={{ fontSize:12.5, color:colors.orange, fontWeight:600 }}>Secondary users share the same vendor profile, packages and bookings. They cannot add or remove other team members.</p>
             </div>
-            {error   && <p style={{ fontSize:13, color:colors.red,   fontWeight:700, marginBottom:10 }}>{"⚠ " + error}</p>}
-            {success && <p style={{ fontSize:13, color:colors.green, fontWeight:700, marginBottom:10 }}>{"✓ " + success}</p>}
+            {error   && <p style={{ fontSize:13, color:colors.red,   fontWeight:700, marginBottom:10 }}>{'⚠ ' + error}</p>}
+            {success && <p style={{ fontSize:13, color:colors.green, fontWeight:700, marginBottom:10 }}>{'✓ ' + success}</p>}
             <div style={{ display:'flex', gap:10, justifyContent:'flex-end' }}>
               <Button variant="secondary" onClick={() => { setShowAdd(false); setError(''); }}>Cancel</Button>
               <Button onClick={add} disabled={saving}>{saving ? 'Adding…' : 'Add team member'}</Button>
@@ -1232,9 +1234,11 @@ export function VendorTeam() {
         </div>
 
         {loading ? <Spinner/> : (
-          <div className="table-wrap">
+          <div style={{ background:'#fff', borderRadius:16, border:'1px solid #eee', overflow:'hidden' }}>
             <TableHeader cols={['Name','Email','Job title','Role','Added','Actions']} template="1.8fr 2.2fr 1.4fr 1fr 1.2fr 1.4fr"/>
-            {team.map((member, i) => {
+            {team.length === 0 ? (
+              <EmptyState emoji="👥" title="No team members yet" subtitle="Add a team member to give them access to this vendor portal"/>
+            ) : team.map((member, i) => {
               const isMe = member.id === user?.id;
               return (
                 <div key={member.id} className="row-hover"
@@ -1261,7 +1265,7 @@ export function VendorTeam() {
                           style={{ background:colors.redLight, color:colors.red, border:'none', borderRadius:6, padding:'5px 10px', fontSize:11.5, fontWeight:700, cursor:'pointer', fontFamily:font.body }}>Remove</button>
                       </>
                     )}
-                    {(isMe && !isPrimary) && <span style={{ fontSize:12, color:colors.faint, fontStyle:'italic' }}>That's you</span>}
+                    {isMe && !isPrimary && <span style={{ fontSize:12, color:colors.faint, fontStyle:'italic' }}>That's you</span>}
                     {member.is_primary_user && !isMe && <span style={{ fontSize:12, color:colors.faint, fontStyle:'italic' }}>Primary</span>}
                   </div>
                 </div>
@@ -1270,6 +1274,6 @@ export function VendorTeam() {
           </div>
         )}
       </div>
-    </VendorLayout>
+    </div>
   );
 }
