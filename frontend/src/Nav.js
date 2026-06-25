@@ -99,6 +99,7 @@ export default function Nav() {
       { to: '/hr/marketplace',   label: 'Marketplace'   },
       { to: '/hr/analytics',     label: 'Analytics'     },
       { to: '/hr/integrations',  label: 'Integrations'  },
+      { to: '/hr/team',          label: 'Team'          },
     ],
     employee: [
       { to: '/home',       label: 'Home'      },

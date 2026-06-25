@@ -34,7 +34,7 @@ import Allowance from './pages/employee/Allowance';
 import { CommunityFeed, CommunityProfile } from './pages/employee/Community';
 
 // Vendor pages
-import { VendorDashboard, VendorPackages, VendorBookings, VendorEarnings, VendorProfile } from './pages/vendor/VendorPages';
+import { VendorDashboard, VendorPackages, VendorBookings, VendorEarnings, VendorProfile, VendorTeam } from './pages/vendor/VendorPages';
 
 function RequireAuth({ children, role }) {
   const { user, loading } = useAuth();
@@ -109,6 +109,7 @@ function AppRoutes() {
                 <Route path="/hr/adventures"   element={<RequireAuth role="hr"><HRAdventures/></RequireAuth>}/>
                 <Route path="/hr/marketplace"  element={<RequireAuth role="hr"><HRMarketplace/></RequireAuth>}/>
                 <Route path="/hr/analytics"    element={<RequireAuth role="hr"><HRAnalytics/></RequireAuth>}/>
+                <Route path="/hr/team" element={<RequireAuth role="hr"><HRTeam/></RequireAuth>}/>
                 <Route path="/hr/integrations" element={<RequireAuth role="hr"><HRIntegrations/></RequireAuth>}/>
 
                 {/* Employee */}
@@ -126,7 +127,7 @@ function AppRoutes() {
                 <Route path="/vendor"          element={<RequireAuth role="vendor"><VendorDashboard/></RequireAuth>}/>
                 <Route path="/vendor/packages" element={<RequireAuth role="vendor"><VendorPackages/></RequireAuth>}/>
                 <Route path="/vendor/bookings" element={<RequireAuth role="vendor"><VendorBookings/></RequireAuth>}/>
-                <Route path="/vendor/team" element={<VendorTeam/>}/>
+                <Route path="/vendor/team" element={<RequireAuth role="vendor"><VendorTeam/></RequireAuth>}/>
               <Route path="/vendor/earnings" element={<RequireAuth role="vendor"><VendorEarnings/></RequireAuth>}/>
                 <Route path="/vendor/profile"  element={<RequireAuth role="vendor"><VendorProfile/></RequireAuth>}/>
 
