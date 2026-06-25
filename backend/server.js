@@ -67,6 +67,9 @@ app.use(express.json());
 app.use('/api', apiLimiter);
 
 // ── Routes ──────────────────────────────────────────────────
+const hrTeamRouter = require('./routes/hrteam');
+app.use('/api/hr/team', hrTeamRouter);
+
 app.use('/api/auth',          require('./routes/auth'));
 app.use('/api/packages',      require('./routes/packages'));
 app.use('/api/bookings',      require('./routes/bookings'));

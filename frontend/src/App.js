@@ -21,7 +21,7 @@ import HRDashboard from './pages/hr/HRDashboard';
 import HRMessages from './pages/hr/HRMessages';
 import HREmployees from './pages/hr/HREmployees';
 import HRProfile from './pages/hr/HRProfile';
-import { HRAdventures, HRMarketplace, HRAnalytics, HRIntegrations } from './pages/hr/HRPages';
+import { HRAdventures, HRTeam, HRMarketplace, HRAnalytics, HRIntegrations } from './pages/hr/HRPages';
 
 // Employee pages
 import { EmployeeHome } from './pages/employee/EmployeeHome';
@@ -126,7 +126,8 @@ function AppRoutes() {
                 <Route path="/vendor"          element={<RequireAuth role="vendor"><VendorDashboard/></RequireAuth>}/>
                 <Route path="/vendor/packages" element={<RequireAuth role="vendor"><VendorPackages/></RequireAuth>}/>
                 <Route path="/vendor/bookings" element={<RequireAuth role="vendor"><VendorBookings/></RequireAuth>}/>
-                <Route path="/vendor/earnings" element={<RequireAuth role="vendor"><VendorEarnings/></RequireAuth>}/>
+                <Route path="/vendor/team" element={<VendorTeam/>}/>
+              <Route path="/vendor/earnings" element={<RequireAuth role="vendor"><VendorEarnings/></RequireAuth>}/>
                 <Route path="/vendor/profile"  element={<RequireAuth role="vendor"><VendorProfile/></RequireAuth>}/>
 
                 {/* Messages */}

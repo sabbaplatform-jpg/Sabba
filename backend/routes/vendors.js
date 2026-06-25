@@ -202,4 +202,89 @@ router.get('/all', auth, requireRole('superadmin'), async (req, res) => {
   }
 });
 
+
+
+// ══════════════════════════════════════════════════════════════
+// VENDOR MULTI-USER — OPTION B (primary / secondary)
+// ══════════════════════════════════════════════════════════════
+
+// ── GET /api/vendors/team ────────────────────────────────────
+router.get('/team', auth, requireRole('vendor'), async (req, res) => {
+  try {
+    const vendor = await db.query(`SELECT id FROM vendors WHERE user_id=$1`, [req.user.id]);
+    if (!vendor.rows.length) return res.status(404).json({ error: 'Vendor not found' });
+    const result = await db.query(
+      `SELECT u.id, u.email, u.full_name, u.job_title, u.created_at, v2.is_primary_user
+       FROM vendors v2 JOIN users u ON v2.user_id=u.id
+       WHERE v2.company_name=(SELECT company_name FROM vendors WHERE id=$1)
+       ORDER BY v2.is_primary_user DESC, u.created_at ASC`,
+      [vendor.rows[0].id]
+    );
+    res.json(result.rows);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ── POST /api/vendors/team ───────────────────────────────────
+router.post('/team', auth, requireRole('vendor'), async (req, res) => {
+  try {
+    const primary = await db.query(`SELECT * FROM vendors WHERE user_id=$1 AND is_primary_user=true`, [req.user.id]);
+    if (!primary.rows.length) return res.status(403).json({ error: 'Only the primary account holder can add team members' });
+    const v = primary.rows[0];
+    const { full_name, email, job_title, password } = req.body;
+    if (!full_name || !email || !password) return res.status(400).json({ error: 'full_name, email and password are required' });
+    const existing = await db.query(`SELECT id FROM users WHERE email=$1`, [email.toLowerCase().trim()]);
+    if (existing.rows.length) return res.status(409).json({ error: 'An account with this email already exists' });
+    const bcrypt = require('bcryptjs');
+    const hash = await bcrypt.hash(password, 10);
+    const newUser = await db.query(
+      `INSERT INTO users (email,full_name,job_title,role,password_hash) VALUES ($1,$2,$3,'vendor',$4) RETURNING id,email,full_name,job_title`,
+      [email.toLowerCase().trim(), full_name, job_title||null, hash]
+    );
+    await db.query(
+      `INSERT INTO vendors (user_id,company_name,category,description,website,contact_email,contact_phone,commission_rate,status,is_primary_user)
+       SELECT $1,company_name,category,description,website,contact_email,contact_phone,commission_rate,status,false FROM vendors WHERE id=$2`,
+      [newUser.rows[0].id, v.id]
+    );
+    res.status(201).json({ ...newUser.rows[0], is_primary_user: false });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ── PATCH /api/vendors/team/:userId ─────────────────────────
+router.patch('/team/:userId', auth, requireRole('vendor'), async (req, res) => {
+  try {
+    const primary = await db.query(`SELECT * FROM vendors WHERE user_id=$1 AND is_primary_user=true`, [req.user.id]);
+    if (!primary.rows.length) return res.status(403).json({ error: 'Only the primary account holder can edit team members' });
+    const { full_name, email, job_title, password } = req.body;
+    const fields=[]; const vals=[]; let idx=1;
+    if (full_name !== undefined) { fields.push(`full_name=$${idx++}`); vals.push(full_name); }
+    if (email     !== undefined) { fields.push(`email=$${idx++}`);     vals.push(email.toLowerCase().trim()); }
+    if (job_title !== undefined) { fields.push(`job_title=$${idx++}`); vals.push(job_title); }
+    if (password  !== undefined && password.length >= 8) {
+      const bcrypt = require('bcryptjs');
+      fields.push(`password_hash=$${idx++}`);
+      vals.push(await bcrypt.hash(password, 10));
+    }
+    if (!fields.length) return res.status(400).json({ error: 'Nothing to update' });
+    vals.push(req.params.userId);
+    const result = await db.query(
+      `UPDATE users SET ${fields.join(',')} WHERE id=$${idx} AND role='vendor' RETURNING id,email,full_name,job_title`, vals
+    );
+    if (!result.rows.length) return res.status(404).json({ error: 'User not found' });
+    res.json(result.rows[0]);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ── DELETE /api/vendors/team/:userId ────────────────────────
+router.delete('/team/:userId', auth, requireRole('vendor'), async (req, res) => {
+  try {
+    const primary = await db.query(`SELECT * FROM vendors WHERE user_id=$1 AND is_primary_user=true`, [req.user.id]);
+    if (!primary.rows.length) return res.status(403).json({ error: 'Only the primary account holder can remove team members' });
+    const target = await db.query(`SELECT is_primary_user FROM vendors WHERE user_id=$1`, [req.params.userId]);
+    if (target.rows[0]?.is_primary_user) return res.status(400).json({ error: 'Cannot remove the primary account holder' });
+    await db.query(`DELETE FROM vendors WHERE user_id=$1`, [req.params.userId]);
+    await db.query(`DELETE FROM users WHERE id=$1 AND role='vendor'`, [req.params.userId]);
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 module.exports = router;

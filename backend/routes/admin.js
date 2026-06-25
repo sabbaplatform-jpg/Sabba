@@ -922,4 +922,234 @@ router.patch('/profile/avatar', auth, requireAdmin, async (req, res) => {
   }
 });
 
+
+// ══════════════════════════════════════════════════════════
+// HR ADMIN MANAGEMENT (Super Admin)
+// ══════════════════════════════════════════════════════════
+
+// GET /api/admin/companies/:id/hr-users — list HR admins (extended)
+// (overrides the simpler one above — keep both, this one richer)
+router.get('/companies/:id/hr-admins', auth, requireAdmin, async (req, res) => {
+  try {
+    const result = await db.query(
+      `SELECT id, email, full_name, job_title, created_at
+       FROM users WHERE company_id=$1 AND role='hr' ORDER BY full_name`,
+      [req.params.id]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/admin/companies/:id/hr-admins — create HR admin
+router.post('/companies/:id/hr-admins', auth, requireAdmin, async (req, res) => {
+  try {
+    const { full_name, email, job_title, password } = req.body;
+    if (!full_name || !email || !password)
+      return res.status(400).json({ error: 'full_name, email and password are required' });
+    const bcrypt = require('bcryptjs');
+    const hash = await bcrypt.hash(password, 10);
+    const result = await db.query(
+      `INSERT INTO users (email, full_name, role, company_id, password_hash, job_title)
+       VALUES ($1,$2,'hr',$3,$4,$5) RETURNING id, email, full_name, job_title, created_at`,
+      [email.toLowerCase().trim(), full_name.trim(), req.params.id, hash, job_title || null]
+    );
+    await db.query(
+      `INSERT INTO audit_log (actor_id, action, target_id, target_type, meta)
+       VALUES ($1,'create_hr_admin',$2,'user',$3)`,
+      [req.user.id, result.rows[0].id, JSON.stringify({ email, company_id: req.params.id })]
+    ).catch(() => {});
+    res.status(201).json(result.rows[0]);
+  } catch (err) {
+    if (err.code === '23505') return res.status(409).json({ error: 'Email already in use' });
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PATCH /api/admin/hr-admins/:id — update HR admin (name, email, title, password)
+router.patch('/hr-admins/:id', auth, requireAdmin, async (req, res) => {
+  try {
+    const { full_name, email, job_title, password } = req.body;
+    const fields = []; const vals = []; let i = 1;
+    if (full_name)  { fields.push(`full_name=$${i++}`);  vals.push(full_name.trim()); }
+    if (email)      { fields.push(`email=$${i++}`);       vals.push(email.toLowerCase().trim()); }
+    if (job_title !== undefined) { fields.push(`job_title=$${i++}`); vals.push(job_title || null); }
+    if (password) {
+      const bcrypt = require('bcryptjs');
+      const hash = await bcrypt.hash(password, 10);
+      fields.push(`password_hash=$${i++}`);
+      vals.push(hash);
+    }
+    if (!fields.length) return res.status(400).json({ error: 'Nothing to update' });
+    vals.push(req.params.id);
+    const result = await db.query(
+      `UPDATE users SET ${fields.join(',')} WHERE id=$${i} AND role='hr'
+       RETURNING id, email, full_name, job_title`,
+      vals
+    );
+    if (!result.rows.length) return res.status(404).json({ error: 'HR admin not found' });
+    await db.query(
+      `INSERT INTO audit_log (actor_id, action, target_id, target_type, meta)
+       VALUES ($1,'update_hr_admin',$2,'user',$3)`,
+      [req.user.id, req.params.id, JSON.stringify({ fields: Object.keys(req.body) })]
+    ).catch(() => {});
+    res.json(result.rows[0]);
+  } catch (err) {
+    if (err.code === '23505') return res.status(409).json({ error: 'Email already in use' });
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE /api/admin/hr-admins/:id — remove HR admin
+router.delete('/hr-admins/:id', auth, requireAdmin, async (req, res) => {
+  try {
+    const check = await db.query(
+      `SELECT id, company_id FROM users WHERE id=$1 AND role='hr'`, [req.params.id]
+    );
+    if (!check.rows.length) return res.status(404).json({ error: 'HR admin not found' });
+    await db.query(`DELETE FROM users WHERE id=$1`, [req.params.id]);
+    await db.query(
+      `INSERT INTO audit_log (actor_id, action, target_id, target_type, meta)
+       VALUES ($1,'delete_hr_admin',$2,'user',$3)`,
+      [req.user.id, req.params.id, JSON.stringify({ company_id: check.rows[0].company_id })]
+    ).catch(() => {});
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ══════════════════════════════════════════════════════════
+// VENDOR USER MANAGEMENT (Super Admin)
+// ══════════════════════════════════════════════════════════
+
+// GET /api/admin/vendors/:id/users — list all users for a vendor
+router.get('/vendors/:id/users', auth, requireAdmin, async (req, res) => {
+  try {
+    const result = await db.query(
+      `SELECT u.id, u.email, u.full_name, u.job_title, u.created_at
+       FROM users u
+       JOIN vendors v ON v.user_id = u.id OR (u.role='vendor' AND u.company_id IS NULL
+         AND EXISTS (SELECT 1 FROM vendors v2 WHERE v2.user_id=u.id AND v2.id=$1))
+       WHERE v.id=$1 AND u.role='vendor'
+       UNION
+       SELECT u.id, u.email, u.full_name, u.job_title, u.created_at
+       FROM users u
+       WHERE u.id = (SELECT user_id FROM vendors WHERE id=$1)
+       ORDER BY created_at`,
+      [req.params.id]
+    );
+    // Simpler reliable query
+    const vendor = await db.query(`SELECT user_id FROM vendors WHERE id=$1`, [req.params.id]);
+    if (!vendor.rows.length) return res.status(404).json({ error: 'Vendor not found' });
+    const users = await db.query(
+      `SELECT u.id, u.email, u.full_name, u.job_title, u.created_at,
+              CASE WHEN u.id=$2 THEN true ELSE false END as is_primary
+       FROM users u
+       WHERE u.role='vendor' AND (
+         u.id=$2 OR
+         EXISTS (SELECT 1 FROM vendors v2 WHERE v2.user_id=u.id AND v2.id=$1)
+       )
+       ORDER BY u.created_at`,
+      [req.params.id, vendor.rows[0].user_id]
+    );
+    res.json(users.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/admin/vendors/:id/users — add vendor user
+router.post('/vendors/:id/users', auth, requireAdmin, async (req, res) => {
+  try {
+    const { full_name, email, job_title, password } = req.body;
+    if (!full_name || !email || !password)
+      return res.status(400).json({ error: 'full_name, email and password are required' });
+    // Verify vendor exists
+    const vendor = await db.query(`SELECT id FROM vendors WHERE id=$1`, [req.params.id]);
+    if (!vendor.rows.length) return res.status(404).json({ error: 'Vendor not found' });
+    const bcrypt = require('bcryptjs');
+    const hash = await bcrypt.hash(password, 10);
+    // Create user, then create a vendor record pointing to them
+    const user = await db.query(
+      `INSERT INTO users (email, full_name, role, password_hash, job_title)
+       VALUES ($1,$2,'vendor',$3,$4) RETURNING id, email, full_name, job_title, created_at`,
+      [email.toLowerCase().trim(), full_name.trim(), hash, job_title || null]
+    );
+    // Get existing vendor details to clone for secondary user
+    const vd = await db.query(`SELECT company_name, category, status FROM vendors WHERE id=$1`, [req.params.id]);
+    await db.query(
+      `INSERT INTO vendors (user_id, company_name, category, status)
+       VALUES ($1,$2,$3,$4)`,
+      [user.rows[0].id, vd.rows[0].company_name, vd.rows[0].category, vd.rows[0].status]
+    );
+    await db.query(
+      `INSERT INTO audit_log (actor_id, action, target_id, target_type, meta)
+       VALUES ($1,'create_vendor_user',$2,'user',$3)`,
+      [req.user.id, user.rows[0].id, JSON.stringify({ vendor_id: req.params.id, email })]
+    ).catch(() => {});
+    res.status(201).json({ ...user.rows[0], is_primary: false });
+  } catch (err) {
+    if (err.code === '23505') return res.status(409).json({ error: 'Email already in use' });
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PATCH /api/admin/vendor-users/:id — update vendor user
+router.patch('/vendor-users/:id', auth, requireAdmin, async (req, res) => {
+  try {
+    const { full_name, email, job_title, password } = req.body;
+    const fields = []; const vals = []; let i = 1;
+    if (full_name)  { fields.push(`full_name=$${i++}`);  vals.push(full_name.trim()); }
+    if (email)      { fields.push(`email=$${i++}`);       vals.push(email.toLowerCase().trim()); }
+    if (job_title !== undefined) { fields.push(`job_title=$${i++}`); vals.push(job_title || null); }
+    if (password) {
+      const bcrypt = require('bcryptjs');
+      const hash = await bcrypt.hash(password, 10);
+      fields.push(`password_hash=$${i++}`);
+      vals.push(hash);
+    }
+    if (!fields.length) return res.status(400).json({ error: 'Nothing to update' });
+    vals.push(req.params.id);
+    const result = await db.query(
+      `UPDATE users SET ${fields.join(',')} WHERE id=$${i} AND role='vendor'
+       RETURNING id, email, full_name, job_title`, vals
+    );
+    if (!result.rows.length) return res.status(404).json({ error: 'Vendor user not found' });
+    res.json(result.rows[0]);
+  } catch (err) {
+    if (err.code === '23505') return res.status(409).json({ error: 'Email already in use' });
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE /api/admin/vendor-users/:id — remove vendor user (cannot remove primary)
+router.delete('/vendor-users/:id', auth, requireAdmin, async (req, res) => {
+  try {
+    // Check not primary
+    const isPrimary = await db.query(
+      `SELECT id FROM vendors WHERE user_id=$1`, [req.params.id]
+    );
+    if (isPrimary.rows.length) {
+      // Check if it's the only/primary vendor user
+      const vd = await db.query(`SELECT id FROM vendors WHERE user_id=$1 LIMIT 1`, [req.params.id]);
+      const allUsers = await db.query(
+        `SELECT COUNT(*) as cnt FROM users u
+         JOIN vendors v ON v.user_id=u.id
+         WHERE v.company_name=(SELECT company_name FROM vendors WHERE user_id=$1 LIMIT 1)
+         AND u.role='vendor'`, [req.params.id]
+      );
+      if (parseInt(allUsers.rows[0].cnt) <= 1)
+        return res.status(400).json({ error: 'Cannot remove the only user for this vendor' });
+    }
+    await db.query(`DELETE FROM vendors WHERE user_id=$1`, [req.params.id]);
+    await db.query(`DELETE FROM users WHERE id=$1 AND role='vendor'`, [req.params.id]);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;
+

@@ -1100,3 +1100,176 @@ function PackageForm({ initial, onClose, onSaved }) {
     </Modal>
   );
 }
+
+// ══════════════════════════════════════════════════════════════
+// VENDOR TEAM MANAGEMENT (Option B — primary / secondary)
+// ══════════════════════════════════════════════════════════════
+export function VendorTeam() {
+  const { user } = useAuth();
+  const [team,       setTeam]       = useState([]);
+  const [isPrimary,  setIsPrimary]  = useState(false);
+  const [loading,    setLoading]    = useState(true);
+  const [showAdd,    setShowAdd]    = useState(false);
+  const [editMember, setEditMember] = useState(null);
+  const [form,       setForm]       = useState({ full_name:'', email:'', job_title:'', password:'' });
+  const [saving,     setSaving]     = useState(false);
+  const [error,      setError]      = useState('');
+  const [success,    setSuccess]    = useState('');
+
+  const fetchTeam = () => {
+    api.get('/vendors/team').then(r => {
+      setTeam(r.data);
+      const me = r.data.find(m => m.id === user?.id);
+      setIsPrimary(me?.is_primary_user || false);
+    }).catch(()=>{}).finally(() => setLoading(false));
+  };
+  useEffect(() => { fetchTeam(); }, []);
+
+  const add = async () => {
+    setError(''); setSaving(true);
+    try {
+      if (!form.full_name || !form.email || !form.password) { setError('Name, email and password are required'); setSaving(false); return; }
+      await api.post('/vendors/team', form);
+      setSuccess('Team member added');
+      setForm({ full_name:'', email:'', job_title:'', password:'' });
+      fetchTeam();
+      setTimeout(() => { setShowAdd(false); setSuccess(''); }, 2000);
+    } catch (err) { setError(err.response?.data?.error || 'Failed to add'); }
+    finally { setSaving(false); }
+  };
+
+  const update = async () => {
+    setError(''); setSaving(true);
+    try {
+      const payload = {};
+      if (form.full_name) payload.full_name = form.full_name;
+      if (form.email)     payload.email     = form.email;
+      if (form.job_title) payload.job_title = form.job_title;
+      if (form.password)  payload.password  = form.password;
+      await api.patch('/vendors/team/' + editMember.id, payload);
+      setSuccess('Updated successfully');
+      fetchTeam();
+      setTimeout(() => { setEditMember(null); setSuccess(''); }, 1500);
+    } catch (err) { setError(err.response?.data?.error || 'Failed to update'); }
+    finally { setSaving(false); }
+  };
+
+  const remove = async (member) => {
+    if (!window.confirm('Remove ' + member.full_name + '?')) return;
+    try {
+      await api.delete('/vendors/team/' + member.id);
+      setTeam(prev => prev.filter(m => m.id !== member.id));
+    } catch (err) { alert(err.response?.data?.error || 'Failed to remove'); }
+  };
+
+  const F = ({ k, label, placeholder, type='text' }) => (
+    <div>
+      <label style={{ fontSize:11, fontWeight:700, color:colors.faint, textTransform:'uppercase', letterSpacing:'0.07em', display:'block', marginBottom:5 }}>{label}</label>
+      <input type={type} value={form[k]} onChange={e => setForm(f => ({ ...f, [k]: e.target.value }))} placeholder={placeholder}
+        style={{ width:'100%', border:'1.5px solid #eee', borderRadius:10, padding:'9px 13px', fontSize:13.5, color:colors.dark, fontFamily:font.body, outline:'none' }}/>
+    </div>
+  );
+
+  return (
+    <VendorLayout active="team">
+      <div style={{ background:'#1C1916', padding:'32px 36px 28px' }}>
+        <p style={{ fontSize:10.5, fontWeight:700, color:'rgba(212,98,42,0.8)', textTransform:'uppercase', letterSpacing:'0.12em', marginBottom:6 }}>Vendor Portal · Team</p>
+        <h1 style={{ fontFamily:font.display, fontSize:34, color:'#fff', fontWeight:700, fontStyle:'italic' }}>Team access</h1>
+        <p style={{ fontSize:14, color:'rgba(255,255,255,0.5)', marginTop:8 }}>
+          {isPrimary ? 'Manage who can access your vendor portal. You are the primary account holder.' : 'You have secondary access to this vendor account.'}
+        </p>
+      </div>
+
+      <div style={{ padding:'28px 36px' }}>
+        {!isPrimary && (
+          <div style={{ background:'#FEF3C7', border:'1px solid #F59E0B', borderRadius:12, padding:'14px 18px', marginBottom:20 }}>
+            <p style={{ fontSize:13.5, fontWeight:700, color:'#92400E' }}>Secondary access</p>
+            <p style={{ fontSize:13, color:'#78350F', marginTop:4 }}>Only the primary account holder can add or remove team members.</p>
+          </div>
+        )}
+
+        {editMember && (
+          <Modal title={'Edit — ' + editMember.full_name} onClose={() => { setEditMember(null); setError(''); }} width={520}>
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14, marginBottom:14 }}>
+              <F k="full_name" label="Full name"    placeholder={editMember.full_name}/>
+              <F k="email"     label="Email"         placeholder={editMember.email}/>
+              <F k="job_title" label="Job title"     placeholder={editMember.job_title||'—'}/>
+              <F k="password"  label="New password"  placeholder="Leave blank to keep current" type="password"/>
+            </div>
+            {error   && <p style={{ fontSize:13, color:colors.red,   fontWeight:700, marginBottom:10 }}>{"⚠ " + error}</p>}
+            {success && <p style={{ fontSize:13, color:colors.green, fontWeight:700, marginBottom:10 }}>{"✓ " + success}</p>}
+            <div style={{ display:'flex', gap:10, justifyContent:'flex-end' }}>
+              <Button variant="secondary" onClick={() => { setEditMember(null); setError(''); }}>Cancel</Button>
+              <Button onClick={update} disabled={saving}>{saving ? 'Saving…' : 'Save changes'}</Button>
+            </div>
+          </Modal>
+        )}
+
+        {isPrimary && showAdd && (
+          <div style={{ background:'#fff', border:'1px solid #eee', borderRadius:16, padding:'24px 28px', marginBottom:24 }}>
+            <p style={{ fontSize:15, fontWeight:700, color:colors.dark, marginBottom:16 }}>Add team member</p>
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14, marginBottom:14 }}>
+              <F k="full_name" label="Full name"  placeholder="Alex Johnson"/>
+              <F k="email"     label="Email"       placeholder="alex@company.com"/>
+              <F k="job_title" label="Job title"   placeholder="Operations Manager"/>
+              <F k="password"  label="Password"    placeholder="Min 8 characters" type="password"/>
+            </div>
+            <div style={{ background:colors.orangeLight, border:'1px solid rgba(212,98,42,0.2)', borderRadius:10, padding:'10px 14px', marginBottom:14 }}>
+              <p style={{ fontSize:12.5, color:colors.orange, fontWeight:600 }}>Secondary users share the same vendor profile, packages and bookings. They cannot add or remove other team members.</p>
+            </div>
+            {error   && <p style={{ fontSize:13, color:colors.red,   fontWeight:700, marginBottom:10 }}>{"⚠ " + error}</p>}
+            {success && <p style={{ fontSize:13, color:colors.green, fontWeight:700, marginBottom:10 }}>{"✓ " + success}</p>}
+            <div style={{ display:'flex', gap:10, justifyContent:'flex-end' }}>
+              <Button variant="secondary" onClick={() => { setShowAdd(false); setError(''); }}>Cancel</Button>
+              <Button onClick={add} disabled={saving}>{saving ? 'Adding…' : 'Add team member'}</Button>
+            </div>
+          </div>
+        )}
+
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
+          <p style={{ fontSize:15, fontWeight:700, color:colors.dark }}>{team.length} team member{team.length!==1?'s':''}</p>
+          {isPrimary && !showAdd && <Button onClick={() => setShowAdd(true)}>+ Add team member</Button>}
+        </div>
+
+        {loading ? <Spinner/> : (
+          <div className="table-wrap">
+            <TableHeader cols={['Name','Email','Job title','Role','Added','Actions']} template="1.8fr 2.2fr 1.4fr 1fr 1.2fr 1.4fr"/>
+            {team.map((member, i) => {
+              const isMe = member.id === user?.id;
+              return (
+                <div key={member.id} className="row-hover"
+                  style={{ display:'grid', gridTemplateColumns:'1.8fr 2.2fr 1.4fr 1fr 1.2fr 1.4fr', padding:'12px 24px', alignItems:'center', borderBottom:i<team.length-1?'1px solid #f5f5f5':'none' }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                    <Avatar initials={member.full_name?.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase()}/>
+                    <div>
+                      <p style={{ fontSize:13.5, fontWeight:600, color:colors.dark }}>{member.full_name}</p>
+                      {isMe && <span style={{ fontSize:10, fontWeight:700, color:colors.orange, background:colors.orangeLight, borderRadius:4, padding:'1px 6px' }}>You</span>}
+                    </div>
+                  </div>
+                  <span style={{ fontSize:12.5, color:colors.muted }}>{member.email}</span>
+                  <span style={{ fontSize:12.5, color:colors.mid }}>{member.job_title||'—'}</span>
+                  <span style={{ fontSize:11.5, fontWeight:700, color:member.is_primary_user?colors.orange:colors.muted, background:member.is_primary_user?colors.orangeLight:'#F7F5F2', borderRadius:6, padding:'2px 8px', display:'inline-block' }}>
+                    {member.is_primary_user ? 'Primary' : 'Secondary'}
+                  </span>
+                  <span style={{ fontSize:12, color:colors.faint }}>{new Date(member.created_at).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'2-digit'})}</span>
+                  <div style={{ display:'flex', gap:6 }}>
+                    {isPrimary && !member.is_primary_user && (
+                      <>
+                        <button onClick={() => { setEditMember(member); setForm({ full_name:member.full_name, email:member.email, job_title:member.job_title||'', password:'' }); }}
+                          style={{ background:'#F7F5F2', color:colors.mid, border:'1px solid #eee', borderRadius:6, padding:'5px 10px', fontSize:11.5, fontWeight:700, cursor:'pointer', fontFamily:font.body }}>Edit</button>
+                        <button onClick={() => remove(member)}
+                          style={{ background:colors.redLight, color:colors.red, border:'none', borderRadius:6, padding:'5px 10px', fontSize:11.5, fontWeight:700, cursor:'pointer', fontFamily:font.body }}>Remove</button>
+                      </>
+                    )}
+                    {(isMe && !isPrimary) && <span style={{ fontSize:12, color:colors.faint, fontStyle:'italic' }}>That's you</span>}
+                    {member.is_primary_user && !isMe && <span style={{ fontSize:12, color:colors.faint, fontStyle:'italic' }}>Primary</span>}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </VendorLayout>
+  );
+}

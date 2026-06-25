@@ -193,6 +193,76 @@ function EditEmployeeModal({ employee: emp, onClose, onSaved }) {
   );
 }
 
+
+// ── HR Admin Modal — Add / Edit / Change Password ─────────────
+function HRAdminModal({ companyId, admin, onClose, onSaved }) {
+  const isEdit = !!admin;
+  const [form, setForm] = useState({
+    full_name: admin?.full_name || '', email: admin?.email || '',
+    job_title: admin?.job_title || '', password: '',
+  });
+  const [tab,    setTab]    = useState('profile');
+  const [saving, setSaving] = useState(false);
+  const [error,  setError]  = useState('');
+  const [success,setSuccess]= useState('');
+
+  const F = ({ k, label, placeholder, type='text' }) => (
+    <div style={{ marginBottom: 14 }}>
+      <label style={{ fontSize: 11, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.07em', display: 'block', marginBottom: 5 }}>{label}</label>
+      <input type={type} value={form[k]} onChange={e => setForm(f => ({ ...f, [k]: e.target.value }))} placeholder={placeholder}
+        style={{ width: '100%', border: '1.5px solid #eee', borderRadius: 10, padding: '9px 13px', fontSize: 13.5, color: colors.dark, fontFamily: font.body, outline: 'none' }}/>
+    </div>
+  );
+
+  const save = async () => {
+    setError(''); setSaving(true);
+    try {
+      if (isEdit) {
+        const payload = tab === 'password' ? { password: form.password } : { full_name: form.full_name, email: form.email, job_title: form.job_title };
+        if (tab === 'password' && form.password.length < 8) { setError('Password must be at least 8 characters'); setSaving(false); return; }
+        await api.patch('/admin/hr-admins/' + admin.id, payload);
+      } else {
+        if (!form.full_name || !form.email || !form.password) { setError('Name, email and password are required'); setSaving(false); return; }
+        await api.post('/admin/companies/' + companyId + '/hr-admins', form);
+      }
+      setSuccess(tab === 'password' ? 'Password updated' : isEdit ? 'Profile saved' : 'HR admin created');
+      setTimeout(() => { onSaved(); onClose(); }, 1000);
+    } catch (err) { setError(err.response?.data?.error || 'Failed to save'); }
+    finally { setSaving(false); }
+  };
+
+  return (
+    <Modal title={isEdit ? 'Edit — ' + admin.full_name : 'Add HR Admin'} onClose={onClose} width={520}>
+      {isEdit && (
+        <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+          {['profile', 'password'].map(t => (
+            <button key={t} onClick={() => { setTab(t); setError(''); setSuccess(''); }}
+              style={{ padding: '7px 18px', borderRadius: 8, border: 'none', cursor: 'pointer', fontFamily: font.body, fontSize: 13, fontWeight: 700, background: tab===t ? colors.dark : '#F7F5F2', color: tab===t ? '#fff' : colors.muted }}>
+              {t === 'profile' ? '👤 Profile' : '🔑 Change password'}
+            </button>
+          ))}
+        </div>
+      )}
+      {(!isEdit || tab === 'profile') && (
+        <><F k="full_name" label="Full name" placeholder="Rachel Okafor"/><F k="email" label="Email" placeholder="hr@company.com"/><F k="job_title" label="Job title" placeholder="HR Director"/></>
+      )}
+      {!isEdit && <F k="password" label="Password" placeholder="Min 8 characters" type="password"/>}
+      {tab === 'password' && isEdit && (
+        <div>
+          <p style={{ fontSize: 13, color: colors.muted, marginBottom: 14, lineHeight: 1.6 }}>Set a new password for <strong>{admin.full_name}</strong>. Ask them to change it on first login.</p>
+          <F k="password" label="New password" placeholder="Min 8 characters" type="password"/>
+        </div>
+      )}
+      {error   && <p style={{ fontSize: 13, color: colors.red,   fontWeight: 700, marginBottom: 12 }}>{"⚠ " + error}</p>}
+      {success && <p style={{ fontSize: 13, color: colors.green, fontWeight: 700, marginBottom: 12 }}>{"✓ " + success}</p>}
+      <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', paddingTop: 4 }}>
+        <Button variant="secondary" onClick={onClose}>Cancel</Button>
+        <Button onClick={save} disabled={saving}>{saving ? 'Saving…' : isEdit ? (tab === 'password' ? 'Update password' : 'Save changes') : 'Create HR admin'}</Button>
+      </div>
+    </Modal>
+  );
+}
+
 // ── Main employer detail page ─────────────────────────────────
 export function AdminEmployerDetail() {
   const { id }     = useParams();
@@ -206,6 +276,8 @@ export function AdminEmployerDetail() {
   const [showImport,setShowImport]=useState(false);
   const [editEmp,  setEditEmp]  = useState(null);
   const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [hrAdmins,     setHrAdmins]     = useState([]);
+  const [hrAdminModal, setHrAdminModal] = useState(null);
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
@@ -214,12 +286,14 @@ export function AdminEmployerDetail() {
       const co = companies.find(c => c.id === id) || null;
       setCompany(co);
       if (co) {
-        const [emps, bkgs] = await Promise.all([
-          api.get(`/admin/companies/${id}/employees`).catch(() => ({ data: [] })),
-          api.get(`/admin/companies/${id}/bookings`).catch(() => ({ data: [] })),
+        const [emps, bkgs, hrs] = await Promise.all([
+          api.get('/admin/companies/'+id+'/employees').catch(() => ({ data: [] })),
+          api.get('/admin/companies/'+id+'/bookings').catch(() => ({ data: [] })),
+          api.get('/admin/companies/'+id+'/hr-admins').catch(() => ({ data: [] })),
         ]);
         setEmployees(emps.data || []);
         setBookings(bkgs.data || []);
+        setHrAdmins(hrs.data || []);
       }
     } catch {}
     finally { setLoading(false); }
@@ -266,6 +340,7 @@ export function AdminEmployerDetail() {
     <div style={{fontFamily:font.body,background:'#F7F5F2',minHeight:'100vh',paddingBottom:80}}>
       {showImport && <ImportModal companyId={id} onClose={()=>setShowImport(false)} onImported={fetchAll}/>}
       {editEmp    && <EditEmployeeModal employee={editEmp} onClose={()=>setEditEmp(null)} onSaved={fetchAll}/>}
+      {hrAdminModal && <HRAdminModal companyId={id} admin={hrAdminModal==='add'?null:hrAdminModal} onClose={()=>setHrAdminModal(null)} onSaved={()=>api.get('/admin/companies/'+id+'/hr-admins').then(r=>setHrAdmins(r.data||[]))}/>}
 
       {/* Header */}
       <div style={{background:'#1C1916',padding:'24px 36px 0'}}>
@@ -311,9 +386,9 @@ export function AdminEmployerDetail() {
 
         {/* Tabs */}
         <div style={{display:'flex',gap:0}}>
-          {['overview','employees','bookings'].map(t=>(
+          {['overview','hr-admins','employees','bookings'].map(t=>(
             <button key={t} onClick={()=>setTab(t)} style={{background:'none',border:'none',borderBottom:`3px solid ${tab===t?colors.orange:'transparent'}`,padding:'14px 20px',color:tab===t?'#fff':'rgba(255,255,255,0.4)',fontSize:13.5,fontWeight:tab===t?700:500,cursor:'pointer',fontFamily:font.body,textTransform:'capitalize',transition:'all 0.15s'}}>
-              {t}{t==='employees'?` (${employees.length})`:t==='bookings'?` (${bookings.length})`:''}
+              {t==='hr-admins'?'HR Admins ('+hrAdmins.length+')':t}{t==='employees'?' ('+employees.length+')':t==='bookings'?' ('+bookings.length+')':''}
             </button>
           ))}
         </div>
@@ -385,6 +460,49 @@ export function AdminEmployerDetail() {
                   </div>
                 ))}
               </div>
+            </div>
+          </div>
+        )}
+
+
+        {tab==='hr-admins' && (
+          <div>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
+              <div>
+                <p style={{fontSize:15,fontWeight:700,color:colors.dark}}>HR Administrators</p>
+                <p style={{fontSize:13,color:colors.muted}}>Manage who can access this employer's HR portal</p>
+              </div>
+              <Button onClick={()=>setHrAdminModal('add')}>+ Add HR admin</Button>
+            </div>
+            <div className="table-wrap">
+              <TableHeader cols={['Name','Email','Job title','Added','Actions']} template="1.8fr 2.2fr 1.6fr 1.2fr 1.4fr"/>
+              {hrAdmins.length===0 ? (
+                <EmptyState emoji="👤" title="No HR admins" subtitle="Add the first HR admin for this employer"/>
+              ) : hrAdmins.map((adm,i)=>(
+                <div key={adm.id} className="row-hover"
+                  style={{display:'grid',gridTemplateColumns:'1.8fr 2.2fr 1.6fr 1.2fr 1.4fr',padding:'12px 24px',alignItems:'center',borderBottom:i<hrAdmins.length-1?'1px solid #f5f5f5':'none'}}>
+                  <div style={{display:'flex',alignItems:'center',gap:10}}>
+                    <Avatar initials={adm.full_name?.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase()}/>
+                    <p style={{fontSize:13.5,fontWeight:600,color:colors.dark}}>{adm.full_name}</p>
+                  </div>
+                  <span style={{fontSize:12.5,color:colors.muted}}>{adm.email}</span>
+                  <span style={{fontSize:12.5,color:colors.mid}}>{adm.job_title||'—'}</span>
+                  <span style={{fontSize:12,color:colors.faint}}>{new Date(adm.created_at).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'2-digit'})}</span>
+                  <div style={{display:'flex',gap:6}}>
+                    <button onClick={()=>setHrAdminModal(adm)}
+                      style={{background:'#F7F5F2',color:colors.mid,border:'1px solid #eee',borderRadius:6,padding:'5px 10px',fontSize:11.5,fontWeight:700,cursor:'pointer',fontFamily:font.body}}>
+                      Edit
+                    </button>
+                    <button onClick={async()=>{
+                      if(!window.confirm('Remove '+adm.full_name+'?'))return;
+                      try{ await api.delete('/admin/hr-admins/'+adm.id); setHrAdmins(prev=>prev.filter(a=>a.id!==adm.id)); }
+                      catch(err){ alert(err.response?.data?.error||'Failed to remove'); }
+                    }} style={{background:colors.redLight,color:colors.red,border:'none',borderRadius:6,padding:'5px 10px',fontSize:11.5,fontWeight:700,cursor:'pointer',fontFamily:font.body}}>
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         )}
