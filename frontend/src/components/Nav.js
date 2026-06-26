@@ -102,6 +102,7 @@ export default function Nav() {
       { to: '/hr/messages',      label: 'Messages'      },
       { to: '/hr/analytics',     label: 'Analytics'     },
       { to: '/hr/integrations',  label: 'Integrations'  },
+      { to: '/hr/team',          label: 'Team'          },
     ],
     employee: [
       { to: '/home',       label: 'Home'      },
@@ -115,6 +116,7 @@ export default function Nav() {
       { to: '/vendor/packages', label: 'Packages'  },
       { to: '/vendor/bookings', label: 'Bookings'  },
       { to: '/vendor/earnings', label: 'Earnings'  },
+      { to: '/vendor/team',    label: 'Team'      },
     ],
   };
 
