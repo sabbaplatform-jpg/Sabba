@@ -6,6 +6,10 @@ const rateLimit  = require('express-rate-limit');
 
 const app = express();
 
+// ── Trust proxy — required for Vercel/reverse proxy deployments ─
+// Allows express-rate-limit to correctly read X-Forwarded-For headers
+app.set('trust proxy', 1);
+
 // ── Security headers ────────────────────────────────────────
 app.use((req, res, next) => {
   res.setHeader('X-Frame-Options', 'SAMEORIGIN');
