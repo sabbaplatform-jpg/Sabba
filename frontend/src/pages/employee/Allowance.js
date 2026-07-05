@@ -246,6 +246,7 @@ export default function Allowance() {
         </div>
       )}
     </div>
+
     {/* Award points to colleague */}
     <AwardPointsPanel myPoints={data?.sabba_points || 0} onAwarded={() => window.location.reload()}/>
   );
