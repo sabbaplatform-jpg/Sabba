@@ -245,10 +245,11 @@ export default function Allowance() {
           <p style={{ fontSize: 13.5, color: colors.muted }}>Booking history for {year} is loading from your bookings page. <button onClick={() => navigate('/my-booking')} style={{ color: colors.orange, background: 'none', border: 'none', fontWeight: 700, cursor: 'pointer', fontFamily: font.body, fontSize: 13.5 }}>View all bookings →</button></p>
         </div>
       )}
-    </div>
 
-    {/* Award points to colleague */}
-    <AwardPointsPanel myPoints={data?.sabba_points || 0} onAwarded={() => window.location.reload()}/>
+      {/* FIXED: The comment and panel are now safely nested inside the main container element */}
+      {/* Award points to colleague */}
+      <AwardPointsPanel myPoints={data?.sabba_points || 0} onAwarded={() => window.location.reload()}/>
+    </div>
   );
 }
 
