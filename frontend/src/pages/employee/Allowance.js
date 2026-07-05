@@ -61,7 +61,6 @@ export default function Allowance() {
       api.get('/bookings/mine'),
     ]).then(([allowResp, bookResp]) => {
       const allBookings = bookResp.data || [];
-      // Filter bookings to the selected year
       const yearBookings = allBookings.filter(b => {
         const d = new Date(b.created_at);
         return d.getFullYear() === y;
@@ -95,7 +94,7 @@ export default function Allowance() {
   if (!data) return <div style={{ padding: 40, fontFamily: font.body, color: colors.muted }}>Could not load allowance data. Please try again.</div>;
 
   const { total_allowance_gbp: total_allowance, used_allowance_gbp: used, remaining_allowance_gbp: remaining, available_years, sabba_points } = data || {};
-  const pending    = 0; // Pending calculated server-side in used total
+  const pending    = 0;
   const bookings   = data?.bookings || [];
   const usedPct    = total_allowance > 0 ? ((used / total_allowance) * 100).toFixed(0) : 0;
   const pendingPct = 0;
@@ -110,10 +109,8 @@ export default function Allowance() {
           <h1 style={{ fontFamily: font.display, fontSize: 30, color: colors.dark, fontWeight: 400 }}>Travel Allowance</h1>
           <p style={{ color: colors.muted, fontSize: 14, marginTop: 4, fontWeight: 500 }}>Your annual payroll allowance for Sabba adventures. Card payments are not counted against this limit.</p>
         </div>
-        {/* Year selector */}
         <div style={{ display: 'flex', gap: 8 }}>
-          {/* Always include current year + any years with data */}
-        {([...new Set([...(available_years || []), new Date().getFullYear()])].sort((a,b)=>b-a)).map(y => (
+          {([...new Set([...(available_years || []), new Date().getFullYear()])].sort((a,b)=>b-a)).map(y => (
             <button key={y} onClick={() => setYear(y)} style={{
               padding: '7px 14px', borderRadius: 20,
               border: `1.5px solid ${year === y ? colors.orange : colors.border}`,
@@ -126,7 +123,6 @@ export default function Allowance() {
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 24 }}>
-
         {/* Total allowance */}
         <div className="card" style={{ padding: 28 }}>
           <h2 style={{ fontSize: 15, fontWeight: 700, color: colors.dark, marginBottom: 8 }}>{year} Payroll Allowance {year === new Date().getFullYear() ? '· Current' : ''}</h2>
@@ -246,7 +242,6 @@ export default function Allowance() {
         </div>
       )}
 
-      {/* FIXED: The comment and panel are now safely nested inside the main container element */}
       {/* Award points to colleague */}
       <AwardPointsPanel myPoints={data?.sabba_points || 0} onAwarded={() => window.location.reload()}/>
     </div>
@@ -268,7 +263,7 @@ function AwardPointsPanel({ myPoints, onAwarded }) {
 
   const handleAward = async () => {
     if (!recipientId || !points) { setError('Select a colleague and enter points'); return; }
-    if (Number(points) > myPoints) { setError('You don't have enough Sabba Points'); return; }
+    if (Number(points) > myPoints) { setError("You don't have enough Sabba Points"); return; }
     setSending(true); setError(''); setSuccess('');
     try {
       await api.post('/allowance/award-points', {
