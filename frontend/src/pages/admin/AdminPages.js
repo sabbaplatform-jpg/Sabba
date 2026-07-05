@@ -2602,8 +2602,10 @@ export function AdminSponsored() {
   const [vendorFilter, setVendorFilter] = useState('');
   const [form, setForm] = useState({ package_id: '', vendor_id: '', slot_number: 1, listing_type: 'marketplace', monthly_fee_gbp: 2000, start_date: new Date().toISOString().split('T')[0], end_date: '', notes: '' });
   const toDateStr = (val) => val ? String(val).split('T')[0] : '';
-  const [saving, setSaving] = useState(false);
-  const [error, setError]   = useState('');
+  const [saving,    setSaving]    = useState(false);
+  const [error,     setError]     = useState('');
+  const [editId,    setEditId]    = useState(null);
+  const [editDates, setEditDates] = useState({ start_date: '', end_date: '' });
 
   const fetch_all = () => {
     Promise.all([
@@ -2635,6 +2637,26 @@ export function AdminSponsored() {
     if (!window.confirm('Remove this sponsored listing?')) return;
     await api.delete(`/packages/sponsored/${id}`);
     fetch_all();
+  };
+
+  const startEdit = (listing) => {
+    setEditId(listing.id);
+    setEditDates({
+      start_date: toDateStr(listing.start_date),
+      end_date:   toDateStr(listing.end_date),
+    });
+  };
+
+  const handleSaveDates = async () => {
+    if (!editDates.end_date) { setError('End date is required'); return; }
+    setSaving(true); setError('');
+    try {
+      await api.patch(`/packages/sponsored/${editId}/dates`, editDates);
+      setEditId(null);
+      fetch_all();
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to update dates');
+    } finally { setSaving(false); }
   };
 
   const today = new Date().toISOString().split('T')[0];
@@ -2681,7 +2703,37 @@ export function AdminSponsored() {
                     <p style={{ fontSize: 13.5, fontWeight: 700, color: colors.dark, marginBottom: 4 }}>{active.package_title}</p>
                     <p style={{ fontSize: 12, color: colors.muted, marginBottom: 4 }}>{active.vendor_name}</p>
                     <p style={{ fontSize: 12, color: colors.orange, fontWeight: 600 }}>£{Number(active.monthly_fee_gbp).toLocaleString()}/mo · until {new Date(toDateStr(active.end_date)).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' })}</p>
-                    <button onClick={() => handleDelete(active.id)} style={{ marginTop: 8, background: 'none', border: 'none', color: colors.red, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: font.body, padding: 0 }}>Remove</button>
+                    {editId === active.id ? (
+                      <div style={{ marginTop: 8 }}>
+                        <div style={{ display: 'flex', gap: 6, marginBottom: 6 }}>
+                          <input type="date" value={editDates.start_date} onChange={e => setEditDates(d => ({...d, start_date: e.target.value}))}
+                            style={{ flex: 1, border: '1px solid #eee', borderRadius: 6, padding: '4px 8px', fontSize: 12, fontFamily: font.body }}/>
+                          <input type="date" value={editDates.end_date} onChange={e => setEditDates(d => ({...d, end_date: e.target.value}))}
+                            style={{ flex: 1, border: '1px solid #eee', borderRadius: 6, padding: '4px 8px', fontSize: 12, fontFamily: font.body }}/>
+                        </div>
+                        <div style={{ display: 'flex', gap: 6 }}>
+                          <button onClick={handleSaveDates} disabled={saving}
+                            style={{ flex: 1, background: colors.orange, color: '#fff', border: 'none', borderRadius: 6, padding: '5px 8px', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', fontFamily: font.body }}>
+                            {saving ? 'Saving…' : 'Save dates'}
+                          </button>
+                          <button onClick={() => setEditId(null)}
+                            style={{ background: 'none', border: '1px solid #eee', borderRadius: 6, padding: '5px 8px', fontSize: 11.5, cursor: 'pointer', fontFamily: font.body, color: colors.muted }}>
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                        <button onClick={() => startEdit(active)}
+                          style={{ background: 'none', border: '1px solid #eee', borderRadius: 6, padding: '4px 10px', fontSize: 11.5, fontWeight: 600, cursor: 'pointer', fontFamily: font.body, color: colors.mid }}>
+                          ✏️ Edit dates
+                        </button>
+                        <button onClick={() => handleDelete(active.id)}
+                          style={{ background: 'none', border: 'none', color: colors.red, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: font.body, padding: 0 }}>
+                          Remove
+                        </button>
+                      </div>
+                    )}
                   </>
                 ) : (
                   <p style={{ fontSize: 12.5, color: colors.faint, marginTop: 4 }}>Empty — click '+ Add' to assign a package.</p>
@@ -2715,7 +2767,37 @@ export function AdminSponsored() {
                     <p style={{ fontSize: 13.5, fontWeight: 700, color: colors.dark, marginBottom: 4 }}>{active.package_title}</p>
                     <p style={{ fontSize: 12, color: colors.muted, marginBottom: 4 }}>{active.vendor_name}</p>
                     <p style={{ fontSize: 12, color: '#7C3AED', fontWeight: 600 }}>£{Number(active.monthly_fee_gbp).toLocaleString()}/mo · until {new Date(toDateStr(active.end_date)).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' })}</p>
-                    <button onClick={() => handleDelete(active.id)} style={{ marginTop: 8, background: 'none', border: 'none', color: colors.red, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: font.body, padding: 0 }}>Remove</button>
+                    {editId === active.id ? (
+                      <div style={{ marginTop: 8 }}>
+                        <div style={{ display: 'flex', gap: 6, marginBottom: 6 }}>
+                          <input type="date" value={editDates.start_date} onChange={e => setEditDates(d => ({...d, start_date: e.target.value}))}
+                            style={{ flex: 1, border: '1px solid #eee', borderRadius: 6, padding: '4px 8px', fontSize: 12, fontFamily: font.body }}/>
+                          <input type="date" value={editDates.end_date} onChange={e => setEditDates(d => ({...d, end_date: e.target.value}))}
+                            style={{ flex: 1, border: '1px solid #eee', borderRadius: 6, padding: '4px 8px', fontSize: 12, fontFamily: font.body }}/>
+                        </div>
+                        <div style={{ display: 'flex', gap: 6 }}>
+                          <button onClick={handleSaveDates} disabled={saving}
+                            style={{ flex: 1, background: colors.orange, color: '#fff', border: 'none', borderRadius: 6, padding: '5px 8px', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', fontFamily: font.body }}>
+                            {saving ? 'Saving…' : 'Save dates'}
+                          </button>
+                          <button onClick={() => setEditId(null)}
+                            style={{ background: 'none', border: '1px solid #eee', borderRadius: 6, padding: '5px 8px', fontSize: 11.5, cursor: 'pointer', fontFamily: font.body, color: colors.muted }}>
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                        <button onClick={() => startEdit(active)}
+                          style={{ background: 'none', border: '1px solid #eee', borderRadius: 6, padding: '4px 10px', fontSize: 11.5, fontWeight: 600, cursor: 'pointer', fontFamily: font.body, color: colors.mid }}>
+                          ✏️ Edit dates
+                        </button>
+                        <button onClick={() => handleDelete(active.id)}
+                          style={{ background: 'none', border: 'none', color: colors.red, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: font.body, padding: 0 }}>
+                          Remove
+                        </button>
+                      </div>
+                    )}
                   </>
                 ) : (
                   <p style={{ fontSize: 12.5, color: colors.faint, marginTop: 4 }}>Empty — click '+ Add' to assign a package.</p>

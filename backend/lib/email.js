@@ -165,6 +165,66 @@ async function renderPreview(emailType, bodyHtml, subject, vars = {}) {
   return wrapHtml('Preview', substitute(bodyHtml, sampleVars), 'Example CTA →', '#');
 }
 
+
+async function sendNewVendorAlert({ vendor_name, vendor_email, category, full_name }) {
+  if (!process.env.SENDGRID_API_KEY) { console.log('[EMAIL SKIPPED] sendNewVendorAlert'); return; }
+  const sgMail = require('@sendgrid/mail');
+  sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+  await sgMail.send({
+    to: 'vendor@sabbaplatform.com',
+    from: 'hello@sabbaplatform.com',
+    subject: `New vendor joined Sabba: ${vendor_name}`,
+    html: `
+      <div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto">
+        <div style="background:#1A2E44;padding:24px 32px;border-radius:12px 12px 0 0">
+          <h1 style="color:#fff;font-size:22px;margin:0">New vendor joined Sabba 🎉</h1>
+        </div>
+        <div style="background:#F7F5F2;padding:24px 32px;border-radius:0 0 12px 12px">
+          <table style="width:100%;border-collapse:collapse">
+            <tr><td style="padding:8px 0;font-weight:700;color:#1A2E44;width:140px">Company:</td><td style="padding:8px 0;color:#444">${vendor_name}</td></tr>
+            <tr><td style="padding:8px 0;font-weight:700;color:#1A2E44">Contact name:</td><td style="padding:8px 0;color:#444">${full_name}</td></tr>
+            <tr><td style="padding:8px 0;font-weight:700;color:#1A2E44">Email:</td><td style="padding:8px 0;color:#444">${vendor_email}</td></tr>
+            <tr><td style="padding:8px 0;font-weight:700;color:#1A2E44">Category:</td><td style="padding:8px 0;color:#444;text-transform:capitalize">${category}</td></tr>
+          </table>
+          <div style="margin-top:20px;padding-top:20px;border-top:1px solid #eee">
+            <p style="color:#777;font-size:13px">Log in to the Super Admin portal to review and approve their vendor profile.</p>
+            <a href="https://sabba.app/admin" style="display:inline-block;background:#E05A2B;color:#fff;padding:10px 22px;border-radius:8px;text-decoration:none;font-weight:700;margin-top:8px">Open Admin Portal →</a>
+          </div>
+        </div>
+      </div>
+    `,
+  });
+}
+
+async function sendContactForm({ name, email: senderEmail, subject, message }) {
+  if (!process.env.SENDGRID_API_KEY) { console.log('[EMAIL SKIPPED] sendContactForm'); return; }
+  const sgMail = require('@sendgrid/mail');
+  sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+  await sgMail.send({
+    to: 'hello@sabbaplatform.com',
+    from: 'hello@sabbaplatform.com',
+    replyTo: senderEmail,
+    subject: `Contact form: ${subject || 'New message from sabba.app'}`,
+    html: `
+      <div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto">
+        <div style="background:#1A2E44;padding:24px 32px;border-radius:12px 12px 0 0">
+          <h1 style="color:#fff;font-size:20px;margin:0">New contact form submission</h1>
+        </div>
+        <div style="background:#F7F5F2;padding:24px 32px;border-radius:0 0 12px 12px">
+          <table style="width:100%;border-collapse:collapse">
+            <tr><td style="padding:8px 0;font-weight:700;color:#1A2E44;width:100px">Name:</td><td style="padding:8px 0;color:#444">${name}</td></tr>
+            <tr><td style="padding:8px 0;font-weight:700;color:#1A2E44">Email:</td><td style="padding:8px 0;color:#444">${senderEmail}</td></tr>
+            <tr><td style="padding:8px 0;font-weight:700;color:#1A2E44">Subject:</td><td style="padding:8px 0;color:#444">${subject || '—'}</td></tr>
+          </table>
+          <div style="margin-top:16px;padding:16px;background:#fff;border-radius:8px;border:1px solid #eee">
+            <p style="color:#444;font-size:14px;line-height:1.6;margin:0;white-space:pre-wrap">${message}</p>
+          </div>
+        </div>
+      </div>
+    `,
+  });
+}
+
 module.exports = {
   sendWelcomeEmployee,
   sendWelcomeHR,

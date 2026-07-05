@@ -91,3 +91,95 @@ router.get('/history', auth, requireRole('employee'), async (req, res) => {
 });
 
 module.exports = router;
+
+// ── POST /api/allowance/award-points — employee awards points to colleague ──
+router.post('/award-points', auth, requireRole('employee'), async (req, res) => {
+  try {
+    const { recipient_id, points, message } = req.body;
+    if (!recipient_id || !points || points < 1 || points > 500) {
+      return res.status(400).json({ error: 'Recipient and points (1–500) are required' });
+    }
+    // Check sender has enough points
+    const sender = await db.query(
+      'SELECT sabba_points, company_id FROM employee_profiles WHERE user_id=$1',
+      [req.user.id]
+    );
+    if (!sender.rows.length || sender.rows[0].sabba_points < points) {
+      return res.status(400).json({ error: 'Insufficient Sabba Points' });
+    }
+    // Verify recipient is in same company
+    const recipient = await db.query(
+      `SELECT u.company_id, u.full_name FROM users u
+       JOIN employee_profiles ep ON ep.user_id = u.id
+       WHERE u.id=$1`,
+      [recipient_id]
+    );
+    if (!recipient.rows.length || recipient.rows[0].company_id !== sender.rows[0].company_id) {
+      return res.status(403).json({ error: 'You can only award points to colleagues in your company' });
+    }
+    // Deduct from sender
+    await db.query(
+      'UPDATE employee_profiles SET sabba_points = sabba_points - $1 WHERE user_id=$2',
+      [points, req.user.id]
+    );
+    await db.query(
+      'INSERT INTO points_transactions (user_id, points, reason) VALUES ($1,$2,$3)',
+      [req.user.id, -points, `Awarded to ${recipient.rows[0].full_name}`]
+    );
+    // Add to recipient
+    await db.query(
+      'UPDATE employee_profiles SET sabba_points = sabba_points + $1 WHERE user_id=$2',
+      [points, recipient_id]
+    );
+    await db.query(
+      'INSERT INTO points_transactions (user_id, points, reason) VALUES ($1,$2,$3)',
+      [recipient_id, points, `Awarded by colleague${message ? ': ' + message : ''}`]
+    );
+    // Notify recipient
+    const senderInfo = await db.query('SELECT full_name FROM users WHERE id=$1', [req.user.id]);
+    await db.query(
+      `INSERT INTO notifications (user_id, title, message, type) VALUES ($1,$2,$3,'success')`,
+      [recipient_id,
+       `You received ${points} Sabba Points! 🎉`,
+       `${senderInfo.rows[0]?.full_name} awarded you ${points} points${message ? ': "' + message + '"' : '.'}`]
+    );
+    res.json({ success: true, points_awarded: points });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ── POST /api/allowance/award-voucher — HR awards voucher to employee ──
+router.post('/award-voucher', auth, requireRole('hr'), async (req, res) => {
+  try {
+    const { employee_id, points, reason } = req.body;
+    if (!employee_id || !points || points < 1) {
+      return res.status(400).json({ error: 'Employee and points value are required' });
+    }
+    // Verify employee is in same company
+    const emp = await db.query(
+      'SELECT u.full_name, u.company_id FROM users u WHERE u.id=$1',
+      [employee_id]
+    );
+    if (!emp.rows.length || emp.rows[0].company_id !== req.user.company_id) {
+      return res.status(403).json({ error: 'Employee not found in your company' });
+    }
+    // Award points as voucher
+    await db.query(
+      `INSERT INTO employee_profiles (user_id, sabba_points)
+       VALUES ($1,$2)
+       ON CONFLICT (user_id) DO UPDATE SET sabba_points = employee_profiles.sabba_points + $2`,
+      [employee_id, points]
+    );
+    await db.query(
+      'INSERT INTO points_transactions (user_id, points, reason) VALUES ($1,$2,$3)',
+      [employee_id, points, `HR voucher award${reason ? ': ' + reason : ''}`]
+    );
+    // Notify employee
+    await db.query(
+      `INSERT INTO notifications (user_id, title, message, type) VALUES ($1,$2,$3,'success')`,
+      [employee_id,
+       `You've received a ${points}-point voucher! 🎁`,
+       `Your HR team has awarded you a ${points} Sabba Points voucher${reason ? ': "' + reason + '"' : '. Redeem them on your next adventure booking.'}`]
+    );
+    res.json({ success: true, points_awarded: points, employee_name: emp.rows[0].full_name });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});

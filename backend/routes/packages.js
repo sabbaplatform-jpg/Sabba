@@ -347,6 +347,23 @@ router.post('/sponsored', auth, requireRole('superadmin'), async (req, res) => {
 });
 
 // Admin: delete sponsored listing
+// PATCH /api/packages/sponsored/:id/dates — extend or update listing dates
+router.patch('/sponsored/:id/dates', auth, requireRole('superadmin'), async (req, res) => {
+  try {
+    const { start_date, end_date } = req.body;
+    if (!end_date) return res.status(400).json({ error: 'End date is required' });
+    const result = await db.query(
+      `UPDATE sponsored_listings SET
+         start_date = COALESCE($1::date, start_date),
+         end_date   = $2::date
+       WHERE id = $3 RETURNING *`,
+      [start_date || null, end_date, req.params.id]
+    );
+    if (!result.rows.length) return res.status(404).json({ error: 'Listing not found' });
+    res.json(result.rows[0]);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 router.delete('/sponsored/:id', auth, requireRole('superadmin'), async (req, res) => {
   try {
     await db.query('DELETE FROM sponsored_listings WHERE id=$1', [req.params.id]);

@@ -180,6 +180,12 @@ export default function HREmployees() {
   const [loading, setLoading]       = useState(true);
   const [search, setSearch]         = useState('');
   const [selected, setSelected]     = useState(null);
+  const [voucherModal, setVoucherModal] = useState(null);
+  const [voucherPts,   setVoucherPts]   = useState('');
+  const [voucherNote,  setVoucherNote]  = useState('');
+  const [voucherSaving, setVoucherSaving] = useState(false);
+  const [voucherSuccess, setVoucherSuccess] = useState('');
+  const [voucherError,   setVoucherError]   = useState('');
   const [limitModal, setLimitModal] = useState(null);
   const [pwdModal, setPwdModal]     = useState(null);
   const [limitVal, setLimitVal]     = useState('');
@@ -351,6 +357,7 @@ export default function HREmployees() {
             <Button small onClick={() => { setEditModal(selected); setEditForm({ full_name: selected.full_name||'', department: selected.department||'', job_title: selected.job_title||'', location: selected.location||'', salary_band: selected.salary_band||'', spend_limit_gbp: selected.spend_limit_gbp||'', employment_category: selected.employment_category||'', assignment_status: selected.assignment_status||'Active', leave_type: selected.leave_type||'Both', gl_location: selected.gl_location||'', employee_number: selected.employee_number||'' }); setSelected(null); }}>✏️ Edit profile</Button>
             <Button small onClick={() => { setSelected(null); setPwdModal(selected); setNewPassword(''); setPwdConfirm(''); setPwdError(''); setPwdSuccess(false); }}>🔑 Reset password</Button>
             <Button small variant="secondary" onClick={() => { setSelected(null); setLimitModal(selected); setLimitVal(selected.spend_limit_gbp || ''); }}>Set spend limit</Button>
+            <Button small onClick={() => { setVoucherModal(selected); setSelected(null); setVoucherPts(''); setVoucherNote(''); setVoucherSuccess(''); setVoucherError(''); }}>🎁 Award voucher</Button>
           </div>
         </Modal>
       )}
@@ -454,6 +461,52 @@ export default function HREmployees() {
           <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 20 }}>
             <Button variant="secondary" onClick={() => setEditModal(null)}>Cancel</Button>
             <Button onClick={saveEdit} disabled={editSaving}>{editSaving ? 'Saving…' : 'Save changes'}</Button>
+          </div>
+        </Modal>
+      )}
+
+      {/* Voucher award modal */}
+      {voucherModal && (
+        <Modal title={`Award Voucher — ${voucherModal.full_name}`} onClose={() => setVoucherModal(null)} width={480}>
+          <div style={{ padding: '4px 0 16px' }}>
+            <p style={{ fontSize: 13.5, color: colors.muted, marginBottom: 20, lineHeight: 1.6 }}>
+              Award Sabba Points as a voucher. They will be added to the employee's balance and redeemable on any adventure booking. Points are funded by the employer — not deducted from any individual.
+            </p>
+            <div style={{ marginBottom: 14 }}>
+              <label style={{ fontSize: 11.5, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.08em', display: 'block', marginBottom: 5 }}>Points to award</label>
+              <input type="number" value={voucherPts} onChange={e => setVoucherPts(e.target.value)}
+                min="1" placeholder="e.g. 500 (= £5 value)"
+                style={{ width: '100%', border: '1.5px solid #eee', borderRadius: 10, padding: '9px 12px', fontSize: 13.5, color: colors.dark, fontFamily: font.body, outline: 'none', boxSizing: 'border-box' }}/>
+              {voucherPts && <p style={{ fontSize: 11.5, color: colors.muted, marginTop: 4 }}>= £{(Number(voucherPts)/100).toFixed(2)} redemption value</p>}
+            </div>
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ fontSize: 11.5, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.08em', display: 'block', marginBottom: 5 }}>Reason (optional)</label>
+              <input value={voucherNote} onChange={e => setVoucherNote(e.target.value)}
+                placeholder="e.g. Employee of the month, 5-year anniversary…"
+                style={{ width: '100%', border: '1.5px solid #eee', borderRadius: 10, padding: '9px 12px', fontSize: 13.5, color: colors.dark, fontFamily: font.body, outline: 'none', boxSizing: 'border-box' }}/>
+            </div>
+            {voucherError   && <p style={{ fontSize: 13, color: colors.red, fontWeight: 600, marginBottom: 8 }}>{voucherError}</p>}
+            {voucherSuccess && <p style={{ fontSize: 13, color: '#10B981', fontWeight: 700, marginBottom: 8 }}>{voucherSuccess}</p>}
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+              <Button variant="secondary" onClick={() => setVoucherModal(null)}>Cancel</Button>
+              <Button disabled={voucherSaving || !voucherPts} onClick={async () => {
+                setVoucherSaving(true); setVoucherError(''); setVoucherSuccess('');
+                try {
+                  const { data } = await api.post('/allowance/award-voucher', {
+                    employee_id: voucherModal.id,
+                    points: Number(voucherPts),
+                    reason: voucherNote.trim() || undefined,
+                  });
+                  setVoucherSuccess(`${voucherPts} points awarded to ${voucherModal.full_name}! 🎉`);
+                  setVoucherPts(''); setVoucherNote('');
+                  setTimeout(() => setVoucherModal(null), 2000);
+                } catch (err) {
+                  setVoucherError(err.response?.data?.error || 'Failed to award voucher');
+                } finally { setVoucherSaving(false); }
+              }}>
+                {voucherSaving ? 'Awarding…' : '🎁 Award voucher'}
+              </Button>
+            </div>
           </div>
         </Modal>
       )}

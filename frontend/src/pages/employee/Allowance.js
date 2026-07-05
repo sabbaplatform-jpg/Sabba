@@ -246,5 +246,85 @@ export default function Allowance() {
         </div>
       )}
     </div>
+    {/* Award points to colleague */}
+    <AwardPointsPanel myPoints={data?.sabba_points || 0} onAwarded={() => window.location.reload()}/>
+  );
+}
+
+function AwardPointsPanel({ myPoints, onAwarded }) {
+  const [employees, setEmployees] = useState([]);
+  const [recipientId, setRecipientId] = useState('');
+  const [points, setPoints]           = useState('');
+  const [message, setMessage]         = useState('');
+  const [sending, setSending]         = useState(false);
+  const [success, setSuccess]         = useState('');
+  const [error,   setError]           = useState('');
+
+  useEffect(() => {
+    api.get('/employees').then(r => setEmployees(r.data || [])).catch(() => {});
+  }, []);
+
+  const handleAward = async () => {
+    if (!recipientId || !points) { setError('Select a colleague and enter points'); return; }
+    if (Number(points) > myPoints) { setError('You don't have enough Sabba Points'); return; }
+    setSending(true); setError(''); setSuccess('');
+    try {
+      await api.post('/allowance/award-points', {
+        recipient_id: recipientId,
+        points: Number(points),
+        message: message.trim() || undefined,
+      });
+      setSuccess(`${points} points awarded successfully! 🎉`);
+      setRecipientId(''); setPoints(''); setMessage('');
+      setTimeout(() => { setSuccess(''); onAwarded(); }, 2000);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to award points');
+    } finally { setSending(false); }
+  };
+
+  return (
+    <div style={{ background: '#fff', border: '1px solid #eee', borderRadius: 16, padding: '24px 28px', marginTop: 20 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+        <span style={{ fontSize: 22 }}>🎁</span>
+        <div>
+          <h3 style={{ fontSize: 16, fontWeight: 700, color: colors.dark, margin: 0 }}>Award points to a colleague</h3>
+          <p style={{ fontSize: 12.5, color: colors.muted, marginTop: 2 }}>Share your Sabba Points with someone who deserves recognition</p>
+        </div>
+      </div>
+      <p style={{ fontSize: 12, color: colors.faint, marginBottom: 16 }}>
+        You have <strong style={{ color: colors.orange }}>{myPoints.toLocaleString()} pts</strong> available to award
+      </p>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+        <div>
+          <label style={{ fontSize: 11.5, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.08em', display: 'block', marginBottom: 5 }}>Colleague</label>
+          <select value={recipientId} onChange={e => setRecipientId(e.target.value)}
+            style={{ width: '100%', border: '1.5px solid #eee', borderRadius: 10, padding: '9px 12px', fontSize: 13.5, color: colors.dark, fontFamily: font.body, outline: 'none' }}>
+            <option value="">Select a colleague…</option>
+            {employees.map(e => <option key={e.id} value={e.id}>{e.full_name}</option>)}
+          </select>
+        </div>
+        <div>
+          <label style={{ fontSize: 11.5, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.08em', display: 'block', marginBottom: 5 }}>Points to award</label>
+          <input type="number" value={points} onChange={e => setPoints(e.target.value)}
+            min="1" max={Math.min(500, myPoints)} placeholder="e.g. 100"
+            style={{ width: '100%', border: '1.5px solid #eee', borderRadius: 10, padding: '9px 12px', fontSize: 13.5, color: colors.dark, fontFamily: font.body, outline: 'none', boxSizing: 'border-box' }}/>
+        </div>
+      </div>
+      <div style={{ marginBottom: 12 }}>
+        <label style={{ fontSize: 11.5, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.08em', display: 'block', marginBottom: 5 }}>Message (optional)</label>
+        <input value={message} onChange={e => setMessage(e.target.value)}
+          placeholder="e.g. Thanks for covering me last week!"
+          style={{ width: '100%', border: '1.5px solid #eee', borderRadius: 10, padding: '9px 12px', fontSize: 13.5, color: colors.dark, fontFamily: font.body, outline: 'none', boxSizing: 'border-box' }}/>
+      </div>
+      {error   && <p style={{ fontSize: 13, color: colors.red,   fontWeight: 600, marginBottom: 8 }}>{error}</p>}
+      {success && <p style={{ fontSize: 13, color: '#10B981', fontWeight: 700, marginBottom: 8 }}>{success}</p>}
+      <button onClick={handleAward} disabled={sending || !recipientId || !points}
+        style={{ background: sending || !recipientId || !points ? '#eee' : colors.orange,
+          color: sending || !recipientId || !points ? colors.muted : '#fff',
+          border: 'none', borderRadius: 10, padding: '10px 24px', fontSize: 13.5,
+          fontWeight: 700, cursor: 'pointer', fontFamily: font.body }}>
+        {sending ? 'Awarding…' : '🎁 Award points'}
+      </button>
+    </div>
   );
 }

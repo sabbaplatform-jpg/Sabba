@@ -20,6 +20,29 @@ export function NotFound() {
 }
 
 export function Contact() {
+  const [form, setForm]       = useState({ name: '', email: '', subject: '', message: '' });
+  const [sending, setSending] = useState(false);
+  const [sent,    setSent]    = useState(false);
+  const [error,   setError]   = useState('');
+
+  const handleSend = async (e) => {
+    e.preventDefault();
+    if (!form.name || !form.email || !form.message) {
+      setError('Please fill in your name, email and message.'); return;
+    }
+    setSending(true); setError('');
+    try {
+      await fetch('https://api.sabba.app/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      }).then(r => { if (!r.ok) throw new Error('Failed'); return r.json(); });
+      setSent(true);
+      setForm({ name: '', email: '', subject: '', message: '' });
+    } catch {
+      setError('Message could not be sent. Please email hello@sabbaplatform.com directly.');
+    } finally { setSending(false); }
+  };
   return (
     <div style={{ fontFamily: font.body, background: '#F7F5F2', minHeight: '100vh', paddingBottom: 80 }}>
       <div style={{ background: '#fff', borderBottom: '1px solid #eee', padding: '28px 40px 24px' }}>
@@ -60,7 +83,18 @@ export function Contact() {
             <label style={{ fontSize: 11.5, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.08em', display: 'block', marginBottom: 6 }}>Message</label>
             <textarea placeholder="How can we help?" rows={5} style={{ width: '100%', border: '1.5px solid #eee', borderRadius: 10, padding: '10px 14px', fontSize: 14, color: colors.dark, background: '#fff', outline: 'none', fontFamily: font.body, resize: 'vertical' }}/>
           </div>
-          <Button>Send message</Button>
+          {sent ? (
+              <div style={{ background: '#ECFDF5', border: '1px solid #10B981', borderRadius: 10, padding: '14px 18px', textAlign: 'center', marginTop: 8 }}>
+                <p style={{ color: '#10B981', fontWeight: 700, fontSize: 14 }}>✓ Message sent! We'll be in touch within one business day.</p>
+              </div>
+            ) : (
+              <>
+                {error && <p style={{ color: colors.red, fontSize: 13, fontWeight: 600, marginBottom: 8 }}>{error}</p>}
+                <Button onClick={handleSend} disabled={sending} style={{ width: '100%', marginTop: 8, opacity: sending ? 0.7 : 1 }}>
+                  {sending ? 'Sending…' : 'Send message'}
+                </Button>
+              </>
+            )}
         </div>
       </div>
     </div>

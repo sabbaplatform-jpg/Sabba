@@ -34,6 +34,13 @@ router.post('/register', [
     const user = result.rows[0];
     if (role === 'vendor' && company_name && category) {
       await db.query('INSERT INTO vendors (user_id, company_name, category) VALUES ($1,$2,$3)', [user.id, company_name, category]);
+      // Notify Sabba team of new vendor signup
+      email.sendNewVendorAlert({
+        vendor_name: company_name,
+        vendor_email: userEmail,
+        category: category,
+        full_name: full_name,
+      }).catch(err => console.error('[EMAIL] vendor alert:', err.message));
     }
     const token = jwt.sign(
       { id: user.id, email: user.email, role: user.role, name: user.full_name },
