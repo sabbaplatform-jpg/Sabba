@@ -187,9 +187,10 @@ export default function PrivacyPage() {
       {/* Header */}
       <div style={{ background: colors.navy, padding: '40px 0 32px' }}>
         <div style={{ maxWidth: 900, margin: '0 auto', padding: '0 32px' }}>
+          <a href="/" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'rgba(255,255,255,0.6)', fontSize: 13, fontWeight: 600, textDecoration: 'none', marginBottom: 12, fontFamily: font.body }}>← Back to Sabba</a>
           <p style={{ fontSize: 10, fontWeight: 700, color: colors.coral, textTransform: 'uppercase', letterSpacing: '0.15em', marginBottom: 8 }}>Sabba Platform</p>
           <h1 style={{ fontFamily: font.display, fontSize: 36, fontStyle: 'italic', color: '#fff', marginBottom: 10 }}>Privacy Policy</h1>
-          <p style={{ fontSize: 13, color: colors.muted }}>Last updated: 26 May 2026 · Applies to sabba-frontend.vercel.app</p>
+          <p style={{ fontSize: 13, color: colors.muted }}>Last updated: 26 May 2026 · Applies to sabba.app</p>
         </div>
       </div>
 

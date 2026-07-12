@@ -1,8 +1,17 @@
 import { useState } from 'react';
-import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { colors, font } from '../lib/styles';
 import { Button } from '../components/UI';
+
+function BackHome() {
+  const navigate = useNavigate();
+  return (
+    <button onClick={() => navigate('/')}
+      style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', color: colors.muted, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: font.body, padding: 0, marginBottom: 10 }}>
+      ← Back to Sabba
+    </button>
+  );
+}
 
 export function NotFound() {
   const navigate = useNavigate();
@@ -49,6 +58,7 @@ export function Contact() {
     <div style={{ fontFamily: font.body, background: '#F7F5F2', minHeight: '100vh', paddingBottom: 80 }}>
       <div style={{ background: '#fff', borderBottom: '1px solid #eee', padding: '28px 40px 24px' }}>
         <div style={{ maxWidth: 760, margin: '0 auto' }}>
+          <BackHome/>
           <p style={{ fontSize: 10.5, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>Sabba</p>
           <h1 style={{ fontFamily: font.display, fontSize: 34, color: colors.dark, fontWeight: 700, fontStyle: 'italic' }}>Contact us</h1>
           <p style={{ color: colors.muted, fontSize: 14, marginTop: 4, fontWeight: 500 }}>We'd love to hear from you.</p>
@@ -129,6 +139,7 @@ export function FAQ() {
     <div style={{ fontFamily: font.body, background: '#F7F5F2', minHeight: '100vh', paddingBottom: 80 }}>
       <div style={{ background: '#fff', borderBottom: '1px solid #eee', padding: '28px 40px 24px' }}>
         <div style={{ maxWidth: 760, margin: '0 auto' }}>
+          <BackHome/>
           <p style={{ fontSize: 10.5, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>Sabba</p>
           <h1 style={{ fontFamily: font.display, fontSize: 34, color: colors.dark, fontWeight: 700, fontStyle: 'italic' }}>Frequently asked questions</h1>
           <p style={{ color: colors.muted, fontSize: 14, marginTop: 4, fontWeight: 500 }}>Everything you need to know about Sabba.</p>

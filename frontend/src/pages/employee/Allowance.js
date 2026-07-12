@@ -249,8 +249,10 @@ export default function Allowance() {
 }
 
 function AwardPointsPanel({ myPoints, onAwarded }) {
-  const [employees, setEmployees] = useState([]);
-  const [recipientId, setRecipientId] = useState('');
+  const [query, setQuery]             = useState('');
+  const [results, setResults]         = useState([]);
+  const [showResults, setShowResults] = useState(false);
+  const [recipient, setRecipient]     = useState(null);
   const [points, setPoints]           = useState('');
   const [message, setMessage]         = useState('');
   const [sending, setSending]         = useState(false);
@@ -258,21 +260,28 @@ function AwardPointsPanel({ myPoints, onAwarded }) {
   const [error,   setError]           = useState('');
 
   useEffect(() => {
-    api.get('/employees').then(r => setEmployees(r.data || [])).catch(() => {});
-  }, []);
+    if (recipient) return;
+    const t = setTimeout(() => {
+      if (query.trim().length < 2) { setResults([]); return; }
+      api.get('/employees/colleagues', { params: { q: query.trim() } })
+        .then(r => { setResults(r.data || []); setShowResults(true); })
+        .catch(() => setResults([]));
+    }, 250);
+    return () => clearTimeout(t);
+  }, [query, recipient]);
 
   const handleAward = async () => {
-    if (!recipientId || !points) { setError('Select a colleague and enter points'); return; }
+    if (!recipient || !points) { setError('Select a colleague and enter points'); return; }
     if (Number(points) > myPoints) { setError("You don't have enough Sabba Points"); return; }
     setSending(true); setError(''); setSuccess('');
     try {
       await api.post('/allowance/award-points', {
-        recipient_id: recipientId,
+        recipient_id: recipient.id,
         points: Number(points),
         message: message.trim() || undefined,
       });
-      setSuccess(`${points} points awarded successfully! 🎉`);
-      setRecipientId(''); setPoints(''); setMessage('');
+      setSuccess(`${points} points awarded to ${recipient.full_name}! 🎉`);
+      setRecipient(null); setQuery(''); setPoints(''); setMessage('');
       setTimeout(() => { setSuccess(''); onAwarded(); }, 2000);
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to award points');
@@ -292,13 +301,39 @@ function AwardPointsPanel({ myPoints, onAwarded }) {
         You have <strong style={{ color: colors.orange }}>{myPoints.toLocaleString()} pts</strong> available to award
       </p>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
-        <div>
+        <div style={{ position: 'relative' }}>
           <label style={{ fontSize: 11.5, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.08em', display: 'block', marginBottom: 5 }}>Colleague</label>
-          <select value={recipientId} onChange={e => setRecipientId(e.target.value)}
-            style={{ width: '100%', border: '1.5px solid #eee', borderRadius: 10, padding: '9px 12px', fontSize: 13.5, color: colors.dark, fontFamily: font.body, outline: 'none' }}>
-            <option value="">Select a colleague…</option>
-            {employees.map(e => <option key={e.id} value={e.id}>{e.full_name}</option>)}
-          </select>
+          {recipient ? (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', border: '1.5px solid ' + colors.orange, borderRadius: 10, padding: '8px 12px', background: colors.orangeLight }}>
+              <span style={{ fontSize: 13.5, fontWeight: 600, color: colors.dark }}>{recipient.full_name}</span>
+              <button onClick={() => { setRecipient(null); setQuery(''); }}
+                style={{ background: 'none', border: 'none', color: colors.muted, fontSize: 15, cursor: 'pointer', padding: 0, lineHeight: 1 }}>✕</button>
+            </div>
+          ) : (
+            <input value={query}
+              onChange={e => setQuery(e.target.value)}
+              onFocus={() => { if (results.length) setShowResults(true); }}
+              onBlur={() => setTimeout(() => setShowResults(false), 180)}
+              placeholder="Type a name to search…"
+              style={{ width: '100%', border: '1.5px solid #eee', borderRadius: 10, padding: '9px 12px', fontSize: 13.5, color: colors.dark, fontFamily: font.body, outline: 'none', boxSizing: 'border-box' }}/>
+          )}
+          {!recipient && showResults && results.length > 0 && (
+            <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 20, background: '#fff', border: '1px solid #eee', borderRadius: 10, marginTop: 4, boxShadow: '0 8px 24px rgba(0,0,0,0.08)', overflow: 'hidden' }}>
+              {results.map(r => (
+                <button key={r.id}
+                  onMouseDown={() => { setRecipient(r); setShowResults(false); }}
+                  style={{ display: 'block', width: '100%', textAlign: 'left', background: 'none', border: 'none', borderBottom: '1px solid #f5f5f5', padding: '9px 12px', cursor: 'pointer', fontFamily: font.body }}>
+                  <span style={{ fontSize: 13.5, fontWeight: 600, color: colors.dark }}>{r.full_name}</span>
+                  {r.department && <span style={{ fontSize: 11.5, color: colors.muted, marginLeft: 8 }}>{r.department}</span>}
+                </button>
+              ))}
+            </div>
+          )}
+          {!recipient && showResults && query.trim().length >= 2 && results.length === 0 && (
+            <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 20, background: '#fff', border: '1px solid #eee', borderRadius: 10, marginTop: 4, padding: '10px 12px', boxShadow: '0 8px 24px rgba(0,0,0,0.08)' }}>
+              <span style={{ fontSize: 12.5, color: colors.muted }}>No colleagues found</span>
+            </div>
+          )}
         </div>
         <div>
           <label style={{ fontSize: 11.5, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.08em', display: 'block', marginBottom: 5 }}>Points to award</label>
@@ -315,9 +350,9 @@ function AwardPointsPanel({ myPoints, onAwarded }) {
       </div>
       {error   && <p style={{ fontSize: 13, color: colors.red,   fontWeight: 600, marginBottom: 8 }}>{error}</p>}
       {success && <p style={{ fontSize: 13, color: '#10B981', fontWeight: 700, marginBottom: 8 }}>{success}</p>}
-      <button onClick={handleAward} disabled={sending || !recipientId || !points}
-        style={{ background: sending || !recipientId || !points ? '#eee' : colors.orange,
-          color: sending || !recipientId || !points ? colors.muted : '#fff',
+      <button onClick={handleAward} disabled={sending || !recipient || !points}
+        style={{ background: sending || !recipient || !points ? '#eee' : colors.orange,
+          color: sending || !recipient || !points ? colors.muted : '#fff',
           border: 'none', borderRadius: 10, padding: '10px 24px', fontSize: 13.5,
           fontWeight: 700, cursor: 'pointer', fontFamily: font.body }}>
         {sending ? 'Awarding…' : '🎁 Award points'}

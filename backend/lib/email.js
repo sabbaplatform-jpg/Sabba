@@ -233,5 +233,7 @@ module.exports = {
   sendHRApprovalRequest,
   sendVendorRejected,
   sendPasswordReset,
+  sendNewVendorAlert,
+  sendContactForm,
   renderPreview,
 };

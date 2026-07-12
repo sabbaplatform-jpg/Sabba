@@ -151,13 +151,8 @@ function EditEmployeeModal({ employee: emp, onClose, onSaved }) {
     finally { setSaving(false); }
   };
 
-  const F = ({k,label,placeholder,type='text',wide=false})=>(
-    <div style={{gridColumn:wide?'1 / -1':undefined}}>
-      <label style={{fontSize:11,fontWeight:700,color:colors.faint,textTransform:'uppercase',letterSpacing:'0.07em',display:'block',marginBottom:5}}>{label}</label>
-      <input type={type} value={form[k]} onChange={e=>setForm(f=>({...f,[k]:e.target.value}))} placeholder={placeholder}
-        style={{width:'100%',border:'1.5px solid #eee',borderRadius:10,padding:'9px 13px',fontSize:13.5,color:colors.dark,fontFamily:font.body,outline:'none'}}/>
-    </div>
-  );
+  const fStyle = {width:'100%',border:'1.5px solid #eee',borderRadius:10,padding:'9px 13px',fontSize:13.5,color:colors.dark,fontFamily:font.body,outline:'none',boxSizing:'border-box'};
+  const lStyle = {fontSize:11,fontWeight:700,color:colors.faint,textTransform:'uppercase',letterSpacing:'0.07em',display:'block',marginBottom:5};
   const S = ({k,label,opts})=>(
     <div>
       <label style={{fontSize:11,fontWeight:700,color:colors.faint,textTransform:'uppercase',letterSpacing:'0.07em',display:'block',marginBottom:5}}>{label}</label>
@@ -171,15 +166,42 @@ function EditEmployeeModal({ employee: emp, onClose, onSaved }) {
   return (
     <Modal title={`Edit — ${emp.full_name}`} onClose={onClose} width={580}>
       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14,marginBottom:14}}>
-        <F k="first_name" label="First name" placeholder="James"/>
-        <F k="last_name"  label="Last name"  placeholder="Thornton"/>
-        <F k="employee_number" label="Employee number" placeholder="EMP001"/>
-        <F k="department" label="Department" placeholder="Finance"/>
-        <F k="job_title"  label="Job title"  placeholder="Senior Analyst"/>
-        <F k="location"   label="Location"   placeholder="London"/>
-        <F k="gl_location" label="GL location" placeholder="GL-LON-001"/>
-        <F k="salary_band" label="Salary band" placeholder="Band 3"/>
-        <F k="spend_limit_gbp" label="Yearly allowance (£)" placeholder="5000" type="number"/>
+        <div>
+          <label style={lStyle}>First name</label>
+          <input value={form.first_name} onChange={e=>setForm(f=>({...f,first_name:e.target.value}))} placeholder="James" style={fStyle}/>
+        </div>
+        <div>
+          <label style={lStyle}>Last name</label>
+          <input value={form.last_name} onChange={e=>setForm(f=>({...f,last_name:e.target.value}))} placeholder="Thornton" style={fStyle}/>
+        </div>
+        <div>
+          <label style={lStyle}>Employee number</label>
+          <input value={form.employee_number} onChange={e=>setForm(f=>({...f,employee_number:e.target.value}))} placeholder="EMP001" style={fStyle}/>
+        </div>
+        <div>
+          <label style={lStyle}>Department</label>
+          <input value={form.department} onChange={e=>setForm(f=>({...f,department:e.target.value}))} placeholder="Finance" style={fStyle}/>
+        </div>
+        <div>
+          <label style={lStyle}>Job title</label>
+          <input value={form.job_title} onChange={e=>setForm(f=>({...f,job_title:e.target.value}))} placeholder="Senior Analyst" style={fStyle}/>
+        </div>
+        <div>
+          <label style={lStyle}>Location</label>
+          <input value={form.location} onChange={e=>setForm(f=>({...f,location:e.target.value}))} placeholder="London" style={fStyle}/>
+        </div>
+        <div>
+          <label style={lStyle}>GL location</label>
+          <input value={form.gl_location} onChange={e=>setForm(f=>({...f,gl_location:e.target.value}))} placeholder="GL-LON-001" style={fStyle}/>
+        </div>
+        <div>
+          <label style={lStyle}>Salary band</label>
+          <input value={form.salary_band} onChange={e=>setForm(f=>({...f,salary_band:e.target.value}))} placeholder="Band 3" style={fStyle}/>
+        </div>
+        <div>
+          <label style={lStyle}>Yearly allowance (£)</label>
+          <input type="number" value={form.spend_limit_gbp} onChange={e=>setForm(f=>({...f,spend_limit_gbp:e.target.value}))} placeholder="5000" style={fStyle}/>
+        </div>
         <S k="employment_category" label="Employment type" opts={['Permanent','Contract','Fixed Term','Intern']}/>
         <S k="assignment_status" label="Status" opts={['Active','On Leave','Suspended','Inactive']}/>
         <S k="leave_type" label="Leave access" opts={['Both','Annual Leave','Sabbatical']}/>
@@ -206,13 +228,8 @@ function HRAdminModal({ companyId, admin, onClose, onSaved }) {
   const [error,  setError]  = useState('');
   const [success,setSuccess]= useState('');
 
-  const F = ({ k, label, placeholder, type='text' }) => (
-    <div style={{ marginBottom: 14 }}>
-      <label style={{ fontSize: 11, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.07em', display: 'block', marginBottom: 5 }}>{label}</label>
-      <input type={type} value={form[k]} onChange={e => setForm(f => ({ ...f, [k]: e.target.value }))} placeholder={placeholder}
-        style={{ width: '100%', border: '1.5px solid #eee', borderRadius: 10, padding: '9px 13px', fontSize: 13.5, color: colors.dark, fontFamily: font.body, outline: 'none' }}/>
-    </div>
-  );
+  const fieldStyle = { width: '100%', border: '1.5px solid #eee', borderRadius: 10, padding: '9px 13px', fontSize: 13.5, color: colors.dark, fontFamily: font.body, outline: 'none', boxSizing: 'border-box' };
+  const labelStyle = { fontSize: 11, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.07em', display: 'block', marginBottom: 5 };
 
   const save = async () => {
     setError(''); setSaving(true);
@@ -244,13 +261,34 @@ function HRAdminModal({ companyId, admin, onClose, onSaved }) {
         </div>
       )}
       {(!isEdit || tab === 'profile') && (
-        <><F k="full_name" label="Full name" placeholder="Rachel Okafor"/><F k="email" label="Email" placeholder="hr@company.com"/><F k="job_title" label="Job title" placeholder="HR Director"/></>
+        <>
+          <div style={{ marginBottom: 14 }}>
+            <label style={labelStyle}>Full name</label>
+            <input value={form.full_name} onChange={e => setForm(f => ({ ...f, full_name: e.target.value }))} placeholder="Rachel Okafor" style={fieldStyle}/>
+          </div>
+          <div style={{ marginBottom: 14 }}>
+            <label style={labelStyle}>Email</label>
+            <input value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="hr@company.com" style={fieldStyle}/>
+          </div>
+          <div style={{ marginBottom: 14 }}>
+            <label style={labelStyle}>Job title</label>
+            <input value={form.job_title} onChange={e => setForm(f => ({ ...f, job_title: e.target.value }))} placeholder="HR Director" style={fieldStyle}/>
+          </div>
+        </>
       )}
-      {!isEdit && <F k="password" label="Password" placeholder="Min 8 characters" type="password"/>}
+      {!isEdit && (
+        <div style={{ marginBottom: 14 }}>
+          <label style={labelStyle}>Password</label>
+          <input type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} placeholder="Min 8 characters" style={fieldStyle}/>
+        </div>
+      )}
       {tab === 'password' && isEdit && (
         <div>
           <p style={{ fontSize: 13, color: colors.muted, marginBottom: 14, lineHeight: 1.6 }}>Set a new password for <strong>{admin.full_name}</strong>. Ask them to change it on first login.</p>
-          <F k="password" label="New password" placeholder="Min 8 characters" type="password"/>
+          <div style={{ marginBottom: 14 }}>
+            <label style={labelStyle}>New password</label>
+            <input type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} placeholder="Min 8 characters" style={fieldStyle}/>
+          </div>
         </div>
       )}
       {error   && <p style={{ fontSize: 13, color: colors.red,   fontWeight: 700, marginBottom: 12 }}>{"⚠ " + error}</p>}

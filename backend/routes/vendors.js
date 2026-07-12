@@ -241,8 +241,8 @@ router.post('/team', auth, requireRole('vendor'), async (req, res) => {
       [email.toLowerCase().trim(), full_name, job_title||null, hash]
     );
     await db.query(
-      `INSERT INTO vendors (user_id,company_name,category,description,website,contact_email,contact_phone,commission_rate,status,is_primary_user)
-       SELECT $1,company_name,category,description,website,contact_email,contact_phone,commission_rate,status,false FROM vendors WHERE id=$2`,
+      `INSERT INTO vendors (user_id, company_name, category, description, verified, is_primary_user)
+       SELECT $1, company_name, category, description, verified, false FROM vendors WHERE id=$2`,
       [newUser.rows[0].id, v.id]
     );
     res.status(201).json({ ...newUser.rows[0], is_primary_user: false });

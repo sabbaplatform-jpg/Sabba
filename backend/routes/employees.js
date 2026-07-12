@@ -23,6 +23,35 @@ router.get('/me', auth, requireRole('employee'), async (req, res) => {
 });
 
 // GET /api/employees/count — HR gets total employee count for their company
+// GET /api/employees/colleagues?q=search — employees can find colleagues to award points
+router.get('/colleagues', auth, requireRole('employee'), async (req, res) => {
+  try {
+    const q = (req.query.q || '').trim();
+    let result;
+    if (q) {
+      result = await db.query(
+        `SELECT id, full_name, department
+         FROM users
+         WHERE company_id = $1 AND role = 'employee' AND id != $2
+           AND full_name ILIKE $3
+         ORDER BY full_name ASC LIMIT 8`,
+        [req.user.company_id, req.user.id, '%' + q + '%']
+      );
+    } else {
+      result = await db.query(
+        `SELECT id, full_name, department
+         FROM users
+         WHERE company_id = $1 AND role = 'employee' AND id != $2
+         ORDER BY full_name ASC LIMIT 8`,
+        [req.user.company_id, req.user.id]
+      );
+    }
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.get('/count', auth, requireRole('hr'), async (req, res) => {
   try {
     const { rows } = await db.query(

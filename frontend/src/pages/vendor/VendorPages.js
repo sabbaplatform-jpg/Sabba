@@ -1162,13 +1162,8 @@ export function VendorTeam() {
     } catch (err) { alert(err.response?.data?.error || 'Failed to remove'); }
   };
 
-  const F = ({ k, label, placeholder, type='text' }) => (
-    <div>
-      <label style={{ fontSize:11, fontWeight:700, color:colors.faint, textTransform:'uppercase', letterSpacing:'0.07em', display:'block', marginBottom:5 }}>{label}</label>
-      <input type={type} value={form[k]} onChange={e => setForm(f => ({ ...f, [k]: e.target.value }))} placeholder={placeholder}
-        style={{ width:'100%', border:'1.5px solid #eee', borderRadius:10, padding:'9px 13px', fontSize:13.5, color:colors.dark, fontFamily:font.body, outline:'none' }}/>
-    </div>
-  );
+  const fStyle = { width:'100%', border:'1.5px solid #eee', borderRadius:10, padding:'9px 13px', fontSize:13.5, color:colors.dark, fontFamily:font.body, outline:'none', boxSizing:'border-box' };
+  const lStyle = { fontSize:11, fontWeight:700, color:colors.faint, textTransform:'uppercase', letterSpacing:'0.07em', display:'block', marginBottom:5 };
 
   return (
     <div style={{ fontFamily: font.body, background: '#F7F5F2', minHeight: '100vh', paddingBottom: 80 }}>
@@ -1193,10 +1188,22 @@ export function VendorTeam() {
         {editMember && (
           <Modal title={'Edit — ' + editMember.full_name} onClose={() => { setEditMember(null); setError(''); }} width={520}>
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14, marginBottom:14 }}>
-              <F k="full_name" label="Full name"   placeholder={editMember.full_name}/>
-              <F k="email"     label="Email"        placeholder={editMember.email}/>
-              <F k="job_title" label="Job title"    placeholder={editMember.job_title||'—'}/>
-              <F k="password"  label="New password" placeholder="Leave blank to keep current" type="password"/>
+              <div>
+                <label style={lStyle}>Full name</label>
+                <input value={form.full_name} onChange={e => setForm(f => ({ ...f, full_name: e.target.value }))} placeholder={editMember.full_name} style={fStyle}/>
+              </div>
+              <div>
+                <label style={lStyle}>Email</label>
+                <input value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder={editMember.email} style={fStyle}/>
+              </div>
+              <div>
+                <label style={lStyle}>Job title</label>
+                <input value={form.job_title} onChange={e => setForm(f => ({ ...f, job_title: e.target.value }))} placeholder={editMember.job_title||'—'} style={fStyle}/>
+              </div>
+              <div>
+                <label style={lStyle}>New password</label>
+                <input type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} placeholder="Leave blank to keep current" style={fStyle}/>
+              </div>
             </div>
             {error   && <p style={{ fontSize:13, color:colors.red,   fontWeight:700, marginBottom:10 }}>{'⚠ ' + error}</p>}
             {success && <p style={{ fontSize:13, color:colors.green, fontWeight:700, marginBottom:10 }}>{'✓ ' + success}</p>}
@@ -1211,10 +1218,22 @@ export function VendorTeam() {
           <div style={{ background:'#fff', border:'1px solid #eee', borderRadius:16, padding:'24px 28px', marginBottom:24 }}>
             <p style={{ fontSize:15, fontWeight:700, color:colors.dark, marginBottom:16 }}>Add team member</p>
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14, marginBottom:14 }}>
-              <F k="full_name" label="Full name"  placeholder="Alex Johnson"/>
-              <F k="email"     label="Email"       placeholder="alex@company.com"/>
-              <F k="job_title" label="Job title"   placeholder="Operations Manager"/>
-              <F k="password"  label="Password"    placeholder="Min 8 characters" type="password"/>
+              <div>
+                <label style={lStyle}>Full name</label>
+                <input value={form.full_name} onChange={e => setForm(f => ({ ...f, full_name: e.target.value }))} placeholder="Alex Johnson" style={fStyle}/>
+              </div>
+              <div>
+                <label style={lStyle}>Email</label>
+                <input value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="alex@company.com" style={fStyle}/>
+              </div>
+              <div>
+                <label style={lStyle}>Job title</label>
+                <input value={form.job_title} onChange={e => setForm(f => ({ ...f, job_title: e.target.value }))} placeholder="Operations Manager" style={fStyle}/>
+              </div>
+              <div>
+                <label style={lStyle}>Password</label>
+                <input type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} placeholder="Min 8 characters" style={fStyle}/>
+              </div>
             </div>
             <div style={{ background:colors.orangeLight, border:'1px solid rgba(212,98,42,0.2)', borderRadius:10, padding:'10px 14px', marginBottom:14 }}>
               <p style={{ fontSize:12.5, color:colors.orange, fontWeight:600 }}>Secondary users share the same vendor profile, packages and bookings. They cannot add or remove other team members.</p>
