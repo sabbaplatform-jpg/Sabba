@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { colors, font } from '../lib/styles';
 import { Button } from '../components/UI';
@@ -73,16 +74,26 @@ export function Contact() {
         <div className="card" style={{ padding: '28px 32px' }}>
           <p style={{ fontSize: 15, fontWeight: 700, color: colors.dark, marginBottom: 20 }}>Send us a message</p>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
-            {['Full name', 'Email address', 'Company', 'Subject'].map(label => (
-              <div key={label}>
-                <label style={{ fontSize: 11.5, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.08em', display: 'block', marginBottom: 6 }}>{label}</label>
-                <input placeholder={label} style={{ width: '100%', border: '1.5px solid #eee', borderRadius: 10, padding: '10px 14px', fontSize: 14, color: colors.dark, background: '#fff', outline: 'none', fontFamily: font.body }}/>
+            <div>
+                <label style={{ fontSize: 11.5, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.08em', display: 'block', marginBottom: 6 }}>Full name</label>
+                <input value={form.name} onChange={e => setForm(f => ({...f, name: e.target.value}))} placeholder="Full name" style={{ width: '100%', border: '1.5px solid #eee', borderRadius: 10, padding: '10px 14px', fontSize: 14, color: colors.dark, background: '#fff', outline: 'none', fontFamily: font.body, boxSizing: 'border-box' }}/>
               </div>
-            ))}
-          </div>
-          <div style={{ marginBottom: 20 }}>
+              <div>
+                <label style={{ fontSize: 11.5, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.08em', display: 'block', marginBottom: 6 }}>Email address</label>
+                <input value={form.email} onChange={e => setForm(f => ({...f, email: e.target.value}))} placeholder="your@email.com" type="email" style={{ width: '100%', border: '1.5px solid #eee', borderRadius: 10, padding: '10px 14px', fontSize: 14, color: colors.dark, background: '#fff', outline: 'none', fontFamily: font.body, boxSizing: 'border-box' }}/>
+              </div>
+              <div>
+                <label style={{ fontSize: 11.5, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.08em', display: 'block', marginBottom: 6 }}>Company</label>
+                <input value={form.company || ''} onChange={e => setForm(f => ({...f, company: e.target.value}))} placeholder="Company name" style={{ width: '100%', border: '1.5px solid #eee', borderRadius: 10, padding: '10px 14px', fontSize: 14, color: colors.dark, background: '#fff', outline: 'none', fontFamily: font.body, boxSizing: 'border-box' }}/>
+              </div>
+              <div>
+                <label style={{ fontSize: 11.5, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.08em', display: 'block', marginBottom: 6 }}>Subject</label>
+                <input value={form.subject} onChange={e => setForm(f => ({...f, subject: e.target.value}))} placeholder="What's this about?" style={{ width: '100%', border: '1.5px solid #eee', borderRadius: 10, padding: '10px 14px', fontSize: 14, color: colors.dark, background: '#fff', outline: 'none', fontFamily: font.body, boxSizing: 'border-box' }}/>
+              </div>
+            </div>
+          <div style={{ marginBottom: 20, marginTop: 14 }}>
             <label style={{ fontSize: 11.5, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.08em', display: 'block', marginBottom: 6 }}>Message</label>
-            <textarea placeholder="How can we help?" rows={5} style={{ width: '100%', border: '1.5px solid #eee', borderRadius: 10, padding: '10px 14px', fontSize: 14, color: colors.dark, background: '#fff', outline: 'none', fontFamily: font.body, resize: 'vertical' }}/>
+            <textarea value={form.message} onChange={e => setForm(f => ({...f, message: e.target.value}))} placeholder="How can we help?" rows={5} style={{ width: '100%', border: '1.5px solid #eee', borderRadius: 10, padding: '10px 14px', fontSize: 14, color: colors.dark, background: '#fff', outline: 'none', fontFamily: font.body, resize: 'vertical', boxSizing: 'border-box' }}/>
           </div>
           {sent ? (
               <div style={{ background: '#ECFDF5', border: '1px solid #10B981', borderRadius: 10, padding: '14px 18px', textAlign: 'center', marginTop: 8 }}>
