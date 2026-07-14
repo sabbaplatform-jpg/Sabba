@@ -296,8 +296,6 @@ export function OnboardingQuiz({ onComplete }) {
         answers:             allAnswers,
         completed:           true,
       });
-      // Award 100 points
-      await api.post('/quiz/points').catch(() => {});
     } catch {}
     setSaving(false);
     setShowResult(true);

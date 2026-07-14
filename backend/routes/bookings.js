@@ -41,7 +41,7 @@ router.get('/mine', auth, requireRole('employee'), async (req, res) => {
   }
 });
 
-router.get('/company', auth, requireRole('hr'), async (req, res) => {
+router.get(['/company', '/employer'], auth, requireRole('hr'), async (req, res) => {
   try {
     const result = await db.query(`
       SELECT b.*, p.title as package_title, p.destination, p.emoji,

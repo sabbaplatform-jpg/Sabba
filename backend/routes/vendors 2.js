@@ -107,67 +107,6 @@ router.delete('/packages/media/:id', auth, requireRole('vendor'), async (req, re
   }
 });
 
-// POST /api/vendors/onboarding — vendor completes onboarding questionnaire
-router.post('/onboarding', auth, requireRole('vendor'), async (req, res) => {
-  try {
-    const {
-      business_type, categories, about, standout,
-      website, company_name, contact_name, contact_phone,
-    } = req.body;
-
-    // Map primary category — first selected category, fallback to a safe default
-    const validCats = ['travel', 'volunteering', 'courses', 'jobs_abroad', 'accommodation', 'airlines'];
-    let primaryCategory = Array.isArray(categories)
-      ? categories.find(c => validCats.includes(c))
-      : null;
-    if (!primaryCategory) primaryCategory = 'travel';
-
-    // Build a structured description from the questionnaire answers
-    const parts = [];
-    if (about) parts.push(about.trim());
-    if (Array.isArray(categories) && categories.length) parts.push('Categories: ' + categories.join(', '));
-    if (Array.isArray(standout) && standout.length) parts.push('Highlights: ' + standout.join(', '));
-    if (business_type) parts.push('Business type: ' + business_type);
-    if (website) parts.push('Website: ' + website);
-    if (contact_name) parts.push('Contact: ' + contact_name);
-    if (contact_phone) parts.push('Phone: ' + contact_phone);
-    const description = parts.join('\n');
-
-    // Update the vendor row that was created at registration
-    const result = await db.query(
-      `UPDATE vendors
-       SET company_name = COALESCE($1, company_name),
-           category     = $2,
-           description  = $3
-       WHERE user_id = $4
-       RETURNING id, company_name, category`,
-      [company_name || null, primaryCategory, description, req.user.id]
-    );
-
-    if (!result.rows.length) {
-      return res.status(404).json({ error: 'Vendor profile not found' });
-    }
-
-    // Alert the Sabba team that onboarding is complete
-    try {
-      const email = require('../lib/email');
-      if (email.sendNewVendorAlert) {
-        const u = await db.query('SELECT email, full_name FROM users WHERE id=$1', [req.user.id]);
-        email.sendNewVendorAlert({
-          vendor_name: result.rows[0].company_name,
-          vendor_email: u.rows[0]?.email,
-          category: primaryCategory,
-          full_name: u.rows[0]?.full_name,
-        }).catch(() => {});
-      }
-    } catch (e) { /* non-blocking */ }
-
-    res.json({ success: true, vendor: result.rows[0] });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
 // PATCH /api/vendors/bookings/:id/notes — vendor sends notes to employee
 router.patch('/bookings/:id/notes', auth, requireRole('vendor'), async (req, res) => {
   try {
@@ -302,8 +241,8 @@ router.post('/team', auth, requireRole('vendor'), async (req, res) => {
       [email.toLowerCase().trim(), full_name, job_title||null, hash]
     );
     await db.query(
-      `INSERT INTO vendors (user_id, company_name, category, description, verified, is_primary_user)
-       SELECT $1, company_name, category, description, verified, false FROM vendors WHERE id=$2`,
+      `INSERT INTO vendors (user_id,company_name,category,description,website,contact_email,contact_phone,commission_rate,status,is_primary_user)
+       SELECT $1,company_name,category,description,website,contact_email,contact_phone,commission_rate,status,false FROM vendors WHERE id=$2`,
       [newUser.rows[0].id, v.id]
     );
     res.status(201).json({ ...newUser.rows[0], is_primary_user: false });
