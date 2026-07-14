@@ -23,8 +23,8 @@ router.get('/', auth, requireRole('hr'), async (req, res) => {
   }
 });
 
-// PATCH /api/vendors/:id/verify — HR verifies a vendor
-router.patch('/:id/verify', auth, requireRole('hr'), async (req, res) => {
+// PATCH /api/vendors/:id/verify — HR or Super Admin verifies a vendor
+router.patch('/:id/verify', auth, requireRole('hr', 'superadmin'), async (req, res) => {
   try {
     const { verified } = req.body;
     const result = await db.query(`

@@ -637,14 +637,26 @@ function VendorReviewModal({ vendor, companies, onClose, onVerify, onReject, onA
 
   const handleVerify = async () => {
     setSubmitting(true);
-    await onVerify(vendor.id);
-    setSubmitting(false); onClose();
+    try {
+      await onVerify(vendor.id);
+      onClose();
+    } catch (err) {
+      alert(err.response?.data?.error || 'Failed to verify vendor. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
   };
   const handleReject = async () => {
     if (!reason.trim()) return;
     setSubmitting(true);
-    await onReject(vendor.id, reason);
-    setSubmitting(false); onClose();
+    try {
+      await onReject(vendor.id, reason);
+      onClose();
+    } catch (err) {
+      alert(err.response?.data?.error || 'Failed to reject vendor. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
