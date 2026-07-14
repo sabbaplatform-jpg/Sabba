@@ -364,10 +364,10 @@ function PendingState() {
         <p style={{ fontSize: 14, color: '#9E8E7E', lineHeight: 1.7, marginBottom: 24 }}>
           Your vendor profile is now under review. We'll be in touch within 1–2 business days.
           <br/><br/>
-          In the meantime, log in to see your pending dashboard.
+          In the meantime, you can view your pending dashboard.
         </p>
-        <a href="/login" style={{ display: 'block', background: '#D4622A', color: '#fff', textDecoration: 'none', borderRadius: 12, padding: '14px', fontSize: 14, fontWeight: 700 }}>
-          Go to login →
+        <a href="/vendor" style={{ display: 'block', background: '#D4622A', color: '#fff', textDecoration: 'none', borderRadius: 12, padding: '14px', fontSize: 14, fontWeight: 700 }}>
+          Go to my dashboard →
         </a>
       </div>
     </div>

@@ -136,16 +136,24 @@ router.post('/onboarding', auth, requireRole('vendor'), async (req, res) => {
     // Update the vendor row that was created at registration
     const result = await db.query(
       `UPDATE vendors
-       SET company_name = COALESCE($1, company_name),
-           category     = $2,
-           description  = $3
+       SET company_name        = COALESCE($1, company_name),
+           category            = $2,
+           description         = $3,
+           onboarding_completed = TRUE
        WHERE user_id = $4
        RETURNING id, company_name, category`,
       [company_name || null, primaryCategory, description, req.user.id]
     );
 
+    // If no vendor row existed yet (edge case), create one now
     if (!result.rows.length) {
-      return res.status(404).json({ error: 'Vendor profile not found' });
+      const created = await db.query(
+        `INSERT INTO vendors (user_id, company_name, category, description, onboarding_completed, verified)
+         VALUES ($1, $2, $3, $4, TRUE, FALSE)
+         RETURNING id, company_name, category`,
+        [req.user.id, company_name || 'My Company', primaryCategory, description]
+      );
+      result.rows = created.rows;
     }
 
     // Alert the Sabba team that onboarding is complete
