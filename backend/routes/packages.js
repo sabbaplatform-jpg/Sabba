@@ -20,6 +20,7 @@ router.get('/', async (req, res) => {
         AND sl.end_date   >= $1
         AND COALESCE(sl.listing_type, 'marketplace') = 'marketplace'
       WHERE p.status = 'live'
+        AND v.active = TRUE
         AND (p.start_date IS NULL OR p.start_date <= $1)
         AND (p.end_date   IS NULL OR p.end_date   >= $1)
     `;

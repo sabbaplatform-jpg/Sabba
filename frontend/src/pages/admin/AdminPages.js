@@ -629,7 +629,7 @@ export function AdminEmployers() {
 // 3. VENDORS
 // ═══════════════════════════════════════════════════════════
 
-function VendorReviewModal({ vendor, companies, onClose, onVerify, onReject, onAccessChange }) {
+function VendorReviewModal({ vendor, companies, onClose, onVerify, onReject, onAccessChange, onToggleActive }) {
   const [rejectMode,  setRejectMode]  = useState(false);
   const [reason,      setReason]      = useState('');
   const [submitting,  setSubmitting]  = useState(false);
@@ -652,6 +652,26 @@ function VendorReviewModal({ vendor, companies, onClose, onVerify, onReject, onA
     } catch (err) {
       setPwErr(err.response?.data?.error || 'Failed to update password');
     } finally { setPwSaving(false); }
+  };
+
+  const [activeSaving, setActiveSaving] = useState(false);
+  const [activeMsg,    setActiveMsg]    = useState('');
+  const isActive = vendor.active !== false; // default TRUE for legacy rows
+
+  const handleToggleActiveClick = async () => {
+    if (isActive && !window.confirm(`Deactivate ${vendor.company_name}? This hides all their packages from the marketplace and cancels their pending bookings. You can reactivate them later.`)) return;
+    setActiveMsg(''); setActiveSaving(true);
+    try {
+      const data = await onToggleActive(vendor.id, isActive);
+      if (isActive && data?.cancelled_bookings != null) {
+        setActiveMsg(`Vendor deactivated. ${data.cancelled_bookings} pending booking${data.cancelled_bookings === 1 ? '' : 's'} cancelled.`);
+      } else {
+        setActiveMsg(isActive ? 'Vendor deactivated.' : 'Vendor reactivated.');
+      }
+      setTimeout(() => setActiveMsg(''), 4000);
+    } catch (err) {
+      setActiveMsg(err.response?.data?.error || 'Failed to update vendor status');
+    } finally { setActiveSaving(false); }
   };
 
   const handleVerify = async () => {
@@ -770,6 +790,27 @@ function VendorReviewModal({ vendor, companies, onClose, onVerify, onReject, onA
         </div>
       )}
 
+      {/* Vendor active status */}
+      {!rejectMode && (
+        <div style={{ background: isActive ? '#F7F5F2' : colors.redLight, borderRadius: 10, padding: '12px 16px', marginBottom: 16 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ flex: 1, paddingRight: 12 }}>
+              <p style={{ fontSize: 10.5, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>Platform status</p>
+              <p style={{ fontSize: 13, color: isActive ? colors.mid : colors.red, fontWeight: isActive ? 500 : 700 }}>
+                {isActive
+                  ? 'Active — packages are visible on the marketplace.'
+                  : 'Deactivated — hidden from the marketplace.'}
+              </p>
+            </div>
+            <button onClick={handleToggleActiveClick} disabled={activeSaving}
+              style={{ background: activeSaving ? '#eee' : (isActive ? colors.red : colors.green), color: activeSaving ? colors.muted : '#fff', border: 'none', borderRadius: 10, padding: '9px 16px', fontSize: 13, fontWeight: 700, cursor: activeSaving ? 'default' : 'pointer', fontFamily: font.body, whiteSpace: 'nowrap', flexShrink: 0 }}>
+              {activeSaving ? 'Saving…' : (isActive ? 'Deactivate vendor' : 'Reactivate vendor')}
+            </button>
+          </div>
+          {activeMsg && <p style={{ fontSize: 12.5, color: isActive ? colors.green : colors.dark, fontWeight: 700, marginTop: 10 }}>{activeMsg}</p>}
+        </div>
+      )}
+
       {/* Rejection reason input */}
       {rejectMode && (
         <div style={{ marginBottom: 16 }}>
@@ -864,6 +905,14 @@ export function AdminVendors() {
     }
   };
 
+  const handleToggleActive = async (id, currentlyActive) => {
+    const path = currentlyActive ? 'deactivate' : 'reactivate';
+    const { data } = await api.patch(`/admin/vendors/${id}/${path}`);
+    setVendors(vs => vs.map(v => v.id === id ? { ...v, active: !currentlyActive } : v));
+    if (reviewing?.id === id) setReviewing(r => ({ ...r, active: !currentlyActive }));
+    return data;
+  };
+
   const filtered = vendors.filter(v => {
     const matchFilter = filter === 'all'
       || (filter === 'pending'    && !v.verified && v.onboarding_completed)
@@ -892,6 +941,7 @@ export function AdminVendors() {
           onVerify={handleVerify}
           onReject={handleReject}
           onAccessChange={handleAccessChange}
+          onToggleActive={handleToggleActive}
         />
       )}
       <div style={{ background: '#fff', borderBottom: '1px solid #eee', padding: '24px 36px' }}>

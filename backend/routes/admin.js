@@ -474,6 +474,70 @@ router.patch('/vendors/:id/reject', auth, requireAdmin, async (req, res) => {
   }
 });
 
+// ── PATCH /api/admin/vendors/:id/deactivate ──────────────────
+// Deactivate a vendor: hide from marketplace + cancel pending bookings.
+// Reversible via /reactivate. Silent — no reason sent to vendor.
+router.patch('/vendors/:id/deactivate', auth, requireAdmin, async (req, res) => {
+  try {
+    const vendor = await db.query('SELECT * FROM vendors WHERE id=$1', [req.params.id]);
+    if (!vendor.rows.length) return res.status(404).json({ error: 'Vendor not found' });
+
+    // Mark vendor inactive
+    const result = await db.query(
+      `UPDATE vendors
+       SET active=FALSE, deactivated_at=NOW(), deactivated_by=$1
+       WHERE id=$2 RETURNING *`,
+      [req.user.id, req.params.id]
+    );
+
+    // Cancel this vendor's pending/approved (not-yet-confirmed) bookings
+    const cancelled = await db.query(
+      `UPDATE bookings
+       SET status='cancelled'
+       WHERE status IN ('pending','approved')
+         AND package_id IN (SELECT id FROM packages WHERE vendor_id=$1)
+       RETURNING id`,
+      [req.params.id]
+    );
+
+    // Audit
+    await db.query(
+      `INSERT INTO audit_log (actor_id, action, target_id, target_type, meta)
+       VALUES ($1,'deactivate_vendor',$2,'vendor',$3)`,
+      [req.user.id, req.params.id, JSON.stringify({ cancelled_bookings: cancelled.rows.length })]
+    ).catch(() => {});
+
+    res.json({ ...result.rows[0], cancelled_bookings: cancelled.rows.length });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── PATCH /api/admin/vendors/:id/reactivate ──────────────────
+// Restore a deactivated vendor. Packages become visible again;
+// previously-cancelled bookings are NOT auto-restored.
+router.patch('/vendors/:id/reactivate', auth, requireAdmin, async (req, res) => {
+  try {
+    const result = await db.query(
+      `UPDATE vendors
+       SET active=TRUE, deactivated_at=NULL, deactivated_by=NULL
+       WHERE id=$1 RETURNING *`,
+      [req.params.id]
+    );
+    if (!result.rows.length) return res.status(404).json({ error: 'Vendor not found' });
+
+    await db.query(
+      `INSERT INTO audit_log (actor_id, action, target_id, target_type, meta)
+       VALUES ($1,'reactivate_vendor',$2,'vendor',$3)`,
+      [req.user.id, req.params.id, JSON.stringify({})]
+    ).catch(() => {});
+
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── PATCH /api/admin/vendors/:id/access ──────────────────────
 router.patch('/vendors/:id/access', auth, requireAdmin, async (req, res) => {
   try {
