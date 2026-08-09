@@ -928,7 +928,64 @@ export function VendorProfile() {
             {saved && <span style={{ fontSize: 13, color: colors.green, fontWeight: 700 }}>✓ Saved!</span>}
           </div>
         </div>
+
+        <VendorPasswordCard/>
       </div>
+    </div>
+  );
+}
+
+// ── Vendor password change ───────────────────────────────────
+function VendorPasswordCard() {
+  const [pw, setPw]           = useState({ current_password: '', new_password: '', confirm: '' });
+  const [saving, setSaving]   = useState(false);
+  const [error, setError]     = useState('');
+  const [success, setSuccess] = useState('');
+
+  const setField = k => e => setPw(p => ({ ...p, [k]: e.target.value }));
+  const inputStyle = { width: '100%', border: '1.5px solid #eee', borderRadius: 10, padding: '10px 14px', fontSize: 14, color: colors.dark, background: '#fff', outline: 'none', fontFamily: font.body, fontWeight: 500 };
+  const labelStyle = { fontSize: 11.5, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.08em', display: 'block', marginBottom: 6 };
+
+  const changePassword = async () => {
+    setError(''); setSuccess('');
+    if (!pw.current_password || !pw.new_password) { setError('Enter your current and new password'); return; }
+    if (pw.new_password.length < 8) { setError('New password must be at least 8 characters'); return; }
+    if (pw.new_password !== pw.confirm) { setError('New passwords do not match'); return; }
+    setSaving(true);
+    try {
+      await api.patch('/auth/profile', { current_password: pw.current_password, new_password: pw.new_password });
+      setSuccess('Password updated successfully');
+      setPw({ current_password: '', new_password: '', confirm: '' });
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to update password');
+    } finally { setSaving(false); }
+  };
+
+  return (
+    <div className="card" style={{ padding: 32, marginTop: 24 }}>
+      <p style={{ fontSize: 16, fontWeight: 700, color: colors.dark, marginBottom: 4 }}>Change password</p>
+      <p style={{ fontSize: 13, color: colors.muted, marginBottom: 20 }}>Update the password you use to sign in to the vendor portal.</p>
+
+      <div style={{ marginBottom: 16 }}>
+        <label style={labelStyle}>Current password</label>
+        <input type="password" value={pw.current_password} onChange={setField('current_password')} placeholder="Enter current password" style={inputStyle}/>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
+        <div>
+          <label style={labelStyle}>New password</label>
+          <input type="password" value={pw.new_password} onChange={setField('new_password')} placeholder="Min 8 characters" style={inputStyle}/>
+        </div>
+        <div>
+          <label style={labelStyle}>Confirm new password</label>
+          <input type="password" value={pw.confirm} onChange={setField('confirm')} placeholder="Re-enter new password" style={inputStyle}/>
+        </div>
+      </div>
+
+      {error   && <p style={{ fontSize: 13, color: colors.red,   fontWeight: 700, marginBottom: 12 }}>{'⚠ ' + error}</p>}
+      {success && <p style={{ fontSize: 13, color: colors.green, fontWeight: 700, marginBottom: 12 }}>{'✓ ' + success}</p>}
+
+      <Button onClick={changePassword} disabled={saving}>{saving ? 'Updating…' : 'Update password'}</Button>
     </div>
   );
 }

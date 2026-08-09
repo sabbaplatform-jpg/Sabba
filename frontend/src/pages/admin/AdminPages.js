@@ -633,7 +633,26 @@ function VendorReviewModal({ vendor, companies, onClose, onVerify, onReject, onA
   const [rejectMode,  setRejectMode]  = useState(false);
   const [reason,      setReason]      = useState('');
   const [submitting,  setSubmitting]  = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [pwSaving,    setPwSaving]    = useState(false);
+  const [pwMsg,       setPwMsg]       = useState('');
+  const [pwErr,       setPwErr]       = useState('');
   const od = vendor.onboarding_data || {};
+
+  const handleResetPassword = async () => {
+    setPwErr(''); setPwMsg('');
+    if (newPassword.length < 8) { setPwErr('Password must be at least 8 characters'); return; }
+    if (!vendor.user_id) { setPwErr('No user account linked to this vendor'); return; }
+    setPwSaving(true);
+    try {
+      await api.patch(`/admin/vendor-users/${vendor.user_id}`, { password: newPassword });
+      setPwMsg('Password updated successfully');
+      setNewPassword('');
+      setTimeout(() => setPwMsg(''), 3000);
+    } catch (err) {
+      setPwErr(err.response?.data?.error || 'Failed to update password');
+    } finally { setPwSaving(false); }
+  };
 
   const handleVerify = async () => {
     setSubmitting(true);
@@ -730,6 +749,24 @@ function VendorReviewModal({ vendor, companies, onClose, onVerify, onReject, onA
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Password reset */}
+      {!rejectMode && (
+        <div style={{ background: '#F7F5F2', borderRadius: 10, padding: '12px 16px', marginBottom: 16 }}>
+          <p style={{ fontSize: 10.5, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>Reset password</p>
+          <p style={{ fontSize: 12, color: colors.muted, marginBottom: 10 }}>Set a new password for this vendor. Share it with them securely.</p>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+            <input type="text" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="New password (min 8 characters)"
+              style={{ flex: 1, border: '1.5px solid #eee', borderRadius: 10, padding: '9px 13px', fontSize: 13.5, color: colors.dark, fontFamily: font.body, outline: 'none' }}/>
+            <button onClick={handleResetPassword} disabled={pwSaving || !newPassword}
+              style={{ background: pwSaving || !newPassword ? '#eee' : colors.dark, color: pwSaving || !newPassword ? colors.muted : '#fff', border: 'none', borderRadius: 10, padding: '9px 16px', fontSize: 13, fontWeight: 700, cursor: pwSaving || !newPassword ? 'default' : 'pointer', fontFamily: font.body, whiteSpace: 'nowrap' }}>
+              {pwSaving ? 'Saving…' : 'Set password'}
+            </button>
+          </div>
+          {pwErr && <p style={{ fontSize: 12.5, color: colors.red,   fontWeight: 700, marginTop: 8 }}>{'⚠ ' + pwErr}</p>}
+          {pwMsg && <p style={{ fontSize: 12.5, color: colors.green, fontWeight: 700, marginTop: 8 }}>{'✓ ' + pwMsg}</p>}
         </div>
       )}
 
