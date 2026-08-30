@@ -115,6 +115,7 @@ export default function Nav() {
       { to: '/vendor',          label: 'Dashboard' },
       { to: '/vendor/packages', label: 'Packages'  },
       { to: '/vendor/bookings', label: 'Bookings'  },
+      { to: '/vendor/messages', label: 'Messages'  },
       { to: '/vendor/earnings', label: 'Earnings'  },
       { to: '/vendor/team',    label: 'Team'      },
     ],

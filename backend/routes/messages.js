@@ -1,7 +1,7 @@
 const express = require('express');
 const router  = express.Router();
 const db      = require('../lib/db');
-const { auth } = require('../middleware/auth');
+const { auth, requireRole } = require('../middleware/auth');
 
 // GET /api/messages/threads — list all threads for current user
 router.get('/threads', auth, async (req, res) => {
@@ -200,6 +200,72 @@ router.get('/users', auth, async (req, res) => {
     `, [req.user.id, req.user.company_id]);
     res.json(rows);
   } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/messages/vendor — employee messages the vendor for one of their bookings
+router.post('/vendor', auth, requireRole('employee'), async (req, res) => {
+  try {
+    const { booking_id, body } = req.body;
+    if (!booking_id || !body?.trim()) {
+      return res.status(400).json({ error: 'booking_id and body are required' });
+    }
+
+    // Verify the booking belongs to this employee, and resolve the vendor's user_id
+    const info = await db.query(`
+      SELECT b.id AS booking_id, p.title AS package_title,
+             v.user_id AS vendor_user_id, v.company_name AS vendor_name
+      FROM bookings b
+      JOIN packages p ON p.id = b.package_id
+      JOIN vendors  v ON v.id = p.vendor_id
+      WHERE b.id = $1 AND b.employee_id = $2
+    `, [booking_id, req.user.id]);
+
+    if (!info.rows.length) return res.status(404).json({ error: 'Booking not found' });
+    const { package_title, vendor_user_id, vendor_name } = info.rows[0];
+    if (!vendor_user_id) return res.status(400).json({ error: 'This vendor has no contactable account' });
+
+    // Reuse an existing employee↔vendor thread for this booking if present
+    const existing = await db.query(`
+      SELECT t.id
+      FROM message_threads t
+      JOIN thread_participants tp1 ON tp1.thread_id = t.id AND tp1.user_id = $1
+      JOIN thread_participants tp2 ON tp2.thread_id = t.id AND tp2.user_id = $2
+      WHERE t.booking_id = $3 AND t.thread_type = 'vendor'
+      LIMIT 1
+    `, [req.user.id, vendor_user_id, booking_id]);
+
+    let threadId;
+    if (existing.rows.length) {
+      threadId = existing.rows[0].id;
+      await db.query('INSERT INTO messages (thread_id, sender_id, body) VALUES ($1,$2,$3)',
+        [threadId, req.user.id, body]);
+    } else {
+      const subject = `Question about ${package_title}`;
+      const t = await db.query(
+        `INSERT INTO message_threads (subject, thread_type, booking_id) VALUES ($1,'vendor',$2) RETURNING id`,
+        [subject, booking_id]
+      );
+      threadId = t.rows[0].id;
+      for (const uid of [req.user.id, vendor_user_id]) {
+        await db.query('INSERT INTO thread_participants (thread_id, user_id) VALUES ($1,$2) ON CONFLICT DO NOTHING',
+          [threadId, uid]);
+      }
+      await db.query('INSERT INTO messages (thread_id, sender_id, body) VALUES ($1,$2,$3)',
+        [threadId, req.user.id, body]);
+    }
+
+    // Notify the vendor
+    await db.query(`
+      INSERT INTO notifications (user_id, title, message, type)
+      VALUES ($1, $2, $3, 'message')
+    `, [vendor_user_id, `New message from ${req.user.full_name || 'an employee'}`,
+        `${body.slice(0, 80)}${body.length > 80 ? '…' : ''}`]).catch(() => {});
+
+    res.json({ thread_id: threadId });
+  } catch (err) {
+    console.error(err);
     res.status(500).json({ error: err.message });
   }
 });

@@ -57,6 +57,9 @@ export default function MyBooking() {
   const [bookings, setBookings]     = useState([]);
   const [loading, setLoading]       = useState(true);
   const [ratingModal, setRatingModal] = useState(null);
+  const [msgModal, setMsgModal] = useState(null); // booking being messaged about
+  const [msgBody, setMsgBody] = useState('');
+  const [msgSending, setMsgSending] = useState(false);
   const [rating, setRating]         = useState(5);
   const [review, setReview]         = useState('');
   const [savingRating, setSavingRating] = useState(false);
@@ -135,6 +138,18 @@ export default function MyBooking() {
 
   const activeTab   = TABS.find(t => t.id === filter) || TABS[0];
   const tabBookings = activeTab.bookings;
+
+  const sendVendorMessage = async () => {
+    if (!msgBody.trim()) return;
+    setMsgSending(true);
+    try {
+      const { data } = await api.post('/messages/vendor', { booking_id: msgModal.id, body: msgBody.trim() });
+      setMsgModal(null); setMsgBody('');
+      navigate(`/messages/${data.thread_id}`);
+    } catch (err) {
+      alert(err.response?.data?.error || 'Could not send message. Please try again.');
+    } finally { setMsgSending(false); }
+  };
 
   const BookingCard = ({ b }) => {
     const gradient = gradients[b.category] || gradients.default;
@@ -240,6 +255,9 @@ export default function MyBooking() {
 
           {/* Actions */}
           <div style={{ display: 'flex', gap: 10, marginTop: 20, alignItems: 'center' }}>
+            {['approved','confirmed','vendor_confirmed','active','completed'].includes(b.status) && (
+              <Button small variant="ghost" onClick={() => { setMsgModal(b); setMsgBody(''); }}>💬 Message vendor</Button>
+            )}
             {canRate && (
               <Button small variant="ghost" onClick={() => setRatingModal(b)}>Rate this adventure ★</Button>
             )}
@@ -310,7 +328,22 @@ export default function MyBooking() {
         )}
       </div>
 
-      {/* Rating modal */}
+      {/* Vendor message modal */}
+      {msgModal && (
+        <Modal title={`Message vendor — ${msgModal.vendor_name || msgModal.package_title}`} onClose={() => setMsgModal(null)} width={460}>
+          <p style={{ fontSize: 13.5, color: colors.muted, marginBottom: 16, lineHeight: 1.6 }}>
+            Send a question or request to the vendor about <strong>{msgModal.package_title}</strong>. They'll reply in your Messages.
+          </p>
+          <textarea value={msgBody} onChange={e => setMsgBody(e.target.value)} rows={5}
+            placeholder="Hi, I had a question about my upcoming trip…"
+            style={{ width: '100%', border: '1.5px solid #eee', borderRadius: 12, padding: '12px 14px', fontSize: 14, color: colors.dark, fontFamily: font.body, outline: 'none', boxSizing: 'border-box', resize: 'vertical' }}/>
+          <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 16 }}>
+            <Button variant="secondary" onClick={() => setMsgModal(null)}>Cancel</Button>
+            <Button onClick={sendVendorMessage} disabled={msgSending || !msgBody.trim()}>{msgSending ? 'Sending…' : 'Send message →'}</Button>
+          </div>
+        </Modal>
+      )}
+
       {ratingModal && (
         <Modal title={`Rate — ${ratingModal.package_title}`} onClose={() => setRatingModal(null)} width={440}>
           <p style={{ fontSize: 13.5, color: colors.muted, marginBottom: 20, lineHeight: 1.6 }}>

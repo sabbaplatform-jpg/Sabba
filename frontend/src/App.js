@@ -135,6 +135,8 @@ function AppRoutes() {
                 <Route path="/messages"           element={<RequireAuth><Messages/></RequireAuth>}/>
                 <Route path="/messages/new"        element={<RequireAuth><Messages/></RequireAuth>}/>
                 <Route path="/messages/:threadId"  element={<RequireAuth><Messages/></RequireAuth>}/>
+                <Route path="/vendor/messages"           element={<RequireAuth role="vendor"><Messages/></RequireAuth>}/>
+                <Route path="/vendor/messages/:threadId" element={<RequireAuth role="vendor"><Messages/></RequireAuth>}/>
 
                 {/* Shared */}
                 <Route path="/marketplace" element={<RequireAuth><Marketplace/></RequireAuth>}/>

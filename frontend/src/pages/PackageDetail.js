@@ -15,11 +15,21 @@ function AddToCartPopup({ pkg, onClose, onConfirm, initialMonths }) {
   const [payrollMonths, setPayrollMonths] = useState(initialMonths || 6);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const minDate = new Date(); minDate.setDate(minDate.getDate() + 14);
+  // Earliest bookable = max(today+14, package start date)
+  const base = new Date(); base.setDate(base.getDate() + 14);
+  const pkgStart = pkg.start_date ? new Date(String(pkg.start_date).split('T')[0]) : null;
+  const minDate = pkgStart && pkgStart > base ? pkgStart : base;
   const minStr  = minDate.toISOString().split('T')[0];
+
+  // Fixed end date? (2099 sentinel = open-ended)
+  const pkgEndRaw = pkg.end_date ? String(pkg.end_date).split('T')[0] : null;
+  const isOpenEnded = !pkgEndRaw || pkgEndRaw >= '2099-01-01';
+  const maxStr = isOpenEnded ? undefined : pkgEndRaw;
 
   const handleConfirm = () => {
     if (!departureDate) { setError('Please select a departure date'); return; }
+    if (departureDate < minStr) { setError('That date is before this package is available'); return; }
+    if (maxStr && departureDate > maxStr) { setError('That date is after this package closes'); return; }
     if (submitting) return;
     setSubmitting(true);
     onConfirm({ departure_date: departureDate, payroll_months: payrollMonths });
@@ -40,9 +50,14 @@ function AddToCartPopup({ pkg, onClose, onConfirm, initialMonths }) {
           <label style={{ fontSize: 11.5, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.07em', display: 'block', marginBottom: 6 }}>
             Departure date <span style={{ color: colors.orange }}>*</span>
           </label>
-          <input type="date" value={departureDate} min={minStr}
+          <input type="date" value={departureDate} min={minStr} max={maxStr}
             onChange={e => { setDepartureDate(e.target.value); setError(''); }}
             style={{ width: '100%', border: `1.5px solid ${error ? colors.red : '#eee'}`, borderRadius: 10, padding: '10px 14px', fontSize: 14, color: colors.dark, fontFamily: font.body, outline: 'none', boxSizing: 'border-box' }}/>
+          <p style={{ fontSize: 11, color: colors.faint, marginTop: 5 }}>
+            {isOpenEnded
+              ? 'This package is available year-round — pick any date at least 14 days out.'
+              : `Available between ${new Date(minStr).toLocaleDateString('en-GB',{day:'numeric',month:'short'})} and ${new Date(maxStr).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}.`}
+          </p>
           {error && <p style={{ fontSize: 12, color: colors.red, marginTop: 4, fontWeight: 600 }}>{error}</p>}
         </div>
         <div style={{ marginBottom: 20 }}>

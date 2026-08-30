@@ -14,10 +14,17 @@ function AddToCartPopup({ pkg, onClose, onConfirm }) {
   const [payrollMonths, setPayrollMonths] = useState(6);
   const [error,         setError]         = useState('');
   const [adding,        setAdding]        = useState(false);
-  const minDate = new Date(); minDate.setDate(minDate.getDate() + 14);
+  const base = new Date(); base.setDate(base.getDate() + 14);
+  const pkgStart = pkg.start_date ? new Date(String(pkg.start_date).split('T')[0]) : null;
+  const minDate = pkgStart && pkgStart > base ? pkgStart : base;
   const minStr  = minDate.toISOString().split('T')[0];
+  const pkgEndRaw = pkg.end_date ? String(pkg.end_date).split('T')[0] : null;
+  const isOpenEnded = !pkgEndRaw || pkgEndRaw >= '2099-01-01';
+  const maxStr = isOpenEnded ? undefined : pkgEndRaw;
   const handleConfirm = () => {
     if (!departureDate) { setError('Please select a departure date'); return; }
+    if (departureDate < minStr) { setError('That date is before this package is available'); return; }
+    if (maxStr && departureDate > maxStr) { setError('That date is after this package closes'); return; }
     setAdding(true);
     onConfirm({ departure_date: departureDate, payroll_months: payrollMonths });
   };
@@ -34,8 +41,13 @@ function AddToCartPopup({ pkg, onClose, onConfirm }) {
         </div>
         <div style={{ marginBottom: 18 }}>
           <label style={{ fontSize: 11.5, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.07em', display: 'block', marginBottom: 6 }}>Departure date <span style={{ color: colors.orange }}>*</span></label>
-          <input type="date" value={departureDate} min={minStr} onChange={e => { setDepartureDate(e.target.value); setError(''); }}
+          <input type="date" value={departureDate} min={minStr} max={maxStr} onChange={e => { setDepartureDate(e.target.value); setError(''); }}
             style={{ width: '100%', border: `1.5px solid ${error ? colors.red : '#eee'}`, borderRadius: 10, padding: '10px 14px', fontSize: 14, color: colors.dark, fontFamily: font.body, outline: 'none' }}/>
+          <p style={{ fontSize: 11, color: colors.faint, marginTop: 5 }}>
+            {isOpenEnded
+              ? 'Available year-round — pick any date at least 14 days out.'
+              : `Available until ${new Date(maxStr).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}.`}
+          </p>
           {error && <p style={{ fontSize: 12, color: colors.red, marginTop: 4, fontWeight: 600 }}>{error}</p>}
         </div>
         <div style={{ marginBottom: 20 }}>
