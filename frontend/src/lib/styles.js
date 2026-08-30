@@ -41,6 +41,9 @@ export const statusStyle = (status) => {
   const map = {
     approved:      { bg: 'rgba(26,122,74,0.09)',  text: '#1a7a4a', dot: '#1a7a4a' },
     confirmed:     { bg: 'rgba(26,122,74,0.09)',  text: '#1a7a4a', dot: '#34d399' },
+    vendor_confirmed:{ bg: 'rgba(26,122,74,0.09)', text: '#1a7a4a', dot: '#34d399' },
+    active:        { bg: 'rgba(43,79,216,0.10)',  text: '#2b4fd8', dot: '#2b4fd8' },
+    completed:     { bg: 'rgba(26,122,74,0.12)',  text: '#146c43', dot: '#146c43' },
     live:          { bg: 'rgba(26,122,74,0.09)',  text: '#1a7a4a', dot: '#1a7a4a' },
     pending:       { bg: 'rgba(180,83,9,0.09)',   text: '#b45309', dot: '#f59e0b' },
     draft:         { bg: 'rgba(0,0,0,0.05)',      text: '#777',    dot: '#aaa'    },

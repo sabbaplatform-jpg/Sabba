@@ -17,6 +17,22 @@ router.post('/', auth, requireRole('employee'), async (req, res) => {
        VALUES ($1,$2,$3,$4,$5,$6,$7,'pending') RETURNING *`,
       [req.user.id, package_id, req.user.company_id, departure_date, payroll_months, monthly, total]
     );
+
+    // Notify employee + all HR admins in-app
+    try {
+      const employee = await db.query('SELECT full_name FROM users WHERE id=$1', [req.user.id]);
+      const empName = employee.rows[0]?.full_name || 'An employee';
+      await db.query(`
+        INSERT INTO notifications (user_id, title, message, type)
+        VALUES ($1,'Booking submitted! 🌍','Your adventure request is with your HR team for approval.','info')
+      `, [req.user.id]);
+      await db.query(`
+        INSERT INTO notifications (user_id, title, message, type)
+        SELECT id, 'New booking to review 📋', $1, 'action'
+        FROM users WHERE company_id = $2 AND role = 'hr'
+      `, [`${empName} has submitted an adventure booking that needs your approval.`, req.user.company_id]);
+    } catch (e) { console.error('Booking notify failed:', e.message); }
+
     res.status(201).json(result.rows[0]);
   } catch (err) {
     console.error(err);
@@ -181,6 +197,68 @@ router.patch('/:id/status', auth, async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message });
+  }
+});
+
+// ── PATCH /api/bookings/:id/start — employee marks trip as started ──
+router.patch('/:id/start', auth, requireRole('employee'), async (req, res) => {
+  try {
+    // Only the owning employee, and only from a confirmed-type status
+    const booking = await db.query(
+      `SELECT * FROM bookings WHERE id=$1 AND employee_id=$2`,
+      [req.params.id, req.user.id]
+    );
+    if (!booking.rows.length) return res.status(404).json({ error: 'Booking not found' });
+    const b = booking.rows[0];
+    if (!['confirmed', 'vendor_confirmed', 'approved'].includes(b.status)) {
+      return res.status(400).json({ error: 'This trip cannot be started from its current status' });
+    }
+
+    const result = await db.query(
+      `UPDATE bookings SET status='active', trip_started_at=NOW() WHERE id=$1 RETURNING *`,
+      [req.params.id]
+    );
+
+    await db.query(`
+      INSERT INTO notifications (user_id, title, message, type)
+      VALUES ($1,'Trip started! 🌍','Have an amazing adventure. Mark it complete when you return.','info')
+    `, [req.user.id]).catch(() => {});
+
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// ── PATCH /api/bookings/:id/complete — employee marks trip as completed ──
+// (This is the hook the future Stripe vendor-payout trigger will use.)
+router.patch('/:id/complete', auth, requireRole('employee'), async (req, res) => {
+  try {
+    const booking = await db.query(
+      `SELECT * FROM bookings WHERE id=$1 AND employee_id=$2`,
+      [req.params.id, req.user.id]
+    );
+    if (!booking.rows.length) return res.status(404).json({ error: 'Booking not found' });
+    const b = booking.rows[0];
+    if (!['active', 'confirmed', 'vendor_confirmed'].includes(b.status)) {
+      return res.status(400).json({ error: 'This trip cannot be completed from its current status' });
+    }
+
+    const result = await db.query(
+      `UPDATE bookings SET status='completed', trip_completed_at=NOW() WHERE id=$1 RETURNING *`,
+      [req.params.id]
+    );
+
+    await db.query(`
+      INSERT INTO notifications (user_id, title, message, type)
+      VALUES ($1,'Trip complete! ✨','Welcome back! Share your experience by rating your adventure.','info')
+    `, [req.user.id]).catch(() => {});
+
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
   }
 });
 

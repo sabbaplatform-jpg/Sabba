@@ -9,10 +9,11 @@ const MILESTONES = [
   { key: 'approved',  label: 'Approved',     icon: '✅', desc: 'HR has approved'       },
   { key: 'confirmed', label: 'Confirmed',    icon: '🎟️', desc: 'Booking confirmed'     },
   { key: 'active',    label: 'On Adventure', icon: '🌍', desc: 'You\'re on your way!'  },
+  { key: 'completed', label: 'Completed',    icon: '🏆', desc: 'Trip complete'        },
 ];
 
 function getRoadmapStep(status) {
-  const map = { pending: 0, approved: 1, confirmed: 2, active: 3 };
+  const map = { pending: 0, approved: 1, confirmed: 2, vendor_confirmed: 2, active: 3, completed: 4 };
   return map[status] ?? 0;
 }
 
@@ -60,6 +61,32 @@ export default function MyBooking() {
   const [review, setReview]         = useState('');
   const [savingRating, setSavingRating] = useState(false);
   const [ratedIds, setRatedIds]     = useState(new Set());
+  const [tripAction, setTripAction] = useState({}); // { [bookingId]: 'starting'|'completing' }
+
+  const startTrip = async (id) => {
+    setTripAction(a => ({ ...a, [id]: 'starting' }));
+    try {
+      await api.patch(`/bookings/${id}/start`);
+      setBookings(bs => bs.map(b => b.id === id ? { ...b, status: 'active' } : b));
+    } catch (err) {
+      alert(err.response?.data?.error || 'Could not start trip. Please try again.');
+    } finally {
+      setTripAction(a => ({ ...a, [id]: undefined }));
+    }
+  };
+
+  const completeTrip = async (id) => {
+    if (!window.confirm('Mark this trip as complete? This confirms your adventure has finished.')) return;
+    setTripAction(a => ({ ...a, [id]: 'completing' }));
+    try {
+      await api.patch(`/bookings/${id}/complete`);
+      setBookings(bs => bs.map(b => b.id === id ? { ...b, status: 'completed' } : b));
+    } catch (err) {
+      alert(err.response?.data?.error || 'Could not complete trip. Please try again.');
+    } finally {
+      setTripAction(a => ({ ...a, [id]: undefined }));
+    }
+  };
   const [filter,    setFilter]      = useState('upcoming');
 
   useEffect(() => {
@@ -87,23 +114,23 @@ export default function MyBooking() {
     </div>
   );
 
-  // Tab definitions — Upcoming = future departure confirmed/approved, Pending = awaiting HR
+  // Tab definitions
   const today = new Date();
   const upcoming = bookings.filter(b =>
-    ['approved','confirmed','vendor_confirmed'].includes(b.status) &&
-    (!b.departure_date || new Date(b.departure_date) >= today)
+    ['approved','confirmed','vendor_confirmed'].includes(b.status)
   );
+  const onTrip = bookings.filter(b => b.status === 'active');
   const pendingTab = bookings.filter(b => b.status === 'pending');
   const pastTab    = bookings.filter(b =>
-    b.status === 'cancelled' ||
-    (['approved','confirmed','vendor_confirmed'].includes(b.status) && b.departure_date && new Date(b.departure_date) < today)
+    b.status === 'cancelled' || b.status === 'completed'
   );
 
   const TABS = [
-    { id: 'upcoming', label: 'Upcoming',  icon: '🌍', bookings: upcoming },
-    { id: 'pending',  label: 'Pending',   icon: '⏳', bookings: pendingTab },
-    { id: 'past',     label: 'Past',      icon: '📖', bookings: pastTab },
-    { id: 'all',      label: 'All',       icon: '📋', bookings: bookings },
+    { id: 'upcoming', label: 'Upcoming',    icon: '🌍', bookings: upcoming },
+    { id: 'ontrip',   label: 'On Trip',     icon: '🧳', bookings: onTrip },
+    { id: 'pending',  label: 'Pending',     icon: '⏳', bookings: pendingTab },
+    { id: 'past',     label: 'Past',        icon: '📖', bookings: pastTab },
+    { id: 'all',      label: 'All',         icon: '📋', bookings: bookings },
   ];
 
   const activeTab   = TABS.find(t => t.id === filter) || TABS[0];
@@ -114,11 +141,16 @@ export default function MyBooking() {
     const daysUntil = b.departure_date
       ? Math.ceil((new Date(b.departure_date) - new Date()) / (1000*60*60*24))
       : null;
-    const isPast   = b.status === 'cancelled';
-    const hasHappened = b.departure_date
-      ? new Date(b.departure_date) < new Date()
-      : false;
-    const canRate  = ['approved','confirmed'].includes(b.status) && hasHappened && !ratedIds.has(b.id);
+    const isPast   = b.status === 'cancelled' || b.status === 'completed';
+    const now = new Date();
+    const hasDeparted = b.departure_date ? new Date(b.departure_date) <= now : false;
+    // Employee can start a confirmed trip once its departure date has arrived
+    const canStart = ['approved','confirmed','vendor_confirmed'].includes(b.status) && hasDeparted;
+    // Employee can complete a trip that is active (or confirmed & past, as a fallback)
+    const canComplete = b.status === 'active';
+    // Rating is available once the trip is completed
+    const canRate  = b.status === 'completed' && !ratedIds.has(b.id);
+    const busy = tripAction[b.id];
 
     return (
       <div className="card" style={{ overflow: 'hidden', marginBottom: 20 }}>
@@ -181,8 +213,33 @@ export default function MyBooking() {
             </div>
           )}
 
+          {/* Trip management call-to-action */}
+          {canStart && (
+            <div style={{ marginTop: 20, background: colors.orangeLight, border: `1px solid ${colors.orangePale}`, borderRadius: 12, padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16 }}>
+              <div>
+                <p style={{ fontSize: 13.5, fontWeight: 700, color: colors.dark, marginBottom: 2 }}>Your departure day is here! 🎉</p>
+                <p style={{ fontSize: 12.5, color: colors.muted }}>Let us know once you've set off on your adventure.</p>
+              </div>
+              <Button small onClick={() => startTrip(b.id)} disabled={busy === 'starting'}>
+                {busy === 'starting' ? 'Starting…' : "I've departed →"}
+              </Button>
+            </div>
+          )}
+
+          {canComplete && (
+            <div style={{ marginTop: 20, background: '#EEF3F8', border: '1px solid #D6E3F0', borderRadius: 12, padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16 }}>
+              <div>
+                <p style={{ fontSize: 13.5, fontWeight: 700, color: colors.dark, marginBottom: 2 }}>Enjoying your adventure? 🌍</p>
+                <p style={{ fontSize: 12.5, color: colors.muted }}>Mark your trip complete when you're back.</p>
+              </div>
+              <Button small onClick={() => completeTrip(b.id)} disabled={busy === 'completing'}>
+                {busy === 'completing' ? 'Completing…' : 'Mark trip complete ✓'}
+              </Button>
+            </div>
+          )}
+
           {/* Actions */}
-          <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
+          <div style={{ display: 'flex', gap: 10, marginTop: 20, alignItems: 'center' }}>
             {canRate && (
               <Button small variant="ghost" onClick={() => setRatingModal(b)}>Rate this adventure ★</Button>
             )}

@@ -168,6 +168,17 @@ router.post('/checkout', auth, requireRole('employee'), async (req, res) => {
       VALUES ($1,'Booking submitted! 🌍','Your adventure request is with your HR team for approval.','info')
     `, [req.user.id]);
 
+    // In-app notification to ALL HR admins in the employee's company
+    try {
+      const employee = await db.query('SELECT full_name FROM users WHERE id=$1', [req.user.id]);
+      const empName = employee.rows[0]?.full_name || 'An employee';
+      await db.query(`
+        INSERT INTO notifications (user_id, title, message, type)
+        SELECT id, 'New booking to review 📋', $1, 'action'
+        FROM users WHERE company_id = $2 AND role = 'hr'
+      `, [`${empName} has submitted an adventure booking that needs your approval.`, req.user.company_id]);
+    } catch (e) { console.error('HR notify failed:', e.message); }
+
     // Email employee confirmation + HR approval request
     const userInfo = await db.query(`
       SELECT u.email, u.full_name, u.company_id,
@@ -189,10 +200,14 @@ router.post('/checkout', auth, requireRole('employee'), async (req, res) => {
         destination: info.destination,
         company_id: info.company_id,
       }).catch(() => {});
-      // Email HR
-      if (info.hr_email) {
+      // Email ALL HR admins in the company
+      const hrList = await db.query(
+        `SELECT email, full_name FROM users WHERE company_id=$1 AND role='hr'`,
+        [info.company_id]
+      ).catch(() => ({ rows: [] }));
+      for (const hr of hrList.rows) {
         email.sendHRApprovalRequest({
-          to: info.hr_email, hr_name: info.hr_name,
+          to: hr.email, hr_name: hr.full_name,
           employee_name: info.full_name,
           package_title: info.package_title,
           destination: info.destination,
