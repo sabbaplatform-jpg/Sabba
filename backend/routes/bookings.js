@@ -43,7 +43,7 @@ router.post('/', auth, requireRole('employee'), async (req, res) => {
 router.get('/mine', auth, requireRole('employee'), async (req, res) => {
   try {
     const result = await db.query(`
-      SELECT b.*, p.title as package_title, p.destination, p.emoji, p.duration,
+      SELECT b.*, p.title as package_title, p.destination, p.emoji, p.duration, p.category,
              v.company_name as vendor_name
       FROM bookings b
       JOIN packages p ON b.package_id = p.id

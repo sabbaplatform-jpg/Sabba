@@ -140,10 +140,45 @@ export function EmployeeHome() {
     }
   };
 
-  const activeBooking = bookings.find(b => ['approved','confirmed','vendor_confirmed'].includes(b.status));
+  const now = new Date();
+  // Upcoming (for the hero countdown): approved/confirmed, departure still in future
+  const activeBooking = bookings.find(b =>
+    ['approved','confirmed','vendor_confirmed'].includes(b.status) &&
+    (!b.departure_date || new Date(b.departure_date) >= now)
+  );
   const daysUntil = activeBooking?.departure_date
-    ? Math.max(0, Math.ceil((new Date(activeBooking.departure_date) - new Date()) / (1000 * 60 * 60 * 24)))
+    ? Math.max(0, Math.ceil((new Date(activeBooking.departure_date) - now) / (1000 * 60 * 60 * 24)))
     : null;
+
+  // Trip currently in progress (employee tapped "I've departed")
+  const tripInProgress = bookings.find(b => b.status === 'active');
+  // Confirmed trip whose departure date has arrived but not yet started
+  const tripReadyToStart = bookings.find(b =>
+    ['approved','confirmed','vendor_confirmed'].includes(b.status) &&
+    b.departure_date && new Date(b.departure_date) <= now
+  );
+  const currentTrip = tripInProgress || tripReadyToStart;
+
+  const [tripBusy, setTripBusy] = useState(false);
+  const handleStartTrip = async (id) => {
+    setTripBusy(true);
+    try {
+      await api.patch(`/bookings/${id}/start`);
+      setBookings(bs => bs.map(b => b.id === id ? { ...b, status: 'active' } : b));
+    } catch (err) {
+      alert(err.response?.data?.error || 'Could not start trip.');
+    } finally { setTripBusy(false); }
+  };
+  const handleCompleteTrip = async (id) => {
+    if (!window.confirm('Mark this trip as complete? This confirms your adventure has finished.')) return;
+    setTripBusy(true);
+    try {
+      await api.patch(`/bookings/${id}/complete`);
+      setBookings(bs => bs.map(b => b.id === id ? { ...b, status: 'completed' } : b));
+    } catch (err) {
+      alert(err.response?.data?.error || 'Could not complete trip.');
+    } finally { setTripBusy(false); }
+  };
 
   const cats = [
     { icon: '🌍', label: 'Travel',     cat: 'travel',        grad: gradients.travel },
@@ -216,6 +251,62 @@ export function EmployeeHome() {
       </div>
 
       <div style={{ maxWidth: 1280, margin: '0 auto', padding: '40px 40px 0' }}>
+
+        {/* Current trip — image-driven banner */}
+        {currentTrip && (
+          <section style={{ marginBottom: 48 }}>
+            <div style={{ position: 'relative', borderRadius: 20, overflow: 'hidden', minHeight: 260, background: gradients[currentTrip.category] || gradients.default, boxShadow: '0 12px 40px rgba(0,0,0,0.12)' }}>
+              {/* Large emoji watermark */}
+              <span style={{ position: 'absolute', right: 32, top: '50%', transform: 'translateY(-50%)', fontSize: 200, opacity: 0.18, filter: 'drop-shadow(0 4px 20px rgba(0,0,0,0.3))', lineHeight: 1 }}>
+                {currentTrip.emoji || '🌍'}
+              </span>
+              {/* Dark gradient for text legibility */}
+              <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(105deg, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.3) 45%, transparent 75%)' }}/>
+
+              <div style={{ position: 'relative', padding: '36px 40px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minHeight: 260 }}>
+                <div>
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, background: 'rgba(255,255,255,0.18)', backdropFilter: 'blur(8px)', borderRadius: 20, padding: '6px 14px', marginBottom: 16 }}>
+                    <span style={{ width: 7, height: 7, borderRadius: '50%', background: tripInProgress ? '#34d399' : '#f5a066', display: 'inline-block', animation: 'pulse 2s ease-in-out infinite' }}/>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: '#fff', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                      {tripInProgress ? 'On your adventure' : 'Departure day is here'}
+                    </span>
+                  </div>
+                  <h2 style={{ fontFamily: font.display, fontSize: 34, fontWeight: 700, fontStyle: 'italic', color: '#fff', marginBottom: 6, textShadow: '0 2px 12px rgba(0,0,0,0.3)', maxWidth: 560 }}>
+                    {currentTrip.package_title}
+                  </h2>
+                  <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.85)', fontWeight: 500, textShadow: '0 1px 8px rgba(0,0,0,0.4)' }}>
+                    {currentTrip.vendor_name}{currentTrip.destination ? ' · ' + currentTrip.destination : ''}
+                  </p>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginTop: 24, flexWrap: 'wrap' }}>
+                  {tripInProgress ? (
+                    <>
+                      <button onClick={() => handleCompleteTrip(currentTrip.id)} disabled={tripBusy}
+                        style={{ background: '#fff', color: colors.dark, border: 'none', borderRadius: 12, padding: '13px 24px', fontSize: 14, fontWeight: 700, cursor: tripBusy ? 'default' : 'pointer', fontFamily: font.body, boxShadow: '0 4px 16px rgba(0,0,0,0.15)' }}>
+                        {tripBusy ? 'Completing…' : 'Mark trip complete ✓'}
+                      </button>
+                      <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.8)', fontWeight: 500, textShadow: '0 1px 6px rgba(0,0,0,0.4)' }}>Enjoy every moment — mark it complete when you're back.</span>
+                    </>
+                  ) : (
+                    <>
+                      <button onClick={() => handleStartTrip(currentTrip.id)} disabled={tripBusy}
+                        style={{ background: '#fff', color: colors.dark, border: 'none', borderRadius: 12, padding: '13px 24px', fontSize: 14, fontWeight: 700, cursor: tripBusy ? 'default' : 'pointer', fontFamily: font.body, boxShadow: '0 4px 16px rgba(0,0,0,0.15)' }}>
+                        {tripBusy ? 'Starting…' : "I've departed →"}
+                      </button>
+                      <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.8)', fontWeight: 500, textShadow: '0 1px 6px rgba(0,0,0,0.4)' }}>Let us know once you've set off.</span>
+                    </>
+                  )}
+                  <button onClick={() => navigate('/my-booking')}
+                    style={{ background: 'rgba(255,255,255,0.18)', backdropFilter: 'blur(8px)', color: '#fff', border: '1px solid rgba(255,255,255,0.3)', borderRadius: 12, padding: '13px 22px', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: font.body }}>
+                    View booking
+                  </button>
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
+
         {/* Categories */}
         <section style={{ marginBottom: 48 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 20 }}>
