@@ -47,7 +47,7 @@ router.post('/', auth, requireRole('employee'), async (req, res) => {
       `, [slot_id, package_id]);
       if (!slot.rows.length) return res.status(400).json({ error: 'Invalid date slot for this package' });
       if (slot.rows[0].spots_remaining <= 0) return res.status(400).json({ error: 'This date slot is fully booked' });
-      finalDeparture = String(slot.rows[0].start_date).split('T')[0];
+      finalDeparture = toISODate(slot.rows[0].start_date);
     }
 
     const result = await db.query(`
