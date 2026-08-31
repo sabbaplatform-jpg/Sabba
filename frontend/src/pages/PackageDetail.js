@@ -15,6 +15,10 @@ function AddToCartPopup({ pkg, onClose, onConfirm, initialMonths }) {
   const [payrollMonths, setPayrollMonths] = useState(initialMonths || 6);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [selectedSlot, setSelectedSlot] = useState(null);
+  const isFixed = pkg.date_type === 'fixed';
+  const slots = pkg.slots || [];
+  const fmt = d => new Date(String(d).split('T')[0]).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
   // Earliest bookable = max(today+14, package start date)
   const base = new Date(); base.setDate(base.getDate() + 14);
   const pkgStart = pkg.start_date ? new Date(String(pkg.start_date).split('T')[0]) : null;
@@ -27,6 +31,13 @@ function AddToCartPopup({ pkg, onClose, onConfirm, initialMonths }) {
   const maxStr = isOpenEnded ? undefined : pkgEndRaw;
 
   const handleConfirm = () => {
+    if (isFixed) {
+      if (!selectedSlot) { setError('Please choose a date slot'); return; }
+      if (submitting) return;
+      setSubmitting(true);
+      onConfirm({ slot_id: selectedSlot, payroll_months: payrollMonths });
+      return;
+    }
     if (!departureDate) { setError('Please select a departure date'); return; }
     if (departureDate < minStr) { setError('That date is before this package is available'); return; }
     if (maxStr && departureDate > maxStr) { setError('That date is after this package closes'); return; }
@@ -46,6 +57,33 @@ function AddToCartPopup({ pkg, onClose, onConfirm, initialMonths }) {
           </div>
           <button onClick={onClose} style={{ background: '#F7F5F2', border: 'none', borderRadius: 8, width: 30, height: 30, cursor: 'pointer', fontSize: 16, color: colors.muted, flexShrink: 0 }}>✕</button>
         </div>
+        {isFixed ? (
+          <div style={{ marginBottom: 18 }}>
+            <label style={{ fontSize: 11.5, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.07em', display: 'block', marginBottom: 8 }}>
+              Choose a date slot <span style={{ color: colors.orange }}>*</span>
+            </label>
+            {slots.length === 0 && <p style={{ fontSize: 13, color: colors.muted }}>No date slots available right now.</p>}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {slots.map(s => {
+                const remaining = s.spots_remaining != null ? s.spots_remaining : s.capacity;
+                const full = remaining <= 0;
+                const active = selectedSlot === s.id;
+                return (
+                  <div key={s.id} onClick={() => { if (!full) { setSelectedSlot(s.id); setError(''); } }}
+                    style={{ border: `2px solid ${active ? colors.orange : '#eee'}`, borderRadius: 12, padding: '12px 14px', cursor: full ? 'not-allowed' : 'pointer', background: active ? colors.orangeLight : (full ? '#f7f7f7' : '#fff'), opacity: full ? 0.55 : 1, transition: 'all 0.15s' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: 13.5, fontWeight: 700, color: colors.dark }}>{fmt(s.start_date)} → {fmt(s.end_date)}</span>
+                      <span style={{ fontSize: 11.5, fontWeight: 700, color: full ? colors.red : colors.green }}>
+                        {full ? 'Fully booked' : `${remaining} spot${remaining === 1 ? '' : 's'} left`}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            {error && <p style={{ fontSize: 12, color: colors.red, marginTop: 6, fontWeight: 600 }}>{error}</p>}
+          </div>
+        ) : (
         <div style={{ marginBottom: 18 }}>
           <label style={{ fontSize: 11.5, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.07em', display: 'block', marginBottom: 6 }}>
             Departure date <span style={{ color: colors.orange }}>*</span>
@@ -60,6 +98,7 @@ function AddToCartPopup({ pkg, onClose, onConfirm, initialMonths }) {
           </p>
           {error && <p style={{ fontSize: 12, color: colors.red, marginTop: 4, fontWeight: 600 }}>{error}</p>}
         </div>
+        )}
         <div style={{ marginBottom: 20 }}>
           <label style={{ fontSize: 11.5, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.07em', display: 'block', marginBottom: 8 }}>Pay via payroll over</label>
           <div style={{ display: 'flex', gap: 8 }}>
@@ -153,9 +192,9 @@ export default function PackageDetail() {
     api.get(`/packages/${id}`).then(r => setPkg(r.data)).finally(() => setLoading(false));
   }, [id]);
 
-  const confirmAddToCart = ({ departure_date, payroll_months }) => {
+  const confirmAddToCart = ({ departure_date, payroll_months, slot_id }) => {
     if (pkg) {
-      addToCart(pkg.id, { departure_date, payroll_months });
+      addToCart(pkg.id, { departure_date, payroll_months, slot_id });
       setCartPopup(false);
       setAddedToast(true);
       setTimeout(() => setAddedToast(false), 3000);
@@ -164,7 +203,7 @@ export default function PackageDetail() {
 
   // Expiry
   const endDateStr = pkg?.end_date ? String(pkg.end_date).split('T')[0] : null;
-  const daysUntilExpiry = endDateStr && endDateStr !== '2099-12-31'
+  const daysUntilExpiry = (!isFixed && endDateStr && endDateStr !== '2099-12-31')
     ? Math.ceil((new Date(endDateStr) - new Date()) / (1000 * 60 * 60 * 24)) : null;
   const isExpiringSoon = daysUntilExpiry !== null && daysUntilExpiry >= 0 && daysUntilExpiry <= 14;
   const isExpired      = daysUntilExpiry !== null && daysUntilExpiry < 0;

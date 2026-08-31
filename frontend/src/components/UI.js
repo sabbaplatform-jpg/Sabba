@@ -217,9 +217,20 @@ export function PackageCard({ pkg, onAddToCart, showTrending, onClick }) {
       {/* Body */}
       <div style={{ padding: '14px 16px 16px', flex: 1, display: 'flex', flexDirection: 'column' }}>
         <p style={{ fontSize: 14.5, fontWeight: 700, color: colors.dark, marginBottom: 3, lineHeight: 1.3 }}>{pkg.title}</p>
-        <p style={{ fontSize: 12, color: colors.muted, fontWeight: 500, marginBottom: 8 }}>
+        <p style={{ fontSize: 12, color: colors.muted, fontWeight: 500, marginBottom: 6 }}>
           {pkg.vendor_name} · {pkg.destination} · {pkg.duration}
         </p>
+        {(() => {
+          const fmt = d => new Date(String(d).split('T')[0]).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+          if (pkg.date_type === 'fixed') {
+            return <p style={{ fontSize: 11.5, fontWeight: 700, color: colors.orange, marginBottom: 8, display: 'inline-flex', alignItems: 'center', gap: 5, background: colors.orangeLight, borderRadius: 6, padding: '3px 8px' }}>📅 Fixed dates</p>;
+          }
+          const end = pkg.end_date ? String(pkg.end_date).split('T')[0] : null;
+          if (end && end !== '2099-12-31') {
+            return <p style={{ fontSize: 11.5, fontWeight: 600, color: colors.muted, marginBottom: 8 }}>📅 Book by {fmt(end)}</p>;
+          }
+          return <p style={{ fontSize: 11.5, fontWeight: 600, color: colors.muted, marginBottom: 8 }}>📅 Year-round</p>;
+        })()}
         {pkg.vendor_rating > 0 && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 12 }}>
             <span style={{ color: '#f59e0b', fontSize: 12 }}>★</span>

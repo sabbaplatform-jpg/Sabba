@@ -2,6 +2,20 @@ const router = require('express').Router();
 const db = require('../lib/db');
 const { auth, requireRole } = require('../middleware/auth');
 
+// Replace all slots for a package with the provided array [{start_date,end_date,capacity}]
+async function syncSlots(packageId, slots) {
+  await db.query('DELETE FROM package_slots WHERE package_id=$1', [packageId]);
+  if (!Array.isArray(slots)) return;
+  for (const s of slots) {
+    if (!s.start_date || !s.end_date) continue;
+    await db.query(
+      `INSERT INTO package_slots (package_id, start_date, end_date, capacity)
+       VALUES ($1,$2,$3,$4)`,
+      [packageId, s.start_date, s.end_date, parseInt(s.capacity) > 0 ? parseInt(s.capacity) : 10]
+    );
+  }
+}
+
 router.get('/', async (req, res) => {
   try {
     const { category, search } = req.query;
@@ -151,7 +165,42 @@ router.get('/:id', async (req, res) => {
       WHERE p.id = $1
     `, [req.params.id]);
     if (!result.rows.length) return res.status(404).json({ error: 'Not found' });
-    res.json(result.rows[0]);
+
+    const pkg = result.rows[0];
+    if (pkg.date_type === 'fixed') {
+      const slots = await db.query(`
+        SELECT s.*,
+          s.capacity - COALESCE((
+            SELECT COUNT(*) FROM bookings b
+            WHERE b.slot_id = s.id AND b.status != 'cancelled'
+          ), 0) AS spots_remaining
+        FROM package_slots s
+        WHERE s.package_id = $1
+        ORDER BY s.start_date ASC
+      `, [req.params.id]);
+      pkg.slots = slots.rows;
+    } else {
+      pkg.slots = [];
+    }
+    res.json(pkg);
+  } catch (err) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+router.get('/:id/slots', async (req, res) => {
+  try {
+    const slots = await db.query(`
+      SELECT s.*,
+        s.capacity - COALESCE((
+          SELECT COUNT(*) FROM bookings b
+          WHERE b.slot_id = s.id AND b.status != 'cancelled'
+        ), 0) AS spots_remaining
+      FROM package_slots s
+      WHERE s.package_id = $1
+      ORDER BY s.start_date ASC
+    `, [req.params.id]);
+    res.json(slots.rows);
   } catch (err) {
     res.status(500).json({ error: 'Server error' });
   }
@@ -161,16 +210,18 @@ router.post('/', auth, requireRole('vendor'), async (req, res) => {
   try {
     const vendor = await db.query('SELECT id FROM vendors WHERE user_id=$1', [req.user.id]);
     if (!vendor.rows.length) return res.status(404).json({ error: 'Vendor profile not found' });
-    const { title, description, category, destination, duration, price_gbp, emoji, image_url, start_date, end_date } = req.body;
+    const { title, description, category, destination, duration, price_gbp, emoji, image_url, start_date, end_date, date_type, slots } = req.body;
     if (!title || !category || !destination || !duration || !price_gbp) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
+    const dtype = date_type === 'fixed' ? 'fixed' : 'open';
     const result = await db.query(
-      `INSERT INTO packages (vendor_id, title, description, category, destination, duration, price_gbp, emoji, image_url, status, start_date, end_date)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'draft',$10,$11) RETURNING *`,
+      `INSERT INTO packages (vendor_id, title, description, category, destination, duration, price_gbp, emoji, image_url, status, start_date, end_date, date_type)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'draft',$10,$11,$12) RETURNING *`,
       [vendor.rows[0].id, title, description, category, destination, duration, price_gbp, emoji || '🌍', image_url || null,
-       start_date || '2026-01-01', end_date || '2099-12-31']
+       start_date || '2026-01-01', end_date || '2099-12-31', dtype]
     );
+    if (dtype === 'fixed') await syncSlots(result.rows[0].id, slots);
     res.status(201).json(result.rows[0]);
   } catch (err) {
     console.error(err);
@@ -183,7 +234,7 @@ router.patch('/:id', auth, async (req, res) => {
   try {
     const { title, description, category, destination, duration,
             price_gbp, emoji, status, image_url, admin_status,
-            start_date, end_date } = req.body;
+            start_date, end_date, date_type, slots } = req.body;
 
     // HR admins can update admin_status; vendors can update everything else
     if (req.user.role === 'hr') {
@@ -220,12 +271,22 @@ router.patch('/:id', auth, async (req, res) => {
         status      = COALESCE($8, status),
         image_url   = COALESCE($9, image_url),
         start_date  = COALESCE($11, start_date),
-        end_date    = COALESCE($12, end_date)
+        end_date    = COALESCE($12, end_date),
+        date_type   = COALESCE($13, date_type)
        WHERE id=$10 RETURNING *`,
       [title, description, category, destination, duration,
        price_gbp, emoji, status, image_url, req.params.id,
-       start_date || null, end_date || null]
+       start_date || null, end_date || null,
+       (date_type === 'fixed' || date_type === 'open') ? date_type : null]
     );
+    // If slots were provided (fixed packages), replace them
+    if (result.rows[0]?.date_type === 'fixed' && slots !== undefined) {
+      await syncSlots(req.params.id, slots);
+    }
+    // If switched to open, clear any slots
+    if (result.rows[0]?.date_type === 'open') {
+      await db.query('DELETE FROM package_slots WHERE package_id=$1', [req.params.id]);
+    }
     res.json(result.rows[0]);
   } catch (err) {
     console.error(err);

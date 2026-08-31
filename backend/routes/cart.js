@@ -25,14 +25,29 @@ router.get('/', auth, requireRole('employee'), async (req, res) => {
 // ON CONFLICT handles deduplication — adding same package updates it rather than duplicating
 router.post('/', auth, requireRole('employee'), async (req, res) => {
   try {
-    const { package_id, payroll_months, departure_date, payment_method } = req.body;
+    const { package_id, payroll_months, departure_date, payment_method, slot_id } = req.body;
+
+    let finalDeparture = departure_date;
+    // Fixed-slot booking: validate slot belongs to package, has capacity, derive departure date
+    if (slot_id) {
+      const slot = await db.query(`
+        SELECT s.*, s.capacity - COALESCE((
+          SELECT COUNT(*) FROM bookings b WHERE b.slot_id = s.id AND b.status != 'cancelled'
+        ), 0) AS spots_remaining
+        FROM package_slots s WHERE s.id = $1 AND s.package_id = $2
+      `, [slot_id, package_id]);
+      if (!slot.rows.length) return res.status(400).json({ error: 'Invalid date slot for this package' });
+      if (slot.rows[0].spots_remaining <= 0) return res.status(400).json({ error: 'This date slot is fully booked' });
+      finalDeparture = String(slot.rows[0].start_date).split('T')[0];
+    }
+
     const result = await db.query(`
-      INSERT INTO cart_items (user_id, package_id, payroll_months, departure_date, payment_method)
-      VALUES ($1,$2,$3,$4,$5)
+      INSERT INTO cart_items (user_id, package_id, payroll_months, departure_date, payment_method, slot_id)
+      VALUES ($1,$2,$3,$4,$5,$6)
       ON CONFLICT (user_id, package_id) DO UPDATE SET
-        payroll_months=$3, departure_date=$4, payment_method=$5
+        payroll_months=$3, departure_date=$4, payment_method=$5, slot_id=$6
       RETURNING *
-    `, [req.user.id, package_id, payroll_months || 6, departure_date, payment_method || 'payroll']);
+    `, [req.user.id, package_id, payroll_months || 6, finalDeparture, payment_method || 'payroll', slot_id || null]);
     res.status(201).json(result.rows[0]);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -56,11 +71,26 @@ router.post('/checkout', auth, requireRole('employee'), async (req, res) => {
 
     // Get cart items
     const cart = await db.query(`
-      SELECT ci.*, p.title, p.price_gbp, p.id as pkg_id
+      SELECT ci.*, p.title, p.price_gbp, p.id as pkg_id, ci.slot_id
       FROM cart_items ci JOIN packages p ON ci.package_id = p.id
       WHERE ci.user_id = $1
     `, [req.user.id]);
     if (!cart.rows.length) return res.status(400).json({ error: 'Cart is empty' });
+
+    // Re-check slot capacity at checkout to prevent oversell
+    for (const item of cart.rows) {
+      if (item.slot_id) {
+        const slot = await db.query(`
+          SELECT s.capacity - COALESCE((
+            SELECT COUNT(*) FROM bookings b WHERE b.slot_id = s.id AND b.status != 'cancelled'
+          ), 0) AS spots_remaining
+          FROM package_slots s WHERE s.id = $1
+        `, [item.slot_id]);
+        if (!slot.rows.length || slot.rows[0].spots_remaining <= 0) {
+          return res.status(400).json({ error: `Sorry, "${item.title}" just sold out for the selected dates. Please choose another slot.` });
+        }
+      }
+    }
 
     // Deduct Sabba Points if used
     const pointsToDeduct = parseInt(points_used) || 0;
@@ -116,12 +146,12 @@ router.post('/checkout', auth, requireRole('employee'), async (req, res) => {
         await db.query(`
           INSERT INTO bookings
             (employee_id, package_id, company_id, departure_date, payroll_months,
-             monthly_amount, total_amount, status, payment_method, stripe_checkout_session)
-          VALUES ($1,$2,$3,$4,$5,$6,$7,'approved','card',$8)
+             monthly_amount, total_amount, status, payment_method, stripe_checkout_session, slot_id)
+          VALUES ($1,$2,$3,$4,$5,$6,$7,'approved','card',$8,$9)
         `, [
           req.user.id, item.pkg_id, req.user.company_id,
           item.departure_date || new Date(Date.now() + 90*24*60*60*1000),
-          item.payroll_months || 1, monthly, total, session.id
+          item.payroll_months || 1, monthly, total, session.id, item.slot_id || null
         ]);
       }
 
@@ -144,12 +174,12 @@ router.post('/checkout', auth, requireRole('employee'), async (req, res) => {
       const result  = await db.query(`
         INSERT INTO bookings
           (employee_id, package_id, company_id, departure_date, payroll_months,
-           monthly_amount, total_amount, status, payment_method)
-        VALUES ($1,$2,$3,$4,$5,$6,$7,'pending','payroll') RETURNING id
+           monthly_amount, total_amount, status, payment_method, slot_id)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,'pending','payroll',$8) RETURNING id
       `, [
         req.user.id, item.pkg_id, req.user.company_id,
         item.departure_date || new Date(Date.now() + 90*24*60*60*1000),
-        months, monthly, total
+        months, monthly, total, item.slot_id || null
       ]);
       bookingIds.push(result.rows[0].id);
 

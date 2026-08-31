@@ -1084,16 +1084,44 @@ function PackageForm({ initial, onClose, onSaved }) {
     ...initial,
     start_date: stripDate(initial.start_date) || '2026-01-01',
     end_date:   stripDate(initial.end_date)   || '2099-12-31',
-  } : { title: '', description: '', category: 'travel', destination: '', duration: '', price_gbp: '', emoji: '🌍', image_url: '', start_date: '2026-01-01', end_date: '2099-12-31' });
+    date_type:  initial.date_type || 'open',
+  } : { title: '', description: '', category: 'travel', destination: '', duration: '', price_gbp: '', emoji: '🌍', image_url: '', start_date: '2026-01-01', end_date: '2099-12-31', date_type: 'open' });
+  const [slots, setSlots] = useState([]);
   const [saving, setSaving] = useState(false);
   const [error, setError]   = useState('');
   const set = k => e => setForm(f => ({ ...f, [k]: e.target.value }));
 
+  // Load existing slots when editing a fixed-date package
+  useEffect(() => {
+    if (initial?.id && initial.date_type === 'fixed') {
+      api.get(`/packages/${initial.id}/slots`).then(r => {
+        setSlots((r.data || []).map(s => ({
+          start_date: stripDate(s.start_date),
+          end_date:   stripDate(s.end_date),
+          capacity:   s.capacity,
+        })));
+      }).catch(() => {});
+    }
+  }, [initial]);
+
+  const addSlot    = () => setSlots(s => [...s, { start_date: '', end_date: '', capacity: 10 }]);
+  const removeSlot = (i) => setSlots(s => s.filter((_, idx) => idx !== i));
+  const setSlot    = (i, k, v) => setSlots(s => s.map((row, idx) => idx === i ? { ...row, [k]: v } : row));
+
   const handleSubmit = async (e) => {
-    e.preventDefault(); setSaving(true); setError('');
+    e.preventDefault(); setError('');
+    if (form.date_type === 'fixed') {
+      const valid = slots.filter(s => s.start_date && s.end_date);
+      if (!valid.length) { setError('Add at least one date slot, or switch to open-ended.'); return; }
+      for (const s of valid) {
+        if (s.end_date < s.start_date) { setError('Each slot\'s end date must be on or after its start date.'); return; }
+      }
+    }
+    setSaving(true);
     try {
-      if (initial) await api.patch(`/packages/${initial.id}`, form);
-      else         await api.post('/packages', form);
+      const payload = { ...form, slots: form.date_type === 'fixed' ? slots.filter(s => s.start_date && s.end_date) : [] };
+      if (initial) await api.patch(`/packages/${initial.id}`, payload);
+      else         await api.post('/packages', payload);
       onSaved();
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to save');
@@ -1130,19 +1158,61 @@ function PackageForm({ initial, onClose, onSaved }) {
           <Input label="Duration" required value={form.duration} onChange={set('duration')} placeholder="3 weeks"/>
         </div>
         <Input label="Price (£)" type="number" required min="1" value={form.price_gbp} onChange={set('price_gbp')} placeholder="3200"/>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          <div>
-            <label style={{ fontSize: 11.5, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.08em', display: 'block', marginBottom: 6 }}>Availability start date</label>
-            <input type="date" value={form.start_date || '2026-01-01'} onChange={set('start_date')}
-              style={{ width: '100%', border: '1.5px solid #eee', borderRadius: 10, padding: '10px 14px', fontSize: 13.5, color: colors.dark, background: '#fff', outline: 'none', fontFamily: font.body, fontWeight: 500 }}/>
-          </div>
-          <div>
-            <label style={{ fontSize: 11.5, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.08em', display: 'block', marginBottom: 6 }}>Availability end date <span style={{ fontWeight: 400, color: colors.orange }}>*</span></label>
-            <input type="date" value={form.end_date || '2099-12-31'} onChange={set('end_date')}
-              style={{ width: '100%', border: '1.5px solid #eee', borderRadius: 10, padding: '10px 14px', fontSize: 13.5, color: colors.dark, background: '#fff', outline: 'none', fontFamily: font.body, fontWeight: 500 }}/>
-            <p style={{ fontSize: 11, color: colors.faint, marginTop: 4 }}>Leave as-is for an ongoing package. Set a specific date if the package has a fixed end.</p>
+        {/* Availability type toggle */}
+        <div>
+          <label style={{ fontSize: 11.5, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.08em', display: 'block', marginBottom: 8 }}>Availability</label>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {[['open','Open-ended','Employees pick any date'],['fixed','Fixed dates','Set specific date slots']].map(([val,label,desc]) => (
+              <div key={val} onClick={() => setForm(f => ({ ...f, date_type: val }))}
+                style={{ flex: 1, padding: '12px 14px', border: `2px solid ${form.date_type === val ? colors.orange : '#eee'}`, borderRadius: 12, background: form.date_type === val ? colors.orangeLight : '#fff', cursor: 'pointer', transition: 'all 0.15s' }}>
+                <p style={{ fontSize: 13.5, fontWeight: 700, color: form.date_type === val ? colors.orange : colors.dark }}>{label}</p>
+                <p style={{ fontSize: 11.5, color: colors.muted, marginTop: 2 }}>{desc}</p>
+              </div>
+            ))}
           </div>
         </div>
+
+        {/* Open-ended: single end date (optional close) */}
+        {form.date_type === 'open' && (
+          <div>
+            <label style={{ fontSize: 11.5, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.08em', display: 'block', marginBottom: 6 }}>Close date <span style={{ fontWeight: 400, color: colors.muted }}>(optional)</span></label>
+            <input type="date" value={form.end_date === '2099-12-31' ? '' : (form.end_date || '')} onChange={e => setForm(f => ({ ...f, end_date: e.target.value || '2099-12-31', start_date: '2026-01-01' }))}
+              style={{ width: '100%', border: '1.5px solid #eee', borderRadius: 10, padding: '10px 14px', fontSize: 13.5, color: colors.dark, background: '#fff', outline: 'none', fontFamily: font.body, fontWeight: 500 }}/>
+            <p style={{ fontSize: 11, color: colors.faint, marginTop: 4 }}>Leave blank to keep this package available indefinitely.</p>
+          </div>
+        )}
+
+        {/* Fixed: slot editor */}
+        {form.date_type === 'fixed' && (
+          <div style={{ background: '#F7F5F2', borderRadius: 12, padding: '16px 18px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <p style={{ fontSize: 12.5, fontWeight: 700, color: colors.dark }}>Date slots</p>
+              <button type="button" onClick={addSlot} style={{ background: colors.orange, color: '#fff', border: 'none', borderRadius: 8, padding: '6px 12px', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: font.body }}>+ Add slot</button>
+            </div>
+            {slots.length === 0 && <p style={{ fontSize: 12.5, color: colors.muted, marginBottom: 4 }}>No slots yet — add at least one.</p>}
+            {slots.map((s, i) => (
+              <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 80px 30px', gap: 8, alignItems: 'end', marginBottom: 10 }}>
+                <div>
+                  {i === 0 && <label style={{ fontSize: 10, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>Start</label>}
+                  <input type="date" value={s.start_date} onChange={e => setSlot(i, 'start_date', e.target.value)}
+                    style={{ width: '100%', border: '1.5px solid #eee', borderRadius: 8, padding: '8px 10px', fontSize: 12.5, color: colors.dark, background: '#fff', outline: 'none', fontFamily: font.body }}/>
+                </div>
+                <div>
+                  {i === 0 && <label style={{ fontSize: 10, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>End</label>}
+                  <input type="date" value={s.end_date} onChange={e => setSlot(i, 'end_date', e.target.value)}
+                    style={{ width: '100%', border: '1.5px solid #eee', borderRadius: 8, padding: '8px 10px', fontSize: 12.5, color: colors.dark, background: '#fff', outline: 'none', fontFamily: font.body }}/>
+                </div>
+                <div>
+                  {i === 0 && <label style={{ fontSize: 10, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>Spots</label>}
+                  <input type="number" min="1" value={s.capacity} onChange={e => setSlot(i, 'capacity', e.target.value)}
+                    style={{ width: '100%', border: '1.5px solid #eee', borderRadius: 8, padding: '8px 10px', fontSize: 12.5, color: colors.dark, background: '#fff', outline: 'none', fontFamily: font.body }}/>
+                </div>
+                <button type="button" onClick={() => removeSlot(i)} title="Remove slot"
+                  style={{ background: colors.redLight, color: colors.red, border: 'none', borderRadius: 8, padding: '8px 0', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: font.body }}>✕</button>
+              </div>
+            ))}
+          </div>
+        )}
         <PackageImageUploader
           imageUrl={form.image_url}
           onUpload={url => setForm(f => ({ ...f, image_url: url }))}

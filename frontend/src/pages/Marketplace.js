@@ -180,7 +180,10 @@ export default function Marketplace() {
   }, [category, search]);
 
   // Same pattern as EmployeeHome
-  const handleAddToCart = (pkg) => setCartPopup(pkg);
+  const handleAddToCart = (pkg) => {
+    if (pkg.date_type === 'fixed') { navigate(`/package/${pkg.id}`); return; }
+    setCartPopup(pkg);
+  };
   const confirmAddToCart = ({ departure_date, payroll_months }) => {
     if (cartPopup) {
       addToCart(cartPopup.id, { departure_date, payroll_months });

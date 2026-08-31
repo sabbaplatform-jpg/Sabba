@@ -144,7 +144,10 @@ export function EmployeeHome() {
   };
 
   // Add to cart requires date popup
-  const handleAddToCart = (pkg) => setCartPopup(pkg);
+  const handleAddToCart = (pkg) => {
+    if (pkg.date_type === 'fixed') { navigate(`/package/${pkg.id}`); return; }
+    setCartPopup(pkg);
+  };
   const confirmAddToCart = async ({ departure_date, payroll_months }) => {
     if (cartPopup) {
       await addToCart(cartPopup.id, { departure_date, payroll_months });
