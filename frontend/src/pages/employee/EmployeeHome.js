@@ -148,9 +148,10 @@ export function EmployeeHome() {
     if (pkg.date_type === 'fixed') { navigate(`/package/${pkg.id}`); return; }
     setCartPopup(pkg);
   };
-  const confirmAddToCart = async ({ departure_date, payroll_months }) => {
+  const confirmAddToCart = async ({ departure_date, payroll_months, slot_id }) => {
+    const isoDate = departure_date ? new Date(departure_date).toISOString().split('T')[0] : undefined;
     if (cartPopup) {
-      await addToCart(cartPopup.id, { departure_date, payroll_months });
+      await addToCart(cartPopup.id, { departure_date: isoDate, payroll_months, slot_id });
       setCartPopup(null);
     }
   };

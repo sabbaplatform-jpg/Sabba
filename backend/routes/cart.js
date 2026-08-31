@@ -3,6 +3,15 @@ const db     = require('../lib/db');
 const email  = require('../lib/email');
 const { auth, requireRole, requireFlag } = require('../middleware/auth');
 
+// Normalise any date-ish value ('2026-09-07', a JS Date string, ISO, etc.) to 'YYYY-MM-DD'.
+// Returns null for empty/invalid so the column can stay null rather than 500.
+function toISODate(v) {
+  if (!v) return null;
+  const d = new Date(v);
+  if (isNaN(d.getTime())) return null;
+  return d.toISOString().split('T')[0];
+}
+
 // GET /api/cart
 router.get('/', auth, requireRole('employee'), async (req, res) => {
   try {
@@ -27,7 +36,7 @@ router.post('/', auth, requireRole('employee'), async (req, res) => {
   try {
     const { package_id, payroll_months, departure_date, payment_method, slot_id } = req.body;
 
-    let finalDeparture = departure_date;
+    let finalDeparture = toISODate(departure_date);
     // Fixed-slot booking: validate slot belongs to package, has capacity, derive departure date
     if (slot_id) {
       const slot = await db.query(`
@@ -150,7 +159,7 @@ router.post('/checkout', auth, requireRole('employee'), async (req, res) => {
           VALUES ($1,$2,$3,$4,$5,$6,$7,'approved','card',$8,$9)
         `, [
           req.user.id, item.pkg_id, req.user.company_id,
-          item.departure_date || new Date(Date.now() + 90*24*60*60*1000),
+          toISODate(item.departure_date) || toISODate(new Date(Date.now() + 90*24*60*60*1000)),
           item.payroll_months || 1, monthly, total, session.id, item.slot_id || null
         ]);
       }
@@ -178,7 +187,7 @@ router.post('/checkout', auth, requireRole('employee'), async (req, res) => {
         VALUES ($1,$2,$3,$4,$5,$6,$7,'pending','payroll',$8) RETURNING id
       `, [
         req.user.id, item.pkg_id, req.user.company_id,
-        item.departure_date || new Date(Date.now() + 90*24*60*60*1000),
+        toISODate(item.departure_date) || toISODate(new Date(Date.now() + 90*24*60*60*1000)),
         months, monthly, total, item.slot_id || null
       ]);
       bookingIds.push(result.rows[0].id);
