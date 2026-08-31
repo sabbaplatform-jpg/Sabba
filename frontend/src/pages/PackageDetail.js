@@ -202,8 +202,9 @@ export default function PackageDetail() {
   };
 
   // Expiry
+  const detailIsFixed = pkg?.date_type === 'fixed';
   const endDateStr = pkg?.end_date ? String(pkg.end_date).split('T')[0] : null;
-  const daysUntilExpiry = (!isFixed && endDateStr && endDateStr !== '2099-12-31')
+  const daysUntilExpiry = (!detailIsFixed && endDateStr && endDateStr !== '2099-12-31')
     ? Math.ceil((new Date(endDateStr) - new Date()) / (1000 * 60 * 60 * 24)) : null;
   const isExpiringSoon = daysUntilExpiry !== null && daysUntilExpiry >= 0 && daysUntilExpiry <= 14;
   const isExpired      = daysUntilExpiry !== null && daysUntilExpiry < 0;
