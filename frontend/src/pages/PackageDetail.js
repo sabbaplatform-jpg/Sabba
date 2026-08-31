@@ -192,12 +192,18 @@ export default function PackageDetail() {
     api.get(`/packages/${id}`).then(r => setPkg(r.data)).finally(() => setLoading(false));
   }, [id]);
 
-  const confirmAddToCart = ({ departure_date, payroll_months, slot_id }) => {
-    if (pkg) {
-      addToCart(pkg.id, { departure_date, payroll_months, slot_id });
+  const [cartError, setCartError] = useState('');
+  const confirmAddToCart = async ({ departure_date, payroll_months, slot_id }) => {
+    if (!pkg) return;
+    setCartError('');
+    try {
+      await addToCart(pkg.id, { departure_date, payroll_months, slot_id });
       setCartPopup(false);
       setAddedToast(true);
       setTimeout(() => setAddedToast(false), 3000);
+    } catch (err) {
+      setCartError(err.response?.data?.error || 'Could not add to cart. Please try again.');
+      alert(err.response?.data?.error || 'Could not add to cart. Please try again.');
     }
   };
 
