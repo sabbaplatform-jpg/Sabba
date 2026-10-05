@@ -96,7 +96,7 @@ export function EmployeeHome() {
     api.get('/packages/expiry-check').catch(() => {});
 
     Promise.all([
-      api.get('/packages'),
+      api.get('/packages', { params: user?.id ? { employee_id: user.id } : {} }),
       api.get('/quiz').catch(() => ({ data: null })),
       api.get('/bookings/mine').catch(() => ({ data: [] })),
       api.get('/allowance').catch(() => ({ data: null })),
@@ -122,7 +122,12 @@ export function EmployeeHome() {
 
       const dismissed = sessionStorage.getItem('quiz_dismissed');
       if (!q.data?.completed && !dismissed) setShowQuiz(true);
-      if (q.data?.completed && q.data?.adventure_types?.length) {
+      // If the API personalised the list, the top rows are the best matches —
+      // surface those (flagged with `recommended`) as the curated set.
+      const recommended = all.filter(p => p.recommended);
+      if (recommended.length) {
+        setCurated(recommended.slice(0, 4));
+      } else if (q.data?.completed && q.data?.adventure_types?.length) {
         const matched = all.filter(p => q.data.adventure_types.includes(p.category));
         setCurated(matched.length ? matched.slice(0, 4) : all.slice(0, 4));
       } else {
@@ -136,7 +141,9 @@ export function EmployeeHome() {
     sessionStorage.setItem('quiz_dismissed', '1');
     if (!answers) return;
     setQuiz({ ...answers, completed: true });
-    const { data } = await api.get('/packages');
+    const { data } = await api.get('/packages', { params: user?.id ? { employee_id: user.id } : {} });
+    const recommended = data.filter(p => p.recommended);
+    if (recommended.length) { setCurated(recommended.slice(0, 4)); return; }
     // Use travel_type categories if available, fall back to adventure_types
     const cats = answers.categories || answers.adventure_types || [];
     const matched = data.filter(p => cats.includes(p.category));

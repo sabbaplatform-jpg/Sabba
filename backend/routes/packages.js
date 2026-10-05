@@ -1,6 +1,7 @@
 const router = require('express').Router();
 const db = require('../lib/db');
 const { auth, requireRole } = require('../middleware/auth');
+const embeddings = require('../lib/embeddings');
 
 // Replace all slots for a package with the provided array [{start_date,end_date,capacity}]
 async function syncSlots(packageId, slots) {
@@ -18,7 +19,7 @@ async function syncSlots(packageId, slots) {
 
 router.get('/', async (req, res) => {
   try {
-    const { category, search } = req.query;
+    const { category, search, employee_id } = req.query;
     const today = new Date().toISOString().split('T')[0];
 
     let query = `
@@ -42,12 +43,97 @@ router.get('/', async (req, res) => {
     if (search)   { params.push('%' + search + '%'); query += ` AND (p.title ILIKE $${params.length} OR p.destination ILIKE $${params.length})`; }
     query += ' ORDER BY is_sponsored DESC, sl.slot_number ASC NULLS LAST, v.rating DESC';
     const result = await db.query(query, params);
-    res.json(result.rows);
+    let rows = result.rows;
+
+    // ── AI personalised ranking (optional, non-breaking) ──────────────
+    // Only when an employee_id is supplied AND the feature is enabled AND the
+    // employee has a preference signal (completed quiz and/or booking history).
+    // Otherwise we return the default sort above unchanged.
+    if (employee_id && embeddings.isEnabled() && rows.length) {
+      try {
+        const ranked = await rankByPreference(employee_id, rows);
+        if (ranked) rows = ranked;
+      } catch (e) {
+        console.error('[packages] ranking failed, using default sort:', e.message);
+      }
+    }
+
+    res.json(rows);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Server error' });
   }
 });
+
+// Reorder a set of package rows by similarity to an employee's preference vector.
+// Returns a NEW array (sponsored packages kept first, in their existing order),
+// or null to signal "no personalisation available — keep default sort".
+async function rankByPreference(employeeId, rows) {
+  // 1. Pull the employee's quiz + recent booking history.
+  const quizRes = await db.query('SELECT * FROM quiz_responses WHERE user_id=$1', [employeeId]);
+  const quiz = quizRes.rows[0] || null;
+
+  const bookRes = await db.query(
+    `SELECT p.title, p.category, p.destination
+       FROM bookings b JOIN packages p ON b.package_id = p.id
+      WHERE b.employee_id = $1
+      ORDER BY b.created_at DESC LIMIT 10`,
+    [employeeId]
+  );
+  const booked = bookRes.rows;
+
+  // No signal at all → don't personalise (preserve existing experience).
+  const hasQuiz = quiz && quiz.completed;
+  if (!hasQuiz && !booked.length) return null;
+
+  // 2. Build and embed the preference text.
+  const prefText = embeddings.preferenceText(quiz, booked);
+  if (!prefText.trim()) return null;
+  const prefVec = await embeddings.embedText(prefText);
+  if (!prefVec) return null;
+  const prefLiteral = embeddings.toVectorLiteral(prefVec);
+
+  // 3. Cosine similarity for the candidate packages that have an embedding.
+  const ids = rows.map(r => r.id);
+  const simRes = await db.query(
+    `SELECT package_id, 1 - (embedding <=> $1::vector) AS similarity
+       FROM package_embeddings
+      WHERE package_id = ANY($2::uuid[])`,
+    [prefLiteral, ids]
+  );
+  const simById = {};
+  for (const r of simRes.rows) simById[r.package_id] = Number(r.similarity);
+
+  // Nothing embedded yet → nothing to personalise on.
+  if (!Object.keys(simById).length) return null;
+
+  // 4. Attach scores. Packages without an embedding score lowest (-1).
+  const scored = rows.map(r => ({
+    ...r,
+    similarity: r.id in simById ? simById[r.id] : -1,
+  }));
+
+  // 5. Sponsored packages stay first (paid placement is preserved), in their
+  //    original order. Non-sponsored are reordered by similarity desc, then by
+  //    the original order as a stable tiebreak.
+  const sponsored = scored.filter(r => r.is_sponsored);
+  const organic   = scored.filter(r => !r.is_sponsored);
+  const originalIndex = new Map(rows.map((r, i) => [r.id, i]));
+  organic.sort((a, b) => {
+    if (b.similarity !== a.similarity) return b.similarity - a.similarity;
+    return originalIndex.get(a.id) - originalIndex.get(b.id);
+  });
+
+  // 6. Flag the top organic matches as "Recommended for you" (only ones that
+  //    actually have a positive similarity signal — never label a fallback).
+  const RECOMMEND_TOP = 4;
+  const RECOMMEND_MIN_SIM = 0.15; // guard against labelling weak/negative matches
+  organic.forEach((r, i) => {
+    r.recommended = i < RECOMMEND_TOP && r.similarity >= RECOMMEND_MIN_SIM;
+  });
+
+  return [...sponsored, ...organic];
+}
 
 router.get('/vendor/mine', auth, requireRole('vendor'), async (req, res) => {
   try {
@@ -247,6 +333,8 @@ router.patch('/:id', auth, async (req, res) => {
         [admin_status, req.user.id, req.params.id]
       );
       if (!result.rows.length) return res.status(404).json({ error: 'Package not found' });
+      // Refresh the AI recommendation embedding when approved (non-blocking).
+      if (admin_status === 'approved') embeddings.upsertPackageEmbeddingAsync({ id: req.params.id });
       return res.json(result.rows[0]);
     }
 

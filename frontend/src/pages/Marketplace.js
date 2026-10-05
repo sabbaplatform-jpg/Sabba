@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import api from '../lib/api';
 import { useCart } from '../context/CartContext';
+import { useAuth } from '../context/AuthContext';
 import { PackageCard, Spinner, EmptyState, Input, SkeletonCard } from '../components/UI';
 import { colors, font } from '../lib/styles';
 
@@ -166,6 +167,7 @@ export default function Marketplace() {
   const [fetchError,  setFetchError]  = useState(false);
   const [addedToast,  setAddedToast]  = useState(null);
   const { addToCart } = useCart();
+  const { user } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -173,11 +175,12 @@ export default function Marketplace() {
     const params = {};
     if (category !== 'all') params.category = category;
     if (search) params.search = search;
+    if (user?.id && user?.role === 'employee') params.employee_id = user.id;
     api.get('/packages', { params })
       .then(r => setPackages(r.data || []))
       .catch(() => setFetchError(true))
       .finally(() => setLoading(false));
-  }, [category, search]);
+  }, [category, search, user]);
 
   // Same pattern as EmployeeHome
   const handleAddToCart = (pkg) => {
@@ -259,7 +262,7 @@ export default function Marketplace() {
             <p style={{ fontSize: 32, marginBottom: 12 }}>⚠️</p>
             <p style={{ fontSize: 16, fontWeight: 700, color: colors.dark, marginBottom: 8 }}>Couldn't load packages</p>
             <p style={{ fontSize: 13, color: colors.muted, marginBottom: 20 }}>Check your connection and try again.</p>
-            <button onClick={() => { setFetchError(false); setLoading(true); api.get('/packages').then(r => setPackages(r.data || [])).catch(() => setFetchError(true)).finally(() => setLoading(false)); }}
+            <button onClick={() => { setFetchError(false); setLoading(true); api.get('/packages', { params: (user?.id && user?.role === 'employee') ? { employee_id: user.id } : {} }).then(r => setPackages(r.data || [])).catch(() => setFetchError(true)).finally(() => setLoading(false)); }}
               style={{ background: colors.orange, color: '#fff', border: 'none', borderRadius: 10, padding: '10px 22px', fontSize: 13.5, fontWeight: 700, cursor: 'pointer', fontFamily: font.body }}>
               Try again
             </button>

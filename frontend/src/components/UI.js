@@ -207,6 +207,7 @@ export function PackageCard({ pkg, onAddToCart, showTrending, onClick }) {
             {pkg.category?.replace('_', ' ')}
           </span>
           {showTrending && <span style={{ fontSize: 10, fontWeight: 800, color: '#fff', background: colors.orange, borderRadius: 6, padding: '4px 8px' }}>🔥 Trending</span>}
+          {pkg.recommended && !showTrending && <span style={{ fontSize: 10, fontWeight: 800, color: '#fff', background: 'linear-gradient(135deg,#7c3aed,#4f46e5)', borderRadius: 6, padding: '4px 8px', whiteSpace: 'nowrap' }}>✨ For you</span>}
         </div>
         {pkg.verified && (
           <div style={{ position: 'absolute', bottom: 10, left: 10 }}>
@@ -216,6 +217,9 @@ export function PackageCard({ pkg, onAddToCart, showTrending, onClick }) {
       </div>
       {/* Body */}
       <div style={{ padding: '14px 16px 16px', flex: 1, display: 'flex', flexDirection: 'column' }}>
+        {pkg.recommended && (
+          <p style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#6d28d9', marginBottom: 5, display: 'flex', alignItems: 'center', gap: 4 }}>✨ Recommended for you</p>
+        )}
         <p style={{ fontSize: 14.5, fontWeight: 700, color: colors.dark, marginBottom: 3, lineHeight: 1.3 }}>{pkg.title}</p>
         <p style={{ fontSize: 12, color: colors.muted, fontWeight: 500, marginBottom: 6 }}>
           {pkg.vendor_name} · {pkg.destination} · {pkg.duration}

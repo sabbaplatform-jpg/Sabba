@@ -4,6 +4,7 @@ const email  = require('../lib/email');
 const db     = require('../lib/db');
 const jwt    = require('jsonwebtoken');
 const { auth, requireRole } = require('../middleware/auth');
+const embeddings = require('../lib/embeddings');
 
 // ── Middleware: only superadmin ───────────────────────────────
 const requireAdmin = requireRole('superadmin');
@@ -597,6 +598,8 @@ router.patch('/packages/:id', auth, requireAdmin, async (req, res) => {
         `UPDATE packages SET status = 'live' WHERE id = $1`,
         [req.params.id]
       );
+      // Generate/refresh the AI recommendation embedding for this package (non-blocking).
+      embeddings.upsertPackageEmbeddingAsync({ id: req.params.id });
     }
 
     // Notify vendor
