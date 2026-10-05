@@ -5,3 +5,11 @@ build/
 *.sql
 .vercel
 .env*
+
+# Secrets & OS junk
+.env
+backend/.env
+frontend/.env
+.DS_Store
+**/.DS_Store
+node_modules/
