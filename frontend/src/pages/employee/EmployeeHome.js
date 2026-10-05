@@ -134,7 +134,11 @@ export function EmployeeHome() {
         setCurated(all.slice(0, 4));
       }
     }).finally(() => setLoading(false));
-  }, []);
+    // Re-run when the authenticated user loads so employee_id is sent for
+    // AI ranking. Without `user` here the effect fires once at mount while
+    // user is still null — Chrome happened to win the auth race, Safari did
+    // not, so personalised results never appeared in Safari.
+  }, [user]);
 
   const onQuizComplete = async (answers) => {
     setShowQuiz(false);
