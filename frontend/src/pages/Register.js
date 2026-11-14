@@ -34,7 +34,7 @@ export default function Register() {
       <div style={{ width: '100%', maxWidth: 440, padding: 24 }}>
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
           <div style={{ width: 48, height: 48, borderRadius: 12, margin: '0 auto 12px',
-            background: 'linear-gradient(135deg, #e06c2a, #f5a66d)',
+            background: 'linear-gradient(135deg, #0E6BA8, #2E8BC0)',
             display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <span style={{ color: '#fff', fontSize: 22, fontFamily: font.display, fontStyle: 'italic' }}>S</span>
           </div>

@@ -137,7 +137,7 @@ export function Cart() {
                 <div style={{ background: 'linear-gradient(135deg, #1a1612, #2e2318)', borderRadius: 12, padding: '16px 18px', marginBottom: 20 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
                     <div>
-                      <p style={{ fontSize: 13.5, fontWeight: 700, color: '#f5a66d', marginBottom: 2 }}>⭐ Sabba Points</p>
+                      <p style={{ fontSize: 13.5, fontWeight: 700, color: '#2E8BC0', marginBottom: 2 }}>⭐ Sabba Points</p>
                       <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)' }}>{pointsBalance.toLocaleString()} pts · worth £{(pointsBalance/POINTS_PER_POUND).toFixed(2)}</p>
                     </div>
                     {pointsToApply > 0 && (
@@ -163,7 +163,7 @@ export function Cart() {
                       <input type="number" value={pointsInput} onChange={e => setPointsInput(e.target.value)}
                         placeholder={`Max ${maxPointsForOrder.toLocaleString()} pts`} min="0" max={maxPointsForOrder}
                         style={{ flex: 1, background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 8, padding: '8px 12px', fontSize: 13, color: '#fff', fontFamily: font.body, outline: 'none' }}/>
-                      <button onClick={applyPoints} style={{ background: '#f5a66d', color: '#1a1612', border: 'none', borderRadius: 8, padding: '8px 14px', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: font.body, flexShrink: 0 }}>
+                      <button onClick={applyPoints} style={{ background: '#2E8BC0', color: '#1a1612', border: 'none', borderRadius: 8, padding: '8px 14px', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: font.body, flexShrink: 0 }}>
                         Apply
                       </button>
                       <button onClick={() => { setPointsInput(String(maxPointsForOrder)); setPointsToApply(maxPointsForOrder); }}

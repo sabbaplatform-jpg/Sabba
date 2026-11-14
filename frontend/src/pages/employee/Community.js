@@ -20,7 +20,6 @@ import { colors, font } from '../../lib/styles';
 const LEVEL_NAMES  = ['','Explorer','Adventurer','Trailblazer','Pioneer','Legend'];
 const LEVEL_COLORS = ['','#6B7280','#3B82F6','#10B981','#F59E0B','#EF4444'];
 const LEVEL_ICONS  = ['','🧭','🏕️','🥾','🚀','👑'];
-const GOLD = "#C9882A";
 
 function timeAgo(date) {
   const s = Math.floor((new Date() - new Date(date)) / 1000);
@@ -382,6 +381,11 @@ function MatchedTravellers({ matches, navigate }) {
 function PlatinumSidebar({ navigate, slots }) {
   const [listings, setListings] = useState([]);
 
+  // Platinum tier — true silver/pewter palette (distinct from the gold Featured tier)
+  const PLAT      = '#5B6676';   // pewter text/badge (WCAG AA: 5.82:1 on white)
+  const PLAT_LT   = '#EEF1F5';   // light platinum background
+  const PLAT_BDR  = '#C7CED8';   // platinum border
+
   useEffect(() => {
     api.get('/community/platinum').then(r => setListings(r.data || [])).catch(()=>{});
   }, []);
@@ -392,24 +396,24 @@ function PlatinumSidebar({ navigate, slots }) {
   return (
     <div style={{display:'flex',flexDirection:'column',gap:16}}>
       <p style={{fontSize:9.5,fontWeight:700,color:colors.faint,textTransform:'uppercase',letterSpacing:'0.1em',marginBottom:0}}>
-        ⭐ Platinum
+        💎 Platinum
       </p>
       {filtered.map(l=>(
         <div key={l.id} onClick={()=>navigate(`/package/${l.package_id}`)}
-          style={{background:'#fff',border:'1.5px solid #F0C060',borderRadius:16,overflow:'hidden',
-            cursor:'pointer',boxShadow:'0 2px 12px rgba(201,136,42,0.12)',transition:'all 0.15s'}}
-          onMouseEnter={e=>{e.currentTarget.style.transform='translateY(-2px)';e.currentTarget.style.boxShadow='0 6px 20px rgba(201,136,42,0.2)';}}
-          onMouseLeave={e=>{e.currentTarget.style.transform='none';e.currentTarget.style.boxShadow='0 2px 12px rgba(201,136,42,0.12)';}}>
+          style={{background:'#fff',border:`1.5px solid ${PLAT_BDR}`,borderRadius:16,overflow:'hidden',
+            cursor:'pointer',boxShadow:'0 2px 12px rgba(91,102,118,0.12)',transition:'all 0.15s'}}
+          onMouseEnter={e=>{e.currentTarget.style.transform='translateY(-2px)';e.currentTarget.style.boxShadow='0 6px 20px rgba(91,102,118,0.2)';}}
+          onMouseLeave={e=>{e.currentTarget.style.transform='none';e.currentTarget.style.boxShadow='0 2px 12px rgba(91,102,118,0.12)';}}>
           {/* Large image */}
-          <div style={{height:160,background:'linear-gradient(135deg,#C9882A,#e8a84a)',position:'relative',overflow:'hidden'}}>
+          <div style={{height:160,background:'linear-gradient(135deg,#8A94A6,#B8C0CC)',position:'relative',overflow:'hidden'}}>
             {l.image_url
               ? <img src={l.image_url} alt={l.package_title} style={{width:'100%',height:'100%',objectFit:'cover'}}/>
               : <div style={{width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',fontSize:48}}>{l.emoji||'🌍'}</div>
             }
             {/* Gradient overlay for legibility */}
             <div style={{position:'absolute',inset:0,background:'linear-gradient(to top,rgba(0,0,0,0.5) 0%,transparent 60%)'}}/>
-            <div style={{position:'absolute',top:8,left:8,background:GOLD,borderRadius:5,padding:'2px 8px'}}>
-              <span style={{fontSize:9,fontWeight:800,color:'#fff',letterSpacing:'0.06em'}}>⭐ PLATINUM</span>
+            <div style={{position:'absolute',top:8,left:8,background:PLAT,borderRadius:5,padding:'2px 8px'}}>
+              <span style={{fontSize:9,fontWeight:800,color:'#fff',letterSpacing:'0.06em'}}>💎 PLATINUM</span>
             </div>
             {/* Title on image */}
             <div style={{position:'absolute',bottom:10,left:10,right:10}}>
@@ -421,10 +425,10 @@ function PlatinumSidebar({ navigate, slots }) {
             <p style={{fontSize:11.5,color:colors.muted,marginBottom:8}}>{l.destination} · {l.duration}</p>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-end'}}>
               <div>
-                <p style={{fontSize:16,fontWeight:700,color:GOLD}}>£{Number(l.price_gbp).toLocaleString()}</p>
+                <p style={{fontSize:16,fontWeight:700,color:PLAT}}>£{Number(l.price_gbp).toLocaleString()}</p>
                 <p style={{fontSize:10.5,color:colors.faint}}>from £{Math.ceil(l.price_gbp/12)}/mo</p>
               </div>
-              <span style={{fontSize:10,fontWeight:700,color:GOLD,background:'#FDF3E3',borderRadius:5,padding:'3px 8px'}}>
+              <span style={{fontSize:10,fontWeight:700,color:PLAT,background:PLAT_LT,borderRadius:5,padding:'3px 8px'}}>
                 Book now →
               </span>
             </div>
@@ -527,16 +531,16 @@ export function CommunityFeed() {
           {/* Points + rules */}
           <div style={{display:'grid',gridTemplateColumns:isMobile?'1fr':'1fr 1fr',gap:12}}>
             <div style={{background:'rgba(255,255,255,0.07)',borderRadius:14,padding:'16px 18px',border:'1px solid rgba(255,255,255,0.1)'}}>
-              <p style={{fontSize:11,fontWeight:700,color:'#f5a66d',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:10}}>⭐ Earn Sabba Points</p>
+              <p style={{fontSize:11,fontWeight:700,color:'#2E8BC0',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:10}}>⭐ Earn Sabba Points</p>
               {[['📝 Post with photo','20 pts'],['✏️ Text post','10 pts'],['💬 Comment','5 pts'],['❤️ Like received','2 pts'],['✈️ Message a match','30 pts']].map(([a,p])=>(
                 <div key={a} style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:5}}>
                   <span style={{fontSize:12,color:'rgba(255,255,255,0.6)'}}>{a}</span>
-                  <span style={{fontSize:12,fontWeight:700,color:'#f5a66d'}}>{p}</span>
+                  <span style={{fontSize:12,fontWeight:700,color:'#2E8BC0'}}>{p}</span>
                 </div>
               ))}
             </div>
             <div style={{background:'rgba(255,255,255,0.07)',borderRadius:14,padding:'16px 18px',border:'1px solid rgba(255,255,255,0.1)'}}>
-              <p style={{fontSize:11,fontWeight:700,color:'#f5a66d',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:10}}>📋 Community Rules</p>
+              <p style={{fontSize:11,fontWeight:700,color:'#2E8BC0',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:10}}>📋 Community Rules</p>
               {['Share genuine adventure stories and travel tips','Be respectful — this is a professional community','No spam, self-promotion or offensive content','Daily points cap applies — scales with your level','Violations may result in account suspension'].map((r,i)=>(
                 <div key={i} style={{display:'flex',gap:8,alignItems:'flex-start',marginBottom:6}}>
                   <span style={{fontSize:10,color:'rgba(255,255,255,0.3)',marginTop:2,flexShrink:0}}>{i+1}.</span>

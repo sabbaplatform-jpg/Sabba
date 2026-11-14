@@ -168,18 +168,18 @@ export default function Allowance() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
           <div style={{ background: 'linear-gradient(135deg, #1a1612, #2e2318)', borderRadius: 16, padding: '28px', flex: 1 }}>
             <p style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: 8 }}>Sabba Points</p>
-            <p style={{ fontFamily: font.display, fontSize: 48, color: '#f5a66d', lineHeight: 1 }}>{(sabba_points || 0).toLocaleString()}</p>
+            <p style={{ fontFamily: font.display, fontSize: 48, color: '#2E8BC0', lineHeight: 1 }}>{(sabba_points || 0).toLocaleString()}</p>
             <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.45)', marginTop: 8, lineHeight: 1.5, fontWeight: 500 }}>
               Worth £{((sabba_points || 0) / 100).toFixed(2)} in booking credit
             </p>
             <div style={{ marginTop: 20, display: 'flex', gap: 10 }}>
               <div style={{ flex: 1, background: 'rgba(255,255,255,0.07)', borderRadius: 10, padding: '12px', textAlign: 'center' }}>
                 <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', fontWeight: 700 }}>EARNED</p>
-                <p style={{ fontFamily: font.display, fontSize: 18, color: '#f5a66d', marginTop: 2 }}>{sabba_points || 0}</p>
+                <p style={{ fontFamily: font.display, fontSize: 18, color: '#2E8BC0', marginTop: 2 }}>{sabba_points || 0}</p>
               </div>
               <div style={{ flex: 1, background: 'rgba(255,255,255,0.07)', borderRadius: 10, padding: '12px', textAlign: 'center' }}>
                 <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', fontWeight: 700 }}>VALUE</p>
-                <p style={{ fontFamily: font.display, fontSize: 18, color: '#f5a66d', marginTop: 2 }}>£{((sabba_points||0)/100).toFixed(0)}</p>
+                <p style={{ fontFamily: font.display, fontSize: 18, color: '#2E8BC0', marginTop: 2 }}>£{((sabba_points||0)/100).toFixed(0)}</p>
               </div>
             </div>
             <p style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.3)', marginTop: 16, lineHeight: 1.5 }}>

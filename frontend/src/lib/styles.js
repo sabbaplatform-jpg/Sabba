@@ -1,14 +1,19 @@
 // ── Brand accent ──────────────────────────────────────────────────────────
 // Single source of truth for the brand accent. Ocean blue (#0E6BA8) replaced
-// the former orange (#D4622A) in the Nov 2026 rebrand. The `orange*` keys are
+// the former orange (#0E6BA8) in the Nov 2026 rebrand. The `orange*` keys are
 // kept as names so existing call sites keep working; `accent*` are the
 // preferred aliases for new code. Both point at the same values.
+// NOTE: gold (#C9882A) is a separate, intentional tier colour for Featured
+// listings and is NOT part of the brand accent — do not map it to blue.
 export const colors = {
   accent:      '#0E6BA8',           // primary brand accent (ocean blue)
   accentHover: '#0A5587',           // hover / pressed
   accentLight: 'rgba(14,107,168,0.08)',
   accentPale:  'rgba(14,107,168,0.15)',
   accentTint:  '#E6F1F8',           // solid light tint for backgrounds/badges
+  accentSoft:  '#2E8BC0',           // lighter accent for highlight text on dark/large display
+  platinum:    '#8A94A6',           // true platinum (cool silver-grey) for Platinum listings
+  platinumLt:  '#EEF1F5',           // platinum light background
   // Backwards-compatible aliases (same ocean-blue values) — do not reintroduce orange here.
   orange:      '#0E6BA8',
   orangeHover: '#0A5587',
