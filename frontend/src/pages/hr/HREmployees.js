@@ -84,7 +84,7 @@ function ImportModal({ onClose, onImported }) {
           <p style={{ fontSize: 13.5, color: colors.muted, marginBottom: 20, lineHeight: 1.6 }}>
             Upload a CSV file with your employee list. All imported employees will receive the temporary password <strong style={{ color: colors.dark }}>Welcome2Sabba!</strong>
           </p>
-          <div style={{ background: colors.orangeLight, border: `1px solid rgba(212,98,42,0.2)`, borderRadius: 12, padding: '14px 18px', marginBottom: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ background: colors.orangeLight, border: `1px solid rgba(14,107,168,0.2)`, borderRadius: 12, padding: '14px 18px', marginBottom: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
               <p style={{ fontSize: 13.5, fontWeight: 700, color: colors.dark, marginBottom: 3 }}>Start with our template</p>
               <p style={{ fontSize: 12.5, color: colors.muted }}>Download, fill in your employees, then upload below.</p>

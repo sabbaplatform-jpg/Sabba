@@ -18,7 +18,7 @@ export function Avatar({ initials, size = 32, src }) {
   );
   return (
     <div style={{ width: size, height: size, borderRadius: size * 0.28, flexShrink: 0,
-      background: 'linear-gradient(135deg, #D4622A, #f5a066)',
+      background: 'linear-gradient(135deg, #0E6BA8, #2E8BC0)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       fontSize: size * 0.34, fontWeight: 800, color: '#fff', letterSpacing: '-0.5px' }}>
       {initials}
@@ -34,7 +34,7 @@ export function Button({ children, onClick, variant = 'primary', type = 'button'
     alignItems: 'center', gap: 7, opacity: disabled ? 0.5 : 1, letterSpacing: '0.01em', ...style,
   };
   const variants = {
-    primary:   { background: colors.orange, color: '#fff', boxShadow: '0 2px 8px rgba(212,98,42,0.3)' },
+    primary:   { background: colors.orange, color: '#fff', boxShadow: '0 2px 8px rgba(14,107,168,0.3)' },
     secondary: { background: '#F7F5F2', color: colors.dark, border: '1px solid #eee' },
     danger:    { background: colors.redLight, color: colors.red },
     ghost:     { background: 'transparent', color: colors.orange, border: `1px solid ${colors.orange}` },

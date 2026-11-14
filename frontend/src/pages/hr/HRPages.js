@@ -384,7 +384,7 @@ export function HRAnalytics() {
                 return (
                   <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, height: '100%', justifyContent: 'flex-end' }}>
                     {m.count > 0 && <span style={{ fontSize: 10, fontWeight: 700, color: isLast ? colors.orange : colors.faint }}>{m.count}</span>}
-                    <div style={{ width: '100%', borderRadius: '4px 4px 0 0', height: `${Math.max(pct, 4)}%`, background: isLast ? `linear-gradient(to top, ${colors.orange}, #f5a066)` : '#E8E4DF' }}/>
+                    <div style={{ width: '100%', borderRadius: '4px 4px 0 0', height: `${Math.max(pct, 4)}%`, background: isLast ? `linear-gradient(to top, ${colors.orange}, #2E8BC0)` : '#E8E4DF' }}/>
                   </div>
                 );
               })}
@@ -475,7 +475,7 @@ function VendorReviewModal({ vendor, onClose, onVerify, onRevoke }) {
   return (
     <Modal title="Vendor Review" onClose={onClose} width={580}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 20, padding: 16, background: '#F7F5F2', borderRadius: 12 }}>
-        {vendor.avatar_url ? <img src={vendor.avatar_url} alt={vendor.company_name} style={{ width: 56, height: 56, borderRadius: 14, objectFit: 'cover' }}/> : <div style={{ width: 56, height: 56, borderRadius: 14, background: `linear-gradient(135deg, ${colors.orange}, #f5a066)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24 }}>🏢</div>}
+        {vendor.avatar_url ? <img src={vendor.avatar_url} alt={vendor.company_name} style={{ width: 56, height: 56, borderRadius: 14, objectFit: 'cover' }}/> : <div style={{ width: 56, height: 56, borderRadius: 14, background: `linear-gradient(135deg, ${colors.orange}, #2E8BC0)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24 }}>🏢</div>}
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
             <p style={{ fontSize: 18, fontWeight: 700, color: colors.dark }}>{vendor.company_name}</p>
@@ -640,7 +640,7 @@ export function HRTeam() {
                 </div>
               ))}
             </div>
-            <div style={{ background: colors.orangeLight, border: '1px solid rgba(212,98,42,0.2)', borderRadius: 10, padding: '10px 14px', marginBottom: 14 }}>
+            <div style={{ background: colors.orangeLight, border: '1px solid rgba(14,107,168,0.2)', borderRadius: 10, padding: '10px 14px', marginBottom: 14 }}>
               <p style={{ fontSize: 12.5, color: colors.orange, fontWeight: 600 }}>Default password: <strong>Welcome2Sabba!</strong> — ask your colleague to change it on first login.</p>
             </div>
             {error   && <p style={{ fontSize: 13, color: colors.red,   fontWeight: 700, marginBottom: 10 }}>{'⚠ ' + error}</p>}

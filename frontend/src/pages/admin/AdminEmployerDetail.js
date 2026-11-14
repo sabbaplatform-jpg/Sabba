@@ -65,7 +65,7 @@ function ImportModal({ companyId, onClose, onImported }) {
       {stage==='upload' && (
         <div>
           <p style={{fontSize:13.5,color:colors.muted,marginBottom:20,lineHeight:1.6}}>Upload a CSV to add employees to this employer account. Default password: <strong style={{color:colors.dark}}>Welcome2Sabba!</strong></p>
-          <div style={{background:colors.orangeLight,border:`1px solid rgba(212,98,42,0.2)`,borderRadius:12,padding:'14px 18px',marginBottom:20,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+          <div style={{background:colors.orangeLight,border:`1px solid rgba(14,107,168,0.2)`,borderRadius:12,padding:'14px 18px',marginBottom:20,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
             <div><p style={{fontSize:13.5,fontWeight:700,color:colors.dark,marginBottom:3}}>Download template</p><p style={{fontSize:12.5,color:colors.muted}}>Fill in your employees then upload below.</p></div>
             <Button small variant="ghost" onClick={downloadTemplate}>⬇ Template</Button>
           </div>
@@ -417,7 +417,7 @@ export function AdminEmployerDetail() {
           ].map((s,i)=>(
             <div key={i} style={{padding:'16px 20px',borderRight:i<4?'1px solid rgba(255,255,255,0.07)':'none'}}>
               <p style={{fontSize:10,fontWeight:700,color:'rgba(255,255,255,0.3)',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:4}}>{s.label}</p>
-              <p style={{fontFamily:font.display,fontSize:28,fontWeight:700,color:s.accent?'#f5a066':'#fff',lineHeight:1}}>{s.value}</p>
+              <p style={{fontFamily:font.display,fontSize:28,fontWeight:700,color:s.accent?'#2E8BC0':'#fff',lineHeight:1}}>{s.value}</p>
             </div>
           ))}
         </div>

@@ -113,7 +113,7 @@ export function VendorDashboard() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
             {profile?.avatar_url
               ? <img src={profile.avatar_url} alt="avatar" style={{ width: 52, height: 52, borderRadius: 14, objectFit: 'cover', border: '1px solid #eee' }}/>
-              : <div style={{ width: 52, height: 52, borderRadius: 14, background: `linear-gradient(135deg, ${colors.orange}, #f5a066)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>🌍</div>
+              : <div style={{ width: 52, height: 52, borderRadius: 14, background: `linear-gradient(135deg, ${colors.orange}, #2E8BC0)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>🌍</div>
             }
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
@@ -696,10 +696,10 @@ export function VendorEarnings() {
 
         {/* Dark earnings hero */}
         <div style={{ background: '#1C1916', borderRadius: 20, padding: '36px 40px', marginBottom: 24, display: 'grid', gridTemplateColumns: window.innerWidth < 768 ? '1fr' : '1fr 1fr', gap: 40, position: 'relative', overflow: 'hidden' }}>
-          <div style={{ position: 'absolute', right: -80, top: -80, width: 300, height: 300, borderRadius: '50%', border: '1px solid rgba(212,98,42,0.1)' }}/>
+          <div style={{ position: 'absolute', right: -80, top: -80, width: 300, height: 300, borderRadius: '50%', border: '1px solid rgba(14,107,168,0.1)' }}/>
           <div>
             <p style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: 8 }}>Confirmed Revenue</p>
-            <p style={{ fontFamily: font.display, fontSize: 56, fontWeight: 700, color: '#f5a066', lineHeight: 1, marginBottom: 8 }}>£{Number(totals.confirmed_revenue || 0).toLocaleString()}</p>
+            <p style={{ fontFamily: font.display, fontSize: 56, fontWeight: 700, color: '#2E8BC0', lineHeight: 1, marginBottom: 8 }}>£{Number(totals.confirmed_revenue || 0).toLocaleString()}</p>
             <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.35)', fontWeight: 500 }}>From {totals.total_bookings || 0} total bookings</p>
           </div>
           {/* Bar chart */}
@@ -715,8 +715,8 @@ export function VendorEarnings() {
                     const isLatest = i === monthly.length - 1;
                     return (
                       <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, height: '100%', justifyContent: 'flex-end' }}>
-                        {Number(m.revenue) > 0 && <span style={{ fontSize: 9, fontWeight: 700, color: isLatest ? '#f5a066' : 'rgba(255,255,255,0.25)' }}>£{Math.round(m.revenue/1000)}k</span>}
-                        <div style={{ width: '100%', borderRadius: '4px 4px 0 0', height: `${Math.max(pct, 4)}%`, background: isLatest ? `linear-gradient(to top, ${colors.orange}, #f5a066)` : 'rgba(255,255,255,0.12)' }}/>
+                        {Number(m.revenue) > 0 && <span style={{ fontSize: 9, fontWeight: 700, color: isLatest ? '#2E8BC0' : 'rgba(255,255,255,0.25)' }}>£{Math.round(m.revenue/1000)}k</span>}
+                        <div style={{ width: '100%', borderRadius: '4px 4px 0 0', height: `${Math.max(pct, 4)}%`, background: isLatest ? `linear-gradient(to top, ${colors.orange}, #2E8BC0)` : 'rgba(255,255,255,0.12)' }}/>
                       </div>
                     );
                   })}
@@ -881,7 +881,7 @@ export function VendorProfile() {
             <div style={{ position: 'relative' }}>
               {form.avatar_url
                 ? <img src={form.avatar_url} alt="avatar" style={{ width: 72, height: 72, borderRadius: 18, objectFit: 'cover', border: '1px solid #eee' }}/>
-                : <div style={{ width: 72, height: 72, borderRadius: 18, background: `linear-gradient(135deg, ${colors.orange}, #f5a066)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28 }}>🌍</div>
+                : <div style={{ width: 72, height: 72, borderRadius: 18, background: `linear-gradient(135deg, ${colors.orange}, #2E8BC0)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28 }}>🌍</div>
               }
             </div>
             <div style={{ flex: 1 }}>
@@ -1362,7 +1362,7 @@ export function VendorTeam() {
                 <input type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} placeholder="Min 8 characters" style={fStyle}/>
               </div>
             </div>
-            <div style={{ background:colors.orangeLight, border:'1px solid rgba(212,98,42,0.2)', borderRadius:10, padding:'10px 14px', marginBottom:14 }}>
+            <div style={{ background:colors.orangeLight, border:'1px solid rgba(14,107,168,0.2)', borderRadius:10, padding:'10px 14px', marginBottom:14 }}>
               <p style={{ fontSize:12.5, color:colors.orange, fontWeight:600 }}>Secondary users share the same vendor profile, packages and bookings. They cannot add or remove other team members.</p>
             </div>
             {error   && <p style={{ fontSize:13, color:colors.red,   fontWeight:700, marginBottom:10 }}>{'⚠ ' + error}</p>}

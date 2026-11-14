@@ -22,7 +22,7 @@ function AuthCard({ children }) {
         <p style={{ fontSize: 16, color: 'rgba(255,255,255,0.5)', margin: 0, lineHeight: 1.7 }}>
           Discovery, rejuvenation<br/>& growth.
         </p>
-        <p style={{ fontSize: 13, color: '#D4622A', margin: '32px 0 0', fontWeight: 600 }}>The Employee Adventure Benefit Platform</p>
+        <p style={{ fontSize: 13, color: '#0E6BA8', margin: '32px 0 0', fontWeight: 600 }}>The Employee Adventure Benefit Platform</p>
       </div>
       {/* Right form panel */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F7F5F2', padding: '40px' }}>

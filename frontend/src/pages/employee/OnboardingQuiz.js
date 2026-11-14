@@ -10,7 +10,7 @@ const TRAVEL_TYPES = {
     emoji: '🧗',
     tagline: 'You crave challenge, discovery and the thrill of the unknown.',
     desc: 'You come alive when you\'re outside your comfort zone — whether that\'s trekking through remote landscapes, diving into ocean depths, or exploring cities nobody from home has heard of. You measure a great trip by how many times your heart raced.',
-    color: '#D4622A', light: '#FAECE7',
+    color: '#0E6BA8', light: '#FAECE7',
     categories: ['travel', 'airlines', 'jobs_abroad'],
     traits: ['Physical challenge', 'Exploration', 'Adrenaline', 'New cultures'],
   },
@@ -208,7 +208,7 @@ function TravelTypeReveal({ typeKey, onContinue }) {
         {/* Points earned */}
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'rgba(245,160,102,0.15)', border: '1px solid rgba(245,160,102,0.3)', borderRadius: 20, padding: '6px 16px', marginBottom: 32, opacity: animIn ? 1 : 0, transition: 'opacity 0.6s 0.4s' }}>
           <span style={{ fontSize: 16 }}>⭐</span>
-          <span style={{ fontSize: 13, fontWeight: 700, color: '#F5A066' }}>+100 Sabba Points earned!</span>
+          <span style={{ fontSize: 13, fontWeight: 700, color: '#2E8BC0' }}>+100 Sabba Points earned!</span>
         </div>
 
         {/* Big emoji */}

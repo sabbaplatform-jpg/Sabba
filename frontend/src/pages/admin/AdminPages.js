@@ -32,7 +32,7 @@ function AdminNav({ active }) {
       <div style={{ flex: 1, padding: '8px 12px' }}>
         {links.map(l => (
           <div key={l.id} onClick={() => navigate(l.path)}
-            style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10, marginBottom: 2, cursor: 'pointer', background: active === l.id ? 'rgba(212,98,42,0.15)' : 'transparent', transition: 'background 0.15s' }}
+            style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10, marginBottom: 2, cursor: 'pointer', background: active === l.id ? 'rgba(14,107,168,0.15)' : 'transparent', transition: 'background 0.15s' }}
             onMouseEnter={e => { if (active !== l.id) e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; }}
             onMouseLeave={e => { if (active !== l.id) e.currentTarget.style.background = 'transparent'; }}>
             <span style={{ fontSize: 16 }}>{l.icon}</span>
@@ -93,12 +93,12 @@ export function AdminDashboard() {
   return (
     <AdminLayout active="dashboard">
       <div style={{ background: '#1C1916', padding: '32px 36px 28px' }}>
-        <p style={{ fontSize: 10.5, fontWeight: 700, color: 'rgba(212,98,42,0.8)', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 6 }}>
+        <p style={{ fontSize: 10.5, fontWeight: 700, color: 'rgba(14,107,168,0.8)', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 6 }}>
           Super Admin · {new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
         </p>
         <h1 style={{ fontFamily: font.display, fontSize: 36, color: '#fff', fontWeight: 700, fontStyle: 'italic' }}>Platform overview</h1>
         {stats?.pending_vendors > 0 && (
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'rgba(212,98,42,0.15)', border: '1px solid rgba(212,98,42,0.3)', borderRadius: 20, padding: '5px 14px', marginTop: 12 }}>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'rgba(14,107,168,0.15)', border: '1px solid rgba(14,107,168,0.3)', borderRadius: 20, padding: '5px 14px', marginTop: 12 }}>
             <span style={{ fontSize: 12 }}>⚠</span>
             <span style={{ fontSize: 12, color: colors.orange, fontWeight: 700 }}>{stats.pending_vendors} vendor{stats.pending_vendors !== 1 ? 's' : ''} awaiting verification</span>
           </div>
@@ -372,7 +372,7 @@ function CreateEmployerWizard({ onClose, onCreated }) {
                   <input value={form.admin_title} onChange={e=>set('admin_title',e.target.value)} placeholder="HR Director" style={iStyle}/>
                 </div>
               </div>
-              <div style={{ background: colors.orangeLight, border: `1px solid rgba(212,98,42,0.2)`, borderRadius: 10, padding: '12px 16px', marginTop: 16 }}>
+              <div style={{ background: colors.orangeLight, border: `1px solid rgba(14,107,168,0.2)`, borderRadius: 10, padding: '12px 16px', marginTop: 16 }}>
                 <p style={{ fontSize: 13, color: colors.dark, fontWeight: 700, marginBottom: 3 }}>Temporary password</p>
                 <p style={{ fontSize: 13, color: colors.muted }}>The HR admin will log in with <strong style={{ color: colors.dark, fontFamily: 'monospace' }}>Welcome2Sabba!</strong> and will be prompted to change it on first login.</p>
               </div>
@@ -524,7 +524,7 @@ function CreateEmployerWizard({ onClose, onCreated }) {
                     Next →
                   </button>
                 : <button onClick={submit} disabled={creating}
-                    style={{ background: creating ? '#eee' : colors.orange, color: creating ? '#aaa' : '#fff', border: 'none', borderRadius: 10, padding: '10px 24px', fontSize: 13.5, fontWeight: 700, cursor: creating ? 'default' : 'pointer', fontFamily: font.body, boxShadow: creating ? 'none' : `0 4px 14px rgba(212,98,42,0.35)` }}>
+                    style={{ background: creating ? '#eee' : colors.orange, color: creating ? '#aaa' : '#fff', border: 'none', borderRadius: 10, padding: '10px 24px', fontSize: 13.5, fontWeight: 700, cursor: creating ? 'default' : 'pointer', fontFamily: font.body, boxShadow: creating ? 'none' : `0 4px 14px rgba(14,107,168,0.35)` }}>
                     {creating ? 'Creating…' : '🚀 Create employer'}
                   </button>
               }
@@ -702,7 +702,7 @@ function VendorReviewModal({ vendor, companies, onClose, onVerify, onReject, onA
     <Modal title="Vendor review" onClose={onClose} width={640}>
       {/* Identity */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 20, padding: 16, background: '#F7F5F2', borderRadius: 12 }}>
-        <div style={{ width: 52, height: 52, borderRadius: 14, background: `linear-gradient(135deg, ${colors.orange}, #f5a066)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, flexShrink: 0 }}>🏪</div>
+        <div style={{ width: 52, height: 52, borderRadius: 14, background: `linear-gradient(135deg, ${colors.orange}, #2E8BC0)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, flexShrink: 0 }}>🏪</div>
         <div style={{ flex: 1 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
             <p style={{ fontSize: 17, fontWeight: 700, color: colors.dark }}>{vendor.company_name}</p>
@@ -2197,7 +2197,7 @@ export function AdminSettings() {
               const isCurrentUser = admin.id === currentUser?.id;
               return (
                 <div key={admin.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', background: '#fff', border: '1px solid #eee', borderRadius: 12 }}>
-                  <div style={{ width: 38, height: 38, borderRadius: 10, background: isCurrentUser ? `linear-gradient(135deg, ${colors.orange}, #f5a066)` : colors.dark, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 800, color: '#fff', flexShrink: 0 }}>
+                  <div style={{ width: 38, height: 38, borderRadius: 10, background: isCurrentUser ? `linear-gradient(135deg, ${colors.orange}, #2E8BC0)` : colors.dark, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 800, color: '#fff', flexShrink: 0 }}>
                     {admin.full_name?.charAt(0) || '?'}
                   </div>
                   <div style={{ flex: 1 }}>
@@ -2628,7 +2628,7 @@ export function AdminProfile() {
           <div style={{ position: 'relative', flexShrink: 0 }}>
             {avatar
               ? <img src={avatar} alt="Avatar" style={{ width: 72, height: 72, borderRadius: 16, objectFit: 'cover', border: '3px solid #eee' }}/>
-              : <div style={{ width: 72, height: 72, borderRadius: 16, background: `linear-gradient(135deg, ${colors.orange}, #f5a066)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, fontWeight: 800, color: '#fff' }}>{initials}</div>
+              : <div style={{ width: 72, height: 72, borderRadius: 16, background: `linear-gradient(135deg, ${colors.orange}, #2E8BC0)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, fontWeight: 800, color: '#fff' }}>{initials}</div>
             }
             <button onClick={() => fileRef.current?.click()}
               style={{ position: 'absolute', bottom: -4, right: -4, width: 24, height: 24, borderRadius: '50%', background: colors.dark, border: '2px solid #fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11 }}>

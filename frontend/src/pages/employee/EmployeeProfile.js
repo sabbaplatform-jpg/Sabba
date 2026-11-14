@@ -104,7 +104,7 @@ export function EmployeeProfile() {
             <div style={{ position: 'relative', flexShrink: 0 }}>
               {avatar
                 ? <img src={avatar} alt="Profile" style={{ width: 88, height: 88, borderRadius: 20, objectFit: 'cover', border: '3px solid #eee' }}/>
-                : <div style={{ width: 88, height: 88, borderRadius: 20, background: `linear-gradient(135deg, ${colors.orange}, #f5a066)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, fontWeight: 800, color: '#fff' }}>{initials}</div>
+                : <div style={{ width: 88, height: 88, borderRadius: 20, background: `linear-gradient(135deg, ${colors.orange}, #2E8BC0)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, fontWeight: 800, color: '#fff' }}>{initials}</div>
               }
               <button onClick={() => fileRef.current?.click()} title="Change photo"
                 style={{ position: 'absolute', bottom: -6, right: -6, width: 28, height: 28, borderRadius: '50%', background: colors.dark, border: '2px solid #fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12 }}>
@@ -142,7 +142,7 @@ export function EmployeeProfile() {
             {/* Sabba Points */}
             <div style={{ background: '#1C1916', borderRadius: 14, padding: '14px 20px', textAlign: 'center', flexShrink: 0, minWidth: 110 }}>
               <span style={{ fontSize: 22 }}>⭐</span>
-              <p style={{ fontFamily: font.display, fontSize: 26, color: '#f5a066', lineHeight: 1, marginTop: 4 }}>{pts.toLocaleString()}</p>
+              <p style={{ fontFamily: font.display, fontSize: 26, color: '#2E8BC0', lineHeight: 1, marginTop: 4 }}>{pts.toLocaleString()}</p>
               <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', marginTop: 4, fontWeight: 600 }}>SABBA POINTS</p>
               <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)', marginTop: 2 }}>= £{(pts/100).toFixed(2)}</p>
             </div>
@@ -153,7 +153,7 @@ export function EmployeeProfile() {
             <div style={{ marginTop: 16, display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', background: colors.orangeLight, borderRadius: 10 }}>
               <p style={{ fontSize: 13, color: colors.orange, fontWeight: 600, flex: 1 }}>New photo selected — save to update your profile</p>
               <button onClick={() => { setAvatarFile(null); setAvatar(p.avatar_url || null); }}
-                style={{ background: 'none', border: '1px solid rgba(212,98,42,0.3)', borderRadius: 8, padding: '6px 12px', fontSize: 12, color: colors.orange, cursor: 'pointer', fontFamily: font.body }}>
+                style={{ background: 'none', border: '1px solid rgba(14,107,168,0.3)', borderRadius: 8, padding: '6px 12px', fontSize: 12, color: colors.orange, cursor: 'pointer', fontFamily: font.body }}>
                 Cancel
               </button>
               <Button small onClick={saveAvatar} disabled={saving}>{saving ? 'Uploading…' : 'Save photo'}</Button>

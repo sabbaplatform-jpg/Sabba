@@ -29,8 +29,8 @@ export default function Login() {
     <div style={{ minHeight: '100vh', display: 'flex', fontFamily: font.body }}>
       {/* Left — branding panel */}
       <div style={{ flex: 1, background: '#1C1916', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '48px', position: 'relative', overflow: 'hidden' }}>
-        <div style={{ position: 'absolute', right: -120, top: -120, width: 400, height: 400, borderRadius: '50%', border: '1px solid rgba(212,98,42,0.12)' }}/>
-        <div style={{ position: 'absolute', left: -60, bottom: -60, width: 260, height: 260, borderRadius: '50%', border: '1px solid rgba(212,98,42,0.08)' }}/>
+        <div style={{ position: 'absolute', right: -120, top: -120, width: 400, height: 400, borderRadius: '50%', border: '1px solid rgba(14,107,168,0.12)' }}/>
+        <div style={{ position: 'absolute', left: -60, bottom: -60, width: 260, height: 260, borderRadius: '50%', border: '1px solid rgba(14,107,168,0.08)' }}/>
 
         {/* Logo */}
         <div>
@@ -40,7 +40,7 @@ export default function Login() {
         {/* Tagline */}
         <div>
           <h1 style={{ fontFamily: font.display, fontSize: 42, fontWeight: 700, fontStyle: 'italic', color: '#fff', lineHeight: 1.2, marginBottom: 20, maxWidth: 400 }}>
-            Discovery, rejuvenation &amp; <span style={{ color: '#f5a066' }}>growth.</span>
+            Discovery, rejuvenation &amp; <span style={{ color: '#2E8BC0' }}>growth.</span>
           </h1>
           <p style={{ fontSize: 15, color: 'rgba(255,255,255,0.45)', lineHeight: 1.7, maxWidth: 360 }}>
             The platform connecting employees with life-changing adventures — through your employer benefit portal.
@@ -70,7 +70,7 @@ export default function Login() {
               <Input label="Password" type="password" value={form.password} required
                 onChange={e => setForm(f => ({ ...f, password: e.target.value }))} placeholder="••••••••"/>
               <div style={{ textAlign: 'right', marginTop: 8, marginBottom: 4 }}>
-                <Link to="/forgot-password" style={{ fontSize: 13, color: '#D4622A', textDecoration: 'none', fontWeight: 600 }}>Forgot password?</Link>
+                <Link to="/forgot-password" style={{ fontSize: 13, color: '#0E6BA8', textDecoration: 'none', fontWeight: 600 }}>Forgot password?</Link>
               </div>
               {error && <p style={{ color: colors.red, fontSize: 13, fontWeight: 600, textAlign: 'center' }}>{error}</p>}
               <Button type="submit" disabled={loading} style={{ width: '100%', justifyContent: 'center', marginTop: 4, padding: '13px 20px', fontSize: 14 }}>

@@ -50,21 +50,21 @@ function wrapHtml(title, bodyHtml, ctaLabel, ctaUrl) {
 
   <tr><td style="background:#1C1916;padding:28px 36px;border-radius:14px 14px 0 0;">
     <p style="margin:0;font-size:24px;font-weight:700;font-style:italic;color:#fff;font-family:Georgia,serif;">Sabba</p>
-    <p style="margin:4px 0 0;font-size:11px;font-weight:700;color:#D4622A;text-transform:uppercase;letter-spacing:0.1em;">The Employee Adventure Benefit Platform</p>
+    <p style="margin:4px 0 0;font-size:11px;font-weight:700;color:#0E6BA8;text-transform:uppercase;letter-spacing:0.1em;">The Employee Adventure Benefit Platform</p>
   </td></tr>
 
   <tr><td style="background:#fff;padding:36px;border-left:1px solid #eee;border-right:1px solid #eee;">
-    <style>.info-box{background:#F7F5F2;border-radius:10px;padding:16px 20px;margin:16px 0;} h1{color:#1C1916;font-size:24px;margin:0 0 16px;} p{color:#4A4440;font-size:14px;line-height:1.7;margin:0 0 12px;} strong{color:#1C1916;} a{color:#D4622A;}</style>
+    <style>.info-box{background:#F7F5F2;border-radius:10px;padding:16px 20px;margin:16px 0;} h1{color:#1C1916;font-size:24px;margin:0 0 16px;} p{color:#4A4440;font-size:14px;line-height:1.7;margin:0 0 12px;} strong{color:#1C1916;} a{color:#0E6BA8;}</style>
     ${bodyHtml}
   </td></tr>
 
   ${ctaLabel && ctaUrl ? `
   <tr><td style="background:#fff;padding:0 36px 36px;border-left:1px solid #eee;border-right:1px solid #eee;">
-    <a href="${ctaUrl}" style="display:inline-block;background:#D4622A;color:#fff;text-decoration:none;padding:14px 32px;border-radius:10px;font-size:15px;font-weight:700;">${ctaLabel}</a>
+    <a href="${ctaUrl}" style="display:inline-block;background:#0E6BA8;color:#fff;text-decoration:none;padding:14px 32px;border-radius:10px;font-size:15px;font-weight:700;">${ctaLabel}</a>
   </td></tr>` : ''}
 
   <tr><td style="background:#F7F5F2;padding:24px 36px;border-radius:0 0 14px 14px;border:1px solid #eee;border-top:none;">
-    <p style="margin:0;font-size:12px;color:#9E8E7E;">© 2026 Sabba Platform Ltd · <a href="https://sabba-frontend.vercel.app" style="color:#D4622A;">sabba-frontend.vercel.app</a></p>
+    <p style="margin:0;font-size:12px;color:#9E8E7E;">© 2026 Sabba Platform Ltd · <a href="https://sabba-frontend.vercel.app" style="color:#0E6BA8;">sabba-frontend.vercel.app</a></p>
   </td></tr>
 
 </table></td></tr></table></body></html>`;

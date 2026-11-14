@@ -101,7 +101,7 @@ export default function HRProfile() {
           <div style={{ position: 'relative', flexShrink: 0 }}>
             {avatar
               ? <img src={avatar} alt="Avatar" style={{ width: 80, height: 80, borderRadius: 20, objectFit: 'cover', border: '3px solid #eee' }}/>
-              : <div style={{ width: 80, height: 80, borderRadius: 20, background: `linear-gradient(135deg, ${colors.orange}, #f5a066)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26, fontWeight: 800, color: '#fff' }}>{initials}</div>
+              : <div style={{ width: 80, height: 80, borderRadius: 20, background: `linear-gradient(135deg, ${colors.orange}, #2E8BC0)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26, fontWeight: 800, color: '#fff' }}>{initials}</div>
             }
             <button onClick={() => fileRef.current?.click()} style={{ position: 'absolute', bottom: -6, right: -6, width: 28, height: 28, borderRadius: '50%', background: colors.dark, border: '2px solid #fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13 }}>
               ✏️

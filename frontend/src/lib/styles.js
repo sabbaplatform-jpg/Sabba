@@ -1,8 +1,19 @@
+// ── Brand accent ──────────────────────────────────────────────────────────
+// Single source of truth for the brand accent. Ocean blue (#0E6BA8) replaced
+// the former orange (#D4622A) in the Nov 2026 rebrand. The `orange*` keys are
+// kept as names so existing call sites keep working; `accent*` are the
+// preferred aliases for new code. Both point at the same values.
 export const colors = {
-  orange:      '#D4622A',
-  orangeHover: '#b8521f',
-  orangeLight: 'rgba(212,98,42,0.08)',
-  orangePale:  'rgba(212,98,42,0.15)',
+  accent:      '#0E6BA8',           // primary brand accent (ocean blue)
+  accentHover: '#0A5587',           // hover / pressed
+  accentLight: 'rgba(14,107,168,0.08)',
+  accentPale:  'rgba(14,107,168,0.15)',
+  accentTint:  '#E6F1F8',           // solid light tint for backgrounds/badges
+  // Backwards-compatible aliases (same ocean-blue values) — do not reintroduce orange here.
+  orange:      '#0E6BA8',
+  orangeHover: '#0A5587',
+  orangeLight: 'rgba(14,107,168,0.08)',
+  orangePale:  'rgba(14,107,168,0.15)',
   dark:        '#1a1a1a',
   mid:         '#444',
   muted:       '#777',
@@ -62,7 +73,7 @@ export const globalStyles = `
   body { background: #F7F5F2; font-family: 'Inter', 'Helvetica Neue', sans-serif; -webkit-font-smoothing: antialiased; color: #1a1a1a; }
 
   /* Loader */
-  .loader-bar { width: 100%; height: 3px; background: linear-gradient(90deg, #D4622A, #f5a066, #D4622A); background-size: 200% 100%; animation: loaderAnim 1.2s linear infinite; position: fixed; top: 0; left: 0; z-index: 9999; }
+  .loader-bar { width: 100%; height: 3px; background: linear-gradient(90deg, #0E6BA8, #5a9fd0, #0E6BA8); background-size: 200% 100%; animation: loaderAnim 1.2s linear infinite; position: fixed; top: 0; left: 0; z-index: 9999; }
   @keyframes loaderAnim { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 
   /* Cards */
@@ -71,7 +82,7 @@ export const globalStyles = `
 
   /* Package cards */
   .pkg-card { background: #fff; border: 1px solid #eee; border-radius: 16px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); cursor: pointer; transition: all 0.22s ease; overflow: hidden; }
-  .pkg-card:hover { transform: translateY(-5px); box-shadow: 0 20px 48px rgba(0,0,0,0.13); border-color: #D4622A; }
+  .pkg-card:hover { transform: translateY(-5px); box-shadow: 0 20px 48px rgba(0,0,0,0.13); border-color: #0E6BA8; }
 
   /* Stat cards */
   .stat-card { background: #fff; border: 1px solid #eee; border-radius: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); transition: all 0.2s ease; }
@@ -85,11 +96,11 @@ export const globalStyles = `
 
   /* Nav */
   .nav-link { transition: color 0.15s, background 0.15s; }
-  .nav-link:hover { color: #D4622A !important; background: rgba(212,98,42,0.06) !important; }
+  .nav-link:hover { color: #0E6BA8 !important; background: rgba(14,107,168,0.06) !important; }
 
   /* Buttons */
   .btn-p { transition: all 0.15s; }
-  .btn-p:hover { background: #b8521f !important; transform: translateY(-1px); box-shadow: 0 4px 16px rgba(212,98,42,0.35); }
+  .btn-p:hover { background: #0A5587 !important; transform: translateY(-1px); box-shadow: 0 4px 16px rgba(14,107,168,0.35); }
   .btn-s:hover { background: #f0ede9 !important; }
 
   /* Notification pulse */
@@ -102,15 +113,15 @@ export const globalStyles = `
 
   /* Quiz */
   .quiz-opt { transition: all 0.15s; cursor: pointer; }
-  .quiz-opt:hover { border-color: #D4622A !important; background: rgba(212,98,42,0.04) !important; }
-  .quiz-opt.sel { border-color: #D4622A !important; background: rgba(212,98,42,0.08) !important; }
+  .quiz-opt:hover { border-color: #0E6BA8 !important; background: rgba(14,107,168,0.04) !important; }
+  .quiz-opt.sel { border-color: #0E6BA8 !important; background: rgba(14,107,168,0.08) !important; }
 
   /* Scrollbar */
   ::-webkit-scrollbar { width: 5px; height: 5px; }
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 10px; }
 
-  input:focus, select:focus, textarea:focus { outline: none; border-color: #D4622A !important; box-shadow: 0 0 0 3px rgba(212,98,42,0.12) !important; }
+  input:focus, select:focus, textarea:focus { outline: none; border-color: #0E6BA8 !important; box-shadow: 0 0 0 3px rgba(14,107,168,0.12) !important; }
 
   /* Page fade */
   .page-fade { animation: pf 0.2s ease; }

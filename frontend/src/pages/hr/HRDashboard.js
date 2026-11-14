@@ -58,14 +58,14 @@ export default function HRDashboard() {
 
       {/* Banner */}
       <div style={{ background: '#1C1916', position: 'relative', overflow: 'hidden' }}>
-        <div style={{ position: 'absolute', right: -120, top: -120, width: 420, height: 420, borderRadius: '50%', border: '1px solid rgba(212,98,42,0.1)', pointerEvents: 'none' }}/>
-        <div style={{ position: 'absolute', right: -40, top: -40, width: 260, height: 260, borderRadius: '50%', border: '1px solid rgba(212,98,42,0.07)', pointerEvents: 'none' }}/>
+        <div style={{ position: 'absolute', right: -120, top: -120, width: 420, height: 420, borderRadius: '50%', border: '1px solid rgba(14,107,168,0.1)', pointerEvents: 'none' }}/>
+        <div style={{ position: 'absolute', right: -40, top: -40, width: 260, height: 260, borderRadius: '50%', border: '1px solid rgba(14,107,168,0.07)', pointerEvents: 'none' }}/>
         <div style={{ position: 'absolute', left: -80, bottom: -80, width: 300, height: 300, borderRadius: '50%', border: '1px solid rgba(245,160,102,0.06)', pointerEvents: 'none' }}/>
 
         <div style={{ maxWidth: 1280, margin: '0 auto', padding: '36px 40px 0' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 28 }}>
             <div>
-              <p style={{ fontSize: 10.5, fontWeight: 700, color: 'rgba(212,98,42,0.8)', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 8 }}>
+              <p style={{ fontSize: 10.5, fontWeight: 700, color: 'rgba(14,107,168,0.8)', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 8 }}>
                 HR Admin · {new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
               </p>
               <h1 style={{ fontFamily: font.display, fontSize: 42, color: '#fff', fontWeight: 700, fontStyle: 'italic', lineHeight: 1.1, marginBottom: 10 }}>
@@ -73,10 +73,10 @@ export default function HRDashboard() {
               </h1>
               <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 15, fontWeight: 500, maxWidth: 480 }}>
                 Your workforce adventure programme.
-                {pending > 0 && <span style={{ color: '#f5a066' }}> {pending} booking{pending !== 1 ? 's' : ''} awaiting approval.</span>}
+                {pending > 0 && <span style={{ color: '#2E8BC0' }}> {pending} booking{pending !== 1 ? 's' : ''} awaiting approval.</span>}
               </p>
             </div>
-            <button onClick={() => navigate('/hr/adventures')} style={{ background: colors.orange, color: '#fff', border: 'none', borderRadius: 12, padding: '12px 20px', fontSize: 13.5, fontWeight: 700, cursor: 'pointer', fontFamily: font.body, boxShadow: '0 4px 14px rgba(212,98,42,0.35)', flexShrink: 0 }}>
+            <button onClick={() => navigate('/hr/adventures')} style={{ background: colors.orange, color: '#fff', border: 'none', borderRadius: 12, padding: '12px 20px', fontSize: 13.5, fontWeight: 700, cursor: 'pointer', fontFamily: font.body, boxShadow: '0 4px 14px rgba(14,107,168,0.35)', flexShrink: 0 }}>
               Review pipeline →
             </button>
           </div>
@@ -106,7 +106,7 @@ export default function HRDashboard() {
             ].map((s, i) => (
               <div key={i} style={{ padding: '20px 24px', borderRight: i < 3 ? '1px solid rgba(255,255,255,0.07)' : 'none' }}>
                 <p style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>{s.label}</p>
-                <p style={{ fontFamily: font.display, fontSize: 34, fontWeight: 700, color: s.accent ? '#f5a066' : '#fff', lineHeight: 1 }}>{s.value}</p>
+                <p style={{ fontFamily: font.display, fontSize: 34, fontWeight: 700, color: s.accent ? '#2E8BC0' : '#fff', lineHeight: 1 }}>{s.value}</p>
               </div>
             ))}
           </div>
@@ -170,7 +170,7 @@ export default function HRDashboard() {
                 <div key={v.id} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 16px', background: '#F7F5F2', borderRadius: 12, border: '1px solid #eee' }}>
                   {v.avatar_url
                     ? <img src={v.avatar_url} alt={v.company_name} style={{ width: 40, height: 40, borderRadius: 10, objectFit: 'cover', flexShrink: 0 }}/>
-                    : <div style={{ width: 40, height: 40, borderRadius: 10, background: `linear-gradient(135deg, ${colors.orange}, #f5a066)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>🏢</div>
+                    : <div style={{ width: 40, height: 40, borderRadius: 10, background: `linear-gradient(135deg, ${colors.orange}, #2E8BC0)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>🏢</div>
                   }
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <p style={{ fontSize: 13.5, fontWeight: 700, color: colors.dark, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.company_name}</p>

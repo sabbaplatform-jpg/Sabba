@@ -137,7 +137,7 @@ export default function Messages() {
                   const isMe = m.sender_id === user?.id;
                   return (
                     <div key={m.id} style={{ display: 'flex', flexDirection: isMe ? 'row-reverse' : 'row', gap: 10, alignItems: 'flex-end' }}>
-                      <div style={{ width: 30, height: 30, borderRadius: 8, background: isMe ? `linear-gradient(135deg, ${colors.orange}, #f5a066)` : '#F7F5F2', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: isMe ? '#fff' : colors.dark, flexShrink: 0 }}>
+                      <div style={{ width: 30, height: 30, borderRadius: 8, background: isMe ? `linear-gradient(135deg, ${colors.orange}, #2E8BC0)` : '#F7F5F2', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: isMe ? '#fff' : colors.dark, flexShrink: 0 }}>
                         {m.sender_name?.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
                       </div>
                       <div style={{ maxWidth: '70%' }}>

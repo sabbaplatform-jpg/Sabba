@@ -155,12 +155,12 @@ export default function VendorOnboarding() {
 
         {/* Progress bar */}
         <div style={{ background: '#E8E4DF', borderRadius: 4, height: 4, marginBottom: 28, overflow: 'hidden' }}>
-          <div style={{ height: '100%', width: `${progress}%`, background: '#D4622A', borderRadius: 4, transition: 'width 0.3s ease' }}/>
+          <div style={{ height: '100%', width: `${progress}%`, background: '#0E6BA8', borderRadius: 4, transition: 'width 0.3s ease' }}/>
         </div>
 
         {/* Step card */}
         <div style={{ background: '#fff', borderRadius: 20, padding: 36, boxShadow: '0 4px 24px rgba(0,0,0,0.08)', border: '1px solid #eee' }}>
-          <p style={{ fontSize: 11, fontWeight: 700, color: '#D4622A', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8 }}>
+          <p style={{ fontSize: 11, fontWeight: 700, color: '#0E6BA8', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8 }}>
             Step {step + 1} of {STEPS.length}
           </p>
           <h2 style={{ fontSize: 24, fontWeight: 700, color: '#1C1916', marginBottom: 8, lineHeight: 1.3 }}>{current.title}</h2>
@@ -172,8 +172,8 @@ export default function VendorOnboarding() {
               {current.options.map(opt => {
                 const selected = answers[current.id] === opt.value;
                 return (
-                  <div key={opt.value} onClick={() => setAnswer(current.id, opt.value)} style={{ padding: '14px 16px', border: `2px solid ${selected ? '#D4622A' : '#eee'}`, borderRadius: 12, cursor: 'pointer', background: selected ? '#FAECE7' : '#fff', transition: 'all 0.15s' }}>
-                    <p style={{ fontSize: 14, fontWeight: 700, color: selected ? '#D4622A' : '#1C1916', marginBottom: 3 }}>{opt.label}</p>
+                  <div key={opt.value} onClick={() => setAnswer(current.id, opt.value)} style={{ padding: '14px 16px', border: `2px solid ${selected ? '#0E6BA8' : '#eee'}`, borderRadius: 12, cursor: 'pointer', background: selected ? '#FAECE7' : '#fff', transition: 'all 0.15s' }}>
+                    <p style={{ fontSize: 14, fontWeight: 700, color: selected ? '#0E6BA8' : '#1C1916', marginBottom: 3 }}>{opt.label}</p>
                     {opt.desc && <p style={{ fontSize: 12, color: '#9E8E7E', lineHeight: 1.4 }}>{opt.desc}</p>}
                   </div>
                 );
@@ -187,11 +187,11 @@ export default function VendorOnboarding() {
               {current.options.map(opt => {
                 const selected = (answers[current.id] || []).includes(opt.value);
                 return (
-                  <div key={opt.value} onClick={() => toggleMulti(current.id, opt.value)} style={{ padding: '14px 16px', border: `2px solid ${selected ? '#D4622A' : '#eee'}`, borderRadius: 12, cursor: 'pointer', background: selected ? '#FAECE7' : '#fff', display: 'flex', alignItems: 'center', gap: 10, transition: 'all 0.15s' }}>
-                    <div style={{ width: 20, height: 20, borderRadius: 6, border: `2px solid ${selected ? '#D4622A' : '#ccc'}`, background: selected ? '#D4622A' : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <div key={opt.value} onClick={() => toggleMulti(current.id, opt.value)} style={{ padding: '14px 16px', border: `2px solid ${selected ? '#0E6BA8' : '#eee'}`, borderRadius: 12, cursor: 'pointer', background: selected ? '#FAECE7' : '#fff', display: 'flex', alignItems: 'center', gap: 10, transition: 'all 0.15s' }}>
+                    <div style={{ width: 20, height: 20, borderRadius: 6, border: `2px solid ${selected ? '#0E6BA8' : '#ccc'}`, background: selected ? '#0E6BA8' : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                       {selected && <span style={{ color: '#fff', fontSize: 12, fontWeight: 800 }}>✓</span>}
                     </div>
-                    <p style={{ fontSize: 14, fontWeight: 600, color: selected ? '#D4622A' : '#1C1916' }}>{opt.label}</p>
+                    <p style={{ fontSize: 14, fontWeight: 600, color: selected ? '#0E6BA8' : '#1C1916' }}>{opt.label}</p>
                   </div>
                 );
               })}
@@ -204,7 +204,7 @@ export default function VendorOnboarding() {
               <textarea value={answers[current.id] || ''} onChange={e => setAnswer(current.id, e.target.value)}
                 placeholder={current.placeholder} rows={6}
                 style={{ width: '100%', border: '1.5px solid #eee', borderRadius: 12, padding: '12px 16px', fontSize: 14, color: '#1C1916', resize: 'vertical', fontFamily: 'Arial, sans-serif', outline: 'none', lineHeight: 1.6 }}/>
-              <p style={{ fontSize: 12, color: (answers[current.id] || '').length < (current.minLength || 0) ? '#D4622A' : '#9E8E7E', marginTop: 6 }}>
+              <p style={{ fontSize: 12, color: (answers[current.id] || '').length < (current.minLength || 0) ? '#0E6BA8' : '#9E8E7E', marginTop: 6 }}>
                 {(answers[current.id] || '').length} / {current.minLength} characters minimum
               </p>
             </div>
@@ -216,11 +216,11 @@ export default function VendorOnboarding() {
               {current.options.map(opt => {
                 const selected = (answers[current.id] || []).includes(opt.value);
                 return (
-                  <div key={opt.value} onClick={() => toggleMulti(current.id, opt.value)} style={{ padding: '14px 18px', border: `1.5px solid ${selected ? '#D4622A' : '#eee'}`, borderRadius: 12, cursor: 'pointer', background: selected ? '#FAECE7' : '#fff', display: 'flex', alignItems: 'center', gap: 12, transition: 'all 0.15s' }}>
-                    <div style={{ width: 22, height: 22, borderRadius: 6, border: `2px solid ${selected ? '#D4622A' : '#ccc'}`, background: selected ? '#D4622A' : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <div key={opt.value} onClick={() => toggleMulti(current.id, opt.value)} style={{ padding: '14px 18px', border: `1.5px solid ${selected ? '#0E6BA8' : '#eee'}`, borderRadius: 12, cursor: 'pointer', background: selected ? '#FAECE7' : '#fff', display: 'flex', alignItems: 'center', gap: 12, transition: 'all 0.15s' }}>
+                    <div style={{ width: 22, height: 22, borderRadius: 6, border: `2px solid ${selected ? '#0E6BA8' : '#ccc'}`, background: selected ? '#0E6BA8' : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                       {selected && <span style={{ color: '#fff', fontSize: 12, fontWeight: 800 }}>✓</span>}
                     </div>
-                    <p style={{ fontSize: 14, fontWeight: selected ? 700 : 500, color: selected ? '#D4622A' : '#1C1916' }}>{opt.label}</p>
+                    <p style={{ fontSize: 14, fontWeight: selected ? 700 : 500, color: selected ? '#0E6BA8' : '#1C1916' }}>{opt.label}</p>
                   </div>
                 );
               })}
@@ -234,7 +234,7 @@ export default function VendorOnboarding() {
               {current.fields.map(f => (
                 <div key={f.id}>
                   <label style={{ fontSize: 11.5, fontWeight: 700, color: '#9E8E7E', textTransform: 'uppercase', letterSpacing: '0.07em', display: 'block', marginBottom: 6 }}>
-                    {f.label} {f.required && <span style={{ color: '#D4622A' }}>*</span>}
+                    {f.label} {f.required && <span style={{ color: '#0E6BA8' }}>*</span>}
                   </label>
                   <input value={answers[f.id] || ''} onChange={e => setAnswer(f.id, e.target.value)}
                     placeholder={f.placeholder}
@@ -243,27 +243,27 @@ export default function VendorOnboarding() {
               ))}
 
               {/* Terms of use — click to accept on final step */}
-              <div style={{ marginTop: 8, padding: '18px 20px', background: '#F7F5F2', borderRadius: 14, border: `2px solid ${termsAccepted ? '#D4622A' : '#eee'}` }}>
+              <div style={{ marginTop: 8, padding: '18px 20px', background: '#F7F5F2', borderRadius: 14, border: `2px solid ${termsAccepted ? '#0E6BA8' : '#eee'}` }}>
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, cursor: 'pointer' }}
                   onClick={() => setTermsAccepted(t => !t)}>
-                  <div style={{ width: 24, height: 24, borderRadius: 6, border: `2px solid ${termsAccepted ? '#D4622A' : '#ccc'}`, background: termsAccepted ? '#D4622A' : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}>
+                  <div style={{ width: 24, height: 24, borderRadius: 6, border: `2px solid ${termsAccepted ? '#0E6BA8' : '#ccc'}`, background: termsAccepted ? '#0E6BA8' : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}>
                     {termsAccepted && <span style={{ color: '#fff', fontSize: 13, fontWeight: 800 }}>✓</span>}
                   </div>
                   <div>
                     <p style={{ fontSize: 13.5, fontWeight: 600, color: '#1C1916', marginBottom: 4 }}>
-                      I agree to the Sabba Vendor Terms of Use <span style={{ color: '#D4622A' }}>*</span>
+                      I agree to the Sabba Vendor Terms of Use <span style={{ color: '#0E6BA8' }}>*</span>
                     </p>
                     <p style={{ fontSize: 12.5, color: '#9E8E7E', lineHeight: 1.6 }}>
                       By submitting your profile you confirm you have read and accepted the{' '}
                       <a href="/Sabba_Vendor_Terms_of_Use.pdf" target="_blank" rel="noopener noreferrer"
                         onClick={e => e.stopPropagation()}
-                        style={{ color: '#D4622A', fontWeight: 700, textDecoration: 'underline' }}>
+                        style={{ color: '#0E6BA8', fontWeight: 700, textDecoration: 'underline' }}>
                         Vendor Terms of Use
                       </a>
                       {' '}and{' '}
                       <a href="/privacy" target="_blank" rel="noopener noreferrer"
                         onClick={e => e.stopPropagation()}
-                        style={{ color: '#D4622A', fontWeight: 700, textDecoration: 'underline' }}>
+                        style={{ color: '#0E6BA8', fontWeight: 700, textDecoration: 'underline' }}>
                         Privacy Policy
                       </a>
                       . These govern your use of the Sabba platform and your obligations as a vendor partner.
@@ -283,7 +283,7 @@ export default function VendorOnboarding() {
               ← Back
             </button>
             <button onClick={next} disabled={saving}
-              style={{ background: '#D4622A', color: '#fff', border: 'none', borderRadius: 10, padding: '12px 28px', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'Arial, sans-serif', boxShadow: '0 2px 10px rgba(212,98,42,0.3)' }}>
+              style={{ background: '#0E6BA8', color: '#fff', border: 'none', borderRadius: 10, padding: '12px 28px', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'Arial, sans-serif', boxShadow: '0 2px 10px rgba(14,107,168,0.3)' }}>
               {saving ? 'Saving…' : step === STEPS.length - 1 ? 'Submit profile →' : 'Continue →'}
             </button>
           </div>
@@ -292,7 +292,7 @@ export default function VendorOnboarding() {
         {/* Step dots */}
         <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginTop: 20 }}>
           {STEPS.map((_, i) => (
-            <div key={i} style={{ width: i === step ? 20 : 8, height: 8, borderRadius: 4, background: i === step ? '#D4622A' : i < step ? '#F5A066' : '#E8E4DF', transition: 'all 0.2s' }}/>
+            <div key={i} style={{ width: i === step ? 20 : 8, height: 8, borderRadius: 4, background: i === step ? '#0E6BA8' : i < step ? '#2E8BC0' : '#E8E4DF', transition: 'all 0.2s' }}/>
           ))}
         </div>
       </div>
@@ -322,7 +322,7 @@ export function VendorPendingState() {
               <p style={{ fontSize: 13, fontWeight: 700, color: '#1C1916', marginBottom: 8 }}>What happens next?</p>
               {['Sabba reviews your business profile and onboarding answers', 'HR admin verifies your account against your website and credentials', 'You receive an approval email with login instructions', 'You can then add packages — they go live once HR approves them'].map((item, i) => (
                 <div key={i} style={{ display: 'flex', gap: 10, marginBottom: i < 3 ? 8 : 0 }}>
-                  <span style={{ width: 20, height: 20, borderRadius: '50%', background: '#D4622A', color: '#fff', fontSize: 10, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{i+1}</span>
+                  <span style={{ width: 20, height: 20, borderRadius: '50%', background: '#0E6BA8', color: '#fff', fontSize: 10, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{i+1}</span>
                   <p style={{ fontSize: 12.5, color: '#9E8E7E', lineHeight: 1.5 }}>{item}</p>
                 </div>
               ))}
@@ -366,7 +366,7 @@ function PendingState() {
           <br/><br/>
           In the meantime, you can view your pending dashboard.
         </p>
-        <a href="/vendor" style={{ display: 'block', background: '#D4622A', color: '#fff', textDecoration: 'none', borderRadius: 12, padding: '14px', fontSize: 14, fontWeight: 700 }}>
+        <a href="/vendor" style={{ display: 'block', background: '#0E6BA8', color: '#fff', textDecoration: 'none', borderRadius: 12, padding: '14px', fontSize: 14, fontWeight: 700 }}>
           Go to my dashboard →
         </a>
       </div>

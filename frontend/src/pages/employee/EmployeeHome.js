@@ -237,13 +237,13 @@ export function EmployeeHome() {
 
       {/* Hero */}
       <div style={{ background: '#1C1916', padding: '56px 40px 64px', position: 'relative', overflow: 'hidden' }}>
-        <div style={{ position: 'absolute', right: -100, top: -100, width: 400, height: 400, borderRadius: '50%', border: '1px solid rgba(212,98,42,0.1)' }}/>
-        <div style={{ position: 'absolute', right: 40, bottom: -60, width: 240, height: 240, borderRadius: '50%', border: '1px solid rgba(212,98,42,0.07)' }}/>
+        <div style={{ position: 'absolute', right: -100, top: -100, width: 400, height: 400, borderRadius: '50%', border: '1px solid rgba(14,107,168,0.1)' }}/>
+        <div style={{ position: 'absolute', right: 40, bottom: -60, width: 240, height: 240, borderRadius: '50%', border: '1px solid rgba(14,107,168,0.07)' }}/>
         <div style={{ maxWidth: 1200, margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ zIndex: 1, maxWidth: 600 }}>
             <p style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.35)', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 14 }}>Welcome back, {user?.full_name?.split(' ')[0]}</p>
             <h1 style={{ fontFamily: font.display, fontSize: 40, color: '#fff', fontWeight: 700, fontStyle: 'italic', lineHeight: 1.2, marginBottom: 14 }}>
-              Your platform for <span style={{ color: '#f5a066' }}>discovery,</span> rejuvenation &amp; growth.
+              Your platform for <span style={{ color: '#2E8BC0' }}>discovery,</span> rejuvenation &amp; growth.
             </h1>
             <p style={{ fontSize: 15, color: 'rgba(255,255,255,0.45)', marginBottom: 28, lineHeight: 1.7 }}>
               Explore packages paid via your employer payroll — a benefit funded by your company.
@@ -253,7 +253,7 @@ export function EmployeeHome() {
                 <span style={{ fontSize: 14 }}>💳</span>
                 <span style={{ fontSize: 12, fontWeight: 600, color: colors.orange }}>
                   {currentYear} allowance remaining: <strong>£{Number(allowance.remaining).toLocaleString()}</strong>
-                  {allowance.total > 0 && <span style={{ color: 'rgba(212,98,42,0.6)' }}> of £{Number(allowance.total).toLocaleString()}</span>}
+                  {allowance.total > 0 && <span style={{ color: 'rgba(14,107,168,0.6)' }}> of £{Number(allowance.total).toLocaleString()}</span>}
                 </span>
               </div>
             )}
@@ -269,7 +269,7 @@ export function EmployeeHome() {
           {daysUntil !== null && (
             <div style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 20, padding: '28px 36px', textAlign: 'center', zIndex: 1 }}>
               <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: 10 }}>Next adventure</p>
-              <p style={{ fontFamily: font.display, fontSize: 56, color: '#f5a066', fontWeight: 700, lineHeight: 1 }}>{daysUntil}</p>
+              <p style={{ fontFamily: font.display, fontSize: 56, color: '#2E8BC0', fontWeight: 700, lineHeight: 1 }}>{daysUntil}</p>
               <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', fontWeight: 600, marginTop: 6, textTransform: 'uppercase', letterSpacing: '0.06em' }}>days away</p>
               <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.25)', marginTop: 8 }}>{activeBooking.emoji} {activeBooking.package_title}</p>
             </div>
@@ -293,7 +293,7 @@ export function EmployeeHome() {
               <div style={{ position: 'relative', padding: '36px 40px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minHeight: 260 }}>
                 <div>
                   <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, background: 'rgba(255,255,255,0.18)', backdropFilter: 'blur(8px)', borderRadius: 20, padding: '6px 14px', marginBottom: 16 }}>
-                    <span style={{ width: 7, height: 7, borderRadius: '50%', background: tripInProgress ? '#34d399' : '#f5a066', display: 'inline-block', animation: 'pulse 2s ease-in-out infinite' }}/>
+                    <span style={{ width: 7, height: 7, borderRadius: '50%', background: tripInProgress ? '#34d399' : '#2E8BC0', display: 'inline-block', animation: 'pulse 2s ease-in-out infinite' }}/>
                     <span style={{ fontSize: 11, fontWeight: 700, color: '#fff', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
                       {tripInProgress ? 'On your adventure' : 'Departure day is here'}
                     </span>

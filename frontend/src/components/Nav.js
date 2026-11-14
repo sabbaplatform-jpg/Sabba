@@ -282,7 +282,7 @@ export default function Nav() {
           {/* User avatar */}
           <div ref={userRef} style={{ position: 'relative' }}>
             <button onClick={() => { setUserOpen(o => !o); setNotifOpen(false); setMsgOpen(false); }}
-              style={{ width: 34, height: 34, borderRadius: 10, background: `linear-gradient(135deg, ${colors.orange}, #f5a066)`, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 800, color: '#fff', marginLeft: 4 }}>
+              style={{ width: 34, height: 34, borderRadius: 10, background: `linear-gradient(135deg, ${colors.orange}, #2E8BC0)`, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 800, color: '#fff', marginLeft: 4 }}>
               {initials}
             </button>
 
