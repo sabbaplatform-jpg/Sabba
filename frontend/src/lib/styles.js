@@ -135,4 +135,15 @@ export const globalStyles = `
   /* Category cards */
   .cat-card { cursor: pointer; border-radius: 14px; overflow: hidden; transition: transform 0.2s, box-shadow 0.2s; }
   .cat-card:hover { transform: translateY(-4px); box-shadow: 0 12px 32px rgba(0,0,0,0.14); }
+
+  /* Home hero animated scene */
+  @media (max-width: 860px) { .hero-scene { display: none !important; } }
+
+  /* Login branding scene */
+  @media (max-width: 860px) { .login-brand { display: none !important; } }
+
+  @media (prefers-reduced-motion: reduce) {
+    .hero-scene animate, .hero-scene animateTransform,
+    .brand-scene animate, .brand-scene animateTransform { display: none; }
+  }
 `;
