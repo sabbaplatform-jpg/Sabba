@@ -83,10 +83,6 @@ function HeroScene() {
       <rect x="0" y="358" width="480" height="62" fill="#122032"/>
       <ellipse cx="240" cy="358" rx="260" ry="16" fill="#152838"/>
 
-      {/* Winding path */}
-      <path d="M 80 372 Q 120 342 150 312 Q 180 282 202 262" stroke="#2E8BC0" strokeWidth="2.5" fill="none" strokeDasharray="6 4" opacity="0.8">
-        <animate attributeName="stroke-dashoffset" values="0;-20" dur="1.5s" repeatCount="indefinite"/>
-      </path>
 
       {/* Pine trees */}
       <g fill="#0E2438">

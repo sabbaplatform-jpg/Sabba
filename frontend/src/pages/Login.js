@@ -83,10 +83,6 @@ function LoginScene() {
         {/* Scrim */}
         <rect x="0" y="0" width="600" height="900" fill="url(#lscrim)"/>
 
-        {/* Winding path */}
-        <path d="M 150 900 Q 200 820 250 740 Q 300 670 332 620" stroke="#2E8BC0" strokeWidth="3" fill="none" strokeDasharray="7 5" opacity="0.65">
-          <animate attributeName="stroke-dashoffset" values="0;-24" dur="1.6s" repeatCount="indefinite"/>
-        </path>
 
         {/* Tent */}
         <g transform="translate(360,872) scale(1.3)">
