@@ -629,7 +629,7 @@ export function AdminEmployers() {
 // 3. VENDORS
 // ═══════════════════════════════════════════════════════════
 
-function VendorReviewModal({ vendor, companies, onClose, onVerify, onReject, onAccessChange, onToggleActive }) {
+function VendorReviewModal({ vendor, companies, onClose, onVerify, onReject, onAccessChange, onToggleActive, onDelete }) {
   const [rejectMode,  setRejectMode]  = useState(false);
   const [reason,      setReason]      = useState('');
   const [submitting,  setSubmitting]  = useState(false);
