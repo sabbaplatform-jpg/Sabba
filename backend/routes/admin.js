@@ -563,9 +563,11 @@ router.get('/packages', auth, requireAdmin, async (req, res) => {
     const result = await db.query(`
       SELECT p.*,
              v.company_name as vendor_name,
-             v.verified as vendor_verified
+             v.verified as vendor_verified,
+             vu.email as vendor_email
       FROM packages p
       JOIN vendors v ON p.vendor_id = v.id
+      LEFT JOIN users vu ON vu.id = v.user_id
       ORDER BY p.created_at DESC
     `);
     res.json(result.rows);
@@ -1213,6 +1215,103 @@ router.delete('/vendor-users/:id', auth, requireAdmin, async (req, res) => {
     await db.query(`DELETE FROM vendors WHERE user_id=$1`, [req.params.id]);
     await db.query(`DELETE FROM users WHERE id=$1 AND role='vendor'`, [req.params.id]);
     res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── DELETE /api/admin/vendors/:id ─────────────────────────────
+// Permanently delete a vendor (for removing bot / spam signups).
+// GUARDED: only allowed when the vendor has NO bookings, so real vendors
+// with transaction history can't be wiped by mistake — those must be
+// deactivated/revoked instead. Deleting the user cascades to the vendor
+// row and its packages (FK ON DELETE CASCADE).
+router.delete('/vendors/:id', auth, requireAdmin, async (req, res) => {
+  try {
+    const vendor = await db.query(
+      'SELECT id, user_id, company_name FROM vendors WHERE id=$1',
+      [req.params.id]
+    );
+    if (!vendor.rows.length) return res.status(404).json({ error: 'Vendor not found' });
+
+    // Block deletion if the vendor has any bookings against its packages.
+    const bookings = await db.query(
+      `SELECT COUNT(*)::int AS cnt
+         FROM bookings
+        WHERE package_id IN (SELECT id FROM packages WHERE vendor_id=$1)`,
+      [req.params.id]
+    );
+    if (bookings.rows[0].cnt > 0) {
+      return res.status(400).json({
+        error: `This vendor has ${bookings.rows[0].cnt} booking(s) and cannot be permanently deleted. Deactivate (revoke) them instead to preserve records.`,
+      });
+    }
+
+    const userId = vendor.rows[0].user_id;
+    // Deleting the user cascades to the vendor row and its packages.
+    if (userId) {
+      await db.query(`DELETE FROM users WHERE id=$1 AND role='vendor'`, [userId]);
+    } else {
+      await db.query(`DELETE FROM vendors WHERE id=$1`, [req.params.id]);
+    }
+
+    await db.query(
+      `INSERT INTO audit_log (actor_id, action, target_id, target_type, meta)
+       VALUES ($1,'delete_vendor',$2,'vendor',$3)`,
+      [req.user.id, req.params.id, JSON.stringify({ company_name: vendor.rows[0].company_name })]
+    ).catch(() => {});
+
+    res.json({ success: true, deleted_id: req.params.id });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── POST /api/admin/vendors/bulk-delete-bots ──────────────────
+// Remove suspected bot/spam vendors in one action: every UNVERIFIED vendor
+// that has NO bookings. Returns the list of what was removed. Real vendors
+// (verified, or with any booking) are never touched.
+// Pass { dry_run: true } to preview the list without deleting.
+router.post('/vendors/bulk-delete-bots', auth, requireAdmin, async (req, res) => {
+  try {
+    const dryRun = req.body?.dry_run === true;
+
+    // Candidates: unverified vendors with zero bookings.
+    const candidates = await db.query(
+      `SELECT v.id, v.user_id, v.company_name, u.email
+         FROM vendors v
+         JOIN users u ON u.id = v.user_id
+        WHERE v.verified = FALSE
+          AND NOT EXISTS (
+            SELECT 1 FROM bookings b
+             WHERE b.package_id IN (SELECT id FROM packages WHERE vendor_id = v.id)
+          )
+        ORDER BY v.created_at DESC`
+    );
+
+    const list = candidates.rows.map(r => ({ id: r.id, company_name: r.company_name, email: r.email }));
+
+    if (dryRun) {
+      return res.json({ dry_run: true, count: list.length, vendors: list });
+    }
+
+    let deleted = 0;
+    for (const row of candidates.rows) {
+      if (row.user_id) {
+        await db.query(`DELETE FROM users WHERE id=$1 AND role='vendor'`, [row.user_id]);
+      } else {
+        await db.query(`DELETE FROM vendors WHERE id=$1`, [row.id]);
+      }
+      deleted++;
+    }
+
+    await db.query(
+      `INSERT INTO audit_log (actor_id, action, target_id, target_type, meta)
+       VALUES ($1,'bulk_delete_bot_vendors',NULL,'vendor',$2)`,
+      [req.user.id, JSON.stringify({ deleted, vendors: list })]
+    ).catch(() => {});
+
+    res.json({ success: true, deleted, vendors: list });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

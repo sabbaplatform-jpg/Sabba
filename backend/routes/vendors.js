@@ -133,25 +133,41 @@ router.post('/onboarding', auth, requireRole('vendor'), async (req, res) => {
     if (contact_phone) parts.push('Phone: ' + contact_phone);
     const description = parts.join('\n');
 
+    // Keep the structured answers too, so Super Admin can review exactly what
+    // the vendor selected (the `description` blob above stays for back-compat).
+    const onboardingData = {
+      business_type: business_type || null,
+      categories: Array.isArray(categories) ? categories : [],
+      standout: Array.isArray(standout) ? standout : [],
+      about: about || null,
+      website: website || null,
+      contact_name: contact_name || null,
+      contact_phone: contact_phone || null,
+      submitted_at: new Date().toISOString(),
+    };
+
     // Update the vendor row that was created at registration
     const result = await db.query(
       `UPDATE vendors
        SET company_name        = COALESCE($1, company_name),
            category            = $2,
            description         = $3,
+           about               = COALESCE($5, about),
+           website             = COALESCE($6, website),
+           onboarding_data     = $7,
            onboarding_completed = TRUE
        WHERE user_id = $4
        RETURNING id, company_name, category`,
-      [company_name || null, primaryCategory, description, req.user.id]
+      [company_name || null, primaryCategory, description, req.user.id, about || null, website || null, JSON.stringify(onboardingData)]
     );
 
     // If no vendor row existed yet (edge case), create one now
     if (!result.rows.length) {
       const created = await db.query(
-        `INSERT INTO vendors (user_id, company_name, category, description, onboarding_completed, verified)
-         VALUES ($1, $2, $3, $4, TRUE, FALSE)
+        `INSERT INTO vendors (user_id, company_name, category, description, about, website, onboarding_data, onboarding_completed, verified)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, TRUE, FALSE)
          RETURNING id, company_name, category`,
-        [req.user.id, company_name || 'My Company', primaryCategory, description]
+        [req.user.id, company_name || 'My Company', primaryCategory, description, about || null, website || null, JSON.stringify(onboardingData)]
       );
       result.rows = created.rows;
     }

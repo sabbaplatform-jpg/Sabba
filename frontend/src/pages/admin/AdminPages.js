@@ -702,7 +702,10 @@ function VendorReviewModal({ vendor, companies, onClose, onVerify, onReject, onA
     <Modal title="Vendor review" onClose={onClose} width={640}>
       {/* Identity */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 20, padding: 16, background: '#F7F5F2', borderRadius: 12 }}>
-        <div style={{ width: 52, height: 52, borderRadius: 14, background: `linear-gradient(135deg, ${colors.orange}, #2E8BC0)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, flexShrink: 0 }}>🏪</div>
+        {vendor.avatar_url
+          ? <img src={vendor.avatar_url} alt={vendor.company_name} style={{ width: 52, height: 52, borderRadius: 14, objectFit: 'cover', flexShrink: 0, border: '1px solid #e5e5e5' }}/>
+          : <div style={{ width: 52, height: 52, borderRadius: 14, background: `linear-gradient(135deg, ${colors.orange}, #2E8BC0)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, flexShrink: 0 }}>🏪</div>
+        }
         <div style={{ flex: 1 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
             <p style={{ fontSize: 17, fontWeight: 700, color: colors.dark }}>{vendor.company_name}</p>
@@ -737,17 +740,27 @@ function VendorReviewModal({ vendor, companies, onClose, onVerify, onReject, onA
       )}
 
       {/* Onboarding Q&A */}
-      {(od.business_type || od.categories?.length || od.standout?.length) && (
+      {(od.business_type || od.categories?.length || od.standout?.length || od.contact_name || od.contact_phone) && (
         <div style={{ background: '#F7F5F2', borderRadius: 10, padding: '12px 16px', marginBottom: 14 }}>
           <p style={{ fontSize: 10.5, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 10 }}>Onboarding answers</p>
           {od.business_type && <p style={{ fontSize: 13, color: colors.mid, marginBottom: 6 }}><strong style={{ color: colors.dark }}>Business type:</strong> {od.business_type}</p>}
           {od.categories?.length > 0 && <p style={{ fontSize: 13, color: colors.mid, marginBottom: 6 }}><strong style={{ color: colors.dark }}>Categories:</strong> {od.categories.join(', ')}</p>}
+          {(od.contact_name || od.contact_phone) && <p style={{ fontSize: 13, color: colors.mid, marginBottom: 6 }}><strong style={{ color: colors.dark }}>Contact:</strong> {[od.contact_name, od.contact_phone].filter(Boolean).join(' · ')}</p>}
           {od.standout?.length > 0 && (
             <div>
               <p style={{ fontSize: 13, fontWeight: 700, color: colors.dark, marginBottom: 4 }}>How they stand out:</p>
               {od.standout.map((s,i) => <p key={i} style={{ fontSize: 12.5, color: colors.mid, marginBottom: 2 }}>✓ {s.replace(/_/g,' ')}</p>)}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Fallback for vendors onboarded before structured answers were captured:
+          show the saved description blob so nothing is lost. */}
+      {!od.business_type && !od.categories?.length && !od.standout?.length && vendor.description && (
+        <div style={{ background: '#F7F5F2', borderRadius: 10, padding: '12px 16px', marginBottom: 14 }}>
+          <p style={{ fontSize: 10.5, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>Submitted details</p>
+          <p style={{ fontSize: 13, color: colors.mid, lineHeight: 1.7, whiteSpace: 'pre-line' }}>{vendor.description}</p>
         </div>
       )}
 
@@ -832,6 +845,13 @@ function VendorReviewModal({ vendor, companies, onClose, onVerify, onReject, onA
           </>
         ) : (
           <>
+            {/* Permanent delete — only when the vendor has no bookings (bot/spam cleanup) */}
+            {Number(vendor.booking_count || 0) === 0 && onDelete && (
+              <button onClick={() => onDelete(vendor)}
+                style={{ background: '#fff', color: colors.red, border: `1px solid ${colors.red}`, borderRadius: 10, padding: '10px 18px', fontSize: 13.5, fontWeight: 700, cursor: 'pointer', fontFamily: font.body, marginRight: 'auto' }}>
+                Delete vendor
+              </button>
+            )}
             {!vendor.verified && <button onClick={() => setRejectMode(true)}
               style={{ background: colors.redLight, color: colors.red, border: 'none', borderRadius: 10, padding: '10px 18px', fontSize: 13.5, fontWeight: 700, cursor: 'pointer', fontFamily: font.body }}>
               Reject vendor
@@ -913,6 +933,36 @@ export function AdminVendors() {
     return data;
   };
 
+  // Permanently delete a single vendor (bot/spam cleanup). Guarded server-side
+  // to no-booking vendors; we confirm in the UI before firing.
+  const handleDelete = async (vendor) => {
+    if (!window.confirm(`Permanently delete "${vendor.company_name}" (${vendor.email})?\n\nThis removes their login and all their packages. It cannot be undone. Only vendors with no bookings can be deleted.`)) return;
+    try {
+      await api.delete(`/admin/vendors/${vendor.id}`);
+      setVendors(vs => vs.filter(v => v.id !== vendor.id));
+      setReviewing(null);
+    } catch (err) {
+      alert(err.response?.data?.error || 'Failed to delete vendor.');
+    }
+  };
+
+  // Bulk-remove suspected bots: all unverified vendors with no bookings.
+  const handleCleanBots = async () => {
+    try {
+      const { data: preview } = await api.post('/admin/vendors/bulk-delete-bots', { dry_run: true });
+      if (!preview.count) { alert('No bot vendors found — every unverified vendor either has bookings or has been reviewed.'); return; }
+      const names = preview.vendors.slice(0, 15).map(v => `• ${v.company_name} (${v.email})`).join('\n');
+      const more = preview.count > 15 ? `\n…and ${preview.count - 15} more` : '';
+      if (!window.confirm(`Delete ${preview.count} unverified vendor(s) with no bookings?\n\n${names}${more}\n\nThis cannot be undone.`)) return;
+      const { data } = await api.post('/admin/vendors/bulk-delete-bots', {});
+      const removed = new Set(data.vendors.map(v => v.id));
+      setVendors(vs => vs.filter(v => !removed.has(v.id)));
+      alert(`Removed ${data.deleted} bot vendor(s).`);
+    } catch (err) {
+      alert(err.response?.data?.error || 'Bulk cleanup failed.');
+    }
+  };
+
   const filtered = vendors.filter(v => {
     const matchFilter = filter === 'all'
       || (filter === 'pending'    && !v.verified && v.onboarding_completed)
@@ -942,12 +992,19 @@ export function AdminVendors() {
           onReject={handleReject}
           onAccessChange={handleAccessChange}
           onToggleActive={handleToggleActive}
+          onDelete={handleDelete}
         />
       )}
       <div style={{ background: '#fff', borderBottom: '1px solid #eee', padding: '24px 36px' }}>
         <p style={{ fontSize: 10.5, fontWeight: 700, color: colors.faint, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 3 }}>Super Admin</p>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 16 }}>
-          <h1 style={{ fontFamily: font.display, fontSize: 30, color: colors.dark, fontWeight: 700, fontStyle: 'italic' }}>All vendors</h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <h1 style={{ fontFamily: font.display, fontSize: 30, color: colors.dark, fontWeight: 700, fontStyle: 'italic' }}>All vendors</h1>
+            <button onClick={handleCleanBots}
+              style={{ background: '#fff', color: colors.red, border: `1px solid ${colors.red}`, borderRadius: 8, padding: '6px 14px', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: font.body }}>
+              🧹 Clean bots
+            </button>
+          </div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {Object.entries(counts).map(([f, count]) => (
               <button key={f} onClick={() => setFilter(f)} style={{ padding: '6px 14px', borderRadius: 20, border: `1.5px solid ${filter===f ? colors.orange : '#eee'}`, background: filter===f ? colors.orangeLight : '#fff', color: filter===f ? colors.orange : colors.mid, fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: font.body, textTransform: 'capitalize' }}>
@@ -1194,7 +1251,13 @@ export function AdminPackages() {
                   <p style={{ fontSize: 13.5, fontWeight: 700, color: colors.dark }}>{p.emoji} {p.title}</p>
                   <p style={{ fontSize: 11, color: colors.faint }}>{p.destination}</p>
                 </div>
-                <span style={{ fontSize: 12.5, color: colors.mid }}>{p.vendor_name}</span>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ fontSize: 12.5, fontWeight: 600, color: colors.dark, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.vendor_name}</span>
+                    <span title={p.vendor_verified ? 'Verified vendor' : 'Unverified vendor'} style={{ fontSize: 10, fontWeight: 700, flexShrink: 0, color: p.vendor_verified ? colors.green : '#b45309', background: p.vendor_verified ? colors.greenLight : '#FEF3C7', borderRadius: 5, padding: '1px 6px' }}>{p.vendor_verified ? '✓' : '!'}</span>
+                  </div>
+                  {p.vendor_email && <p style={{ fontSize: 10.5, color: colors.faint, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.vendor_email}</p>}
+                </div>
                 <span style={{ fontSize: 12.5, color: colors.mid, textTransform: 'capitalize' }}>{p.category?.replace(/_/g,' ')}</span>
                 <span style={{ fontSize: 13, fontWeight: 700, color: colors.dark }}>£{Number(p.price_gbp||0).toLocaleString()}</span>
                 <span style={{ fontSize: 11.5, fontWeight: 700, color: p.status === 'live' ? colors.green : colors.muted, background: p.status === 'live' ? colors.greenLight : '#F7F5F2', borderRadius: 6, padding: '2px 8px', display: 'inline-block', textTransform: 'capitalize' }}>{p.status}</span>
