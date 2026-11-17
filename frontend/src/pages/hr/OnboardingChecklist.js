@@ -38,7 +38,7 @@ const STEPS = [
     title: 'Approve your vendors',
     description: 'Review and approve the vendors who have submitted packages for your employees.',
     action: 'Review vendors',
-    route: '/hr/vendors',
+    route: '/hr/integrations',
     check: (data) => data?.approved_vendor_count > 0,
   },
   {
@@ -66,7 +66,7 @@ const STEPS = [
     title: 'Approve your first booking',
     description: 'Once employees start booking, you\'ll see requests here to approve or reject.',
     action: 'View bookings',
-    route: '/hr/bookings',
+    route: '/hr',
     check: (data) => data?.approved_booking_count > 0,
   },
 ];
