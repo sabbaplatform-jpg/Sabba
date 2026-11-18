@@ -66,7 +66,7 @@ const STEPS = [
     title: 'Approve your first booking',
     description: 'Once employees start booking, you\'ll see requests here to approve or reject.',
     action: 'View bookings',
-    route: '/hr',
+    route: '/hr/adventures',
     check: (data) => data?.approved_booking_count > 0,
   },
 ];
